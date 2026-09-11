@@ -1,8 +1,24 @@
-# Build status — 11 Sep 2026 (v0.3: no release phases; watches + Collector Crypt added)
+# Build status — 11 Sep 2026 (v0.4: FIRST GREEN BUILD)
 
 **v0.3.** Product decision: there are no more MVP/v1.1/v2 release phases — everything in this doc and in `docs/ICEMARKETS_SPEC.md` §5 ships in one release. Added the **watches** category (10 coins — SUBMARINER, DAYTONA, GMTMASTER, DATEJUST, ROYALOAK, NAUTILUS, SPEEDMASTER, SANTOS, GSHOCK, TISSOTPRX) and the **WATCHX** index coin to `packages/registry/src/commodities.ts`, relayed like the CS2/TCG coins via `relaySwitchboardPrices` (`watch_*_median3` jobs → `sources/watches.ts` WatchCharts + a Chrono24 stub, `switchboard/jobs/watch-median.json`), with `data/manual-prices.json` seed prices as a bootstrap fallback when fewer than 2 live sources respond. Added **Collector Crypt** (`sources/collectorcrypt.ts`) as an additional price source — a third leg for both `watch_*` and `tcg_*` Switchboard relays via the new `sources/median.ts` `median3` helper (drops nulls, requires ≥2, rejects >25% outliers). Registry is now 93 commodities + 3 index coins (PMX, WATCHX, CS2X).
 
-## Verified offline
+
+## ✅ Verified on a real toolchain (11 Sep 2026, Yashish's Mac — Agave 4.2.2, Anchor 0.31.1, platform-tools bundled)
+| What | Result |
+|---|---|
+| `anchor build` — all 4 programs | ✅ compiles; only harmless `AccountInfo::realloc` deprecation warnings from Anchor's macro |
+| Program ids | real keypairs in `target/deploy`, synced into `declare_id!` and both `[programs.*]` tables: peg_desk `6jMv6pdi…rqQN`, fee_router `9bnCKVes…rbEt`, distributor `AEGw9dc3…4dV6`, buyback `2jsn1m1E…k4Lk` |
+| Meteora CPIs vs **mainnet-deployed IDLs** (`anchor idl fetch` → `vendor/idl/`) | ✅ all 11 Rust + 2 SDK discriminators match; account order + writable flags for `claim_trading_fee`, `partner_withdraw_surplus`, `claim_position_fee`, `swap` match exactly; every byte offset in `fee_router/src/constants.rs` matches struct layouts (incl. `is_migrated@305`) |
+| `pnpm typecheck` — 5 workspaces | ✅ clean (dbc.ts rewritten against `@meteora-ag/dynamic-bonding-curve-sdk` 1.5.12 real types) |
+| SDK unit tests | ✅ 44/44 |
+| `anchor test` — local validator with cloned Meteora DBC, DAMM v2, Pyth receiver, Metaplex | ✅ **25/25** (peg_desk + distributor suites) |
+| SDK ↔ IDL cross-check (`scripts/check-sdk-vs-idl.ts`) | ✅ 32 files, 0 mismatches (after 1 fix) |
+
+Fixes the compiler forced (all committed): Solana 2.1 → Agave 4.2.2 pinned in `Anchor.toml` (avm re-activates 2.1.0 when `solana_version` is unset); `Cargo.lock` committed with `anchor-lang@0.31.1` / `solana-program@2.3.0` precise pins (Pyth SDK has open-ended bounds); DBC SDK params are nested (`token`, `fee`, `migration`, `liquidityDistribution`, `lockedVesting`), `createPoolWithFirstBuy` lives on the creator service, `migrateToDammV2` needs a `dammConfig` and returns two position-NFT keypairs that must sign (keeper migrate cycle updated); chai 4 has no bigint comparators (`expectBig` helper); Backpack adapter removed upstream (Wallet Standard auto-detects); `[test.validator] bind_address = "127.0.0.1"` (Agave 4.x panics on 0.0.0.0); distributor direct-mode test flips `source_authority` signer meta.
+
+**Open decision:** `poolCreationFee: 0` in the launch config (SDK accepts it). Keep 0 (creators pay only rent + first buy) or set e.g. 0.01 SOL as a spam deterrent (Meteora takes 10% of it)?
+
+## Verified offline (pre-toolchain, superseded by the table above)
 | What | How | Result |
 |---|---|---|
 | `peg_desk/src/pricing.rs` | `rustc --test` standalone | 21/21 pass |
@@ -19,19 +35,17 @@
 | Web session calendar (v0.2) | `apps/web/lib/session.ts` vs keeper `session.ts`, every 15 min of 2026 × 5 session kinds; next-open for Fri close / daily break | 175,680 samples identical |
 | USDC per cluster (v0.2) | `usdcMintFor` / `parseCluster` | pass |
 
-## NOT verified (needs network / toolchain)
-- `anchor build` for all four programs — first real compile will surface Anchor 0.31 API drift. Expect a few hours of fixes.
-- `anchor test` — validator clones Meteora DBC, DAMM v2, Pyth receiver, Metaplex from mainnet.
-- `pnpm install` + `next build` + `tsc` with real third-party types.
-- Every `// VERIFY` / `// CHECK` comment (grep for them): Meteora account orders, byte offsets (`fee_router/src/constants.rs`),
-  DBC SDK field names (`packages/sdk/src/dbc.ts`), Pyth receiver method names (`apps/keeper/src/cycles/oracle.ts`), Jupiter API shape.
-  New in v0.2: cp-amm `fetchPoolState`/`getQuote` (`packages/sdk/src/damm.ts`), Anchor `BorshCoder`/`EventParser`
+## NOT yet verified (needs devnet / live services)
+- `next build` (typecheck passes; production build not run yet).
+- Live-service `// CHECK`s: Pyth receiver method names (`apps/keeper/src/cycles/oracle.ts`), Jupiter API shape, Helius payload fields,
+  cp-amm quote, Collector Crypt / WatchCharts / Pricempire API shapes.
+  Still marked from v0.2: cp-amm `fetchPoolState`/`getQuote` (`packages/sdk/src/damm.ts`), Anchor `BorshCoder`/`EventParser`
   (`apps/indexer/src/decode/anchorEvents.ts`), Helius enhanced payload fields (`apps/indexer/src/decode/types.ts`),
   DBC/DAMM `token_vault` seeds (`apps/indexer/src/decode/meteora.ts`, same as `sdk/meteora.ts`).
 - Launch tx size with the ALT (`buildLaunchTransactions` asserts ≤ 1232 bytes at build time — first real run tells).
 
 ## First-compile checklist (in order)
-1. `make bootstrap` → `make build` (= `anchor build -- --tools-version v1.57`; Solana 2.1 cargo 1.79 cannot parse edition2024 crates). Fix compile errors program by program: peg_desk → fee_router → distributor → buyback.
+1. `make bootstrap` → `make build`. Needs Agave CLI stable (3.x): Solana 2.1 bundles cargo 1.79, which cannot parse edition-2024 crates, and its cargo-build-sbf cannot drive newer platform tools. Fix compile errors program by program: peg_desk → fee_router → distributor → buyback.
 2. `cargo tree -i anchor-lang` — ensure `pyth-solana-receiver-sdk` resolves to one anchor-lang version.
 3. `anchor keys sync` → `make idl`.
 4. Download IDLs: `curl https://raw.githubusercontent.com/MeteoraAg/dynamic-bonding-curve/main/idls/dynamic_bonding_curve.json` and DAMM v2 `cp_amm.json`; run `tsx scripts/print-discriminators.ts <dbc.json> <cp_amm.json>` to diff account orders; fix `cpi_ext/*.rs` and `fee_router/src/constants.rs` offsets.
