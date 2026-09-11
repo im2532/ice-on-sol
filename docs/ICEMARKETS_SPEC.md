@@ -260,14 +260,14 @@ Energy (7): CL WTI /bbl · BZ Brent /bbl · OIL Oil (Pyth 24/7 blend) /bbl · US
 Agriculture (14): LBR Lumber /mbf · ZW Wheat /bu · ZC Corn /bu · ZS Soybeans /bu · ZM Soybean Meal /ton · ZL Soybean Oil /lb · ZR Rice /cwt · ZO Oats /bu · SB Sugar /lb · KC Coffee /lb · CC Cocoa /t · CT Cotton /lb · OJ Orange Juice /lb · DC Milk /cwt
 Livestock (3): LE Live Cattle /lb · GF Feeder Cattle /lb · HE Lean Hogs /lb
 Fast food (13, generic tickers): BURGER, NUGGETS, WHOPPR→BIGBURGER, CHIXSAND, TACO, BURRITO, LATTE, PIZZA, DBLBURGER, BACONBURGER, SPICYCHIX, MEDCOFFEE, FRIES — /item
-CS2 skins (12): AKREDLINE, AWPASIIMOV, DLORE, HOWL, KARAMBIT, BFLYFADE, DEAGLEBLAZE, GLOCKFADE, PRINTSTREAM, VICEGLOVES, BRAVOCASE, VULCAN — /item
+CS2 skins (12): AKREDLINE, AWPASIIMOV, DLORE, HOWL, KARAMBIT, BFLYFADE, DEAGLBLAZE, GLOCKFADE, PRNTSTREAM, VICEGLOVES, BRAVOCASE, VULCAN — /item
 Game gold (1): RSGP OSRS Gold /M gp
 Trading cards (25): 13 ETBs (151, Prismatic Evolutions, Destined Rivals, Ascended Heroes, Chaos Rising, Phantasmal Flames, Twilight Masquerade, Surging Sparks, Black Bolt, White Flare, Mega Evolution, Crown Zenith, Obsidian Flames) + 12 singles (Umbreon ex SIR 161/131, Umbreon VMAX Alt Art, Charizard ex SIR 199/165, Charizard ex SIR 223/197, Base Set Charizard, Pikachu ex SIR 238/191, Mew ex SIR 232/091, Team Rocket's Mewtwo ex SIR, Mega Charizard Y ex 294/217, Giratina V Alt Art, Cynthia's Garchomp ex SIR, N's Zoroark ex SIR) — /box, /card
 Water (1): H2O California Water /af
 Cars (1): LAMBO Lamborghini Temerario /car
-Watches (10): SUBMARINER Rolex Submariner Date 126610LN · DAYTONA Rolex Cosmograph Daytona 126500LN · GMTMASTER Rolex GMT-Master II 126710BLNR · DATEJUST Rolex Datejust 41 126334 · ROYALOAK AP Royal Oak 15510ST · NAUTILUS Patek Philippe Nautilus 5811/1G · SPEEDMASTER Omega Speedmaster Moonwatch · SANTOS Cartier Santos Large WSSA0018 · GSHOCK Casio G-Shock DW-5600E · TISSOTPRX Tissot PRX Powermatic 80 — /watch (unworn, full set); priced from WatchCharts + Chrono24 (disabled, no public API) + Collector Crypt vaulted-watch sales
+Watches (10): SUBMARINER Rolex Submariner Date 126610LN · DAYTONA Rolex Cosmograph Daytona 126500LN · GMTMASTER Rolex GMT-Master II 126710BLNR · DATEJUST Rolex Datejust 41 126334 · ROYALOAK AP Royal Oak 15510ST · NAUTILUS Patek Philippe Nautilus 5811/1G · SPEEDMSTR Omega Speedmaster Moonwatch · SANTOS Cartier Santos Large WSSA0018 · GSHOCK Casio G-Shock DW-5600E · TISSOTPRX Tissot PRX Powermatic 80 — /watch (unworn, full set); priced from WatchCharts + Chrono24 (disabled, no public API) + Collector Crypt vaulted-watch sales
 
-Index coins (3, Composite oracle, D6): PMX Precious Metals Index (40% GLD / 30% SLV / 15% XPT / 15% XPD) · WATCHX Luxury Watch Index (25% SUBMARINER / 25% DAYTONA / 20% ROYALOAK / 20% NAUTILUS / 10% SPEEDMASTER) · CS2X CS2 Skins Index (25% KARAMBIT / 25% HOWL / 25% DLORE / 15% AWPASIIMOV / 10% AKREDLINE)
+Index coins (3, Composite oracle, D6): PMX Precious Metals Index (40% GLD / 30% SLV / 15% XPT / 15% XPD) · WATCHX Luxury Watch Index (25% SUBMARINER / 25% DAYTONA / 20% ROYALOAK / 20% NAUTILUS / 10% SPEEDMSTR) · CS2X CS2 Skins Index (25% KARAMBIT / 25% HOWL / 25% DLORE / 15% AWPASIIMOV / 10% AKREDLINE)
 
 ## Appendix B — Pyth feed IDs used at launch (Tier A)
 

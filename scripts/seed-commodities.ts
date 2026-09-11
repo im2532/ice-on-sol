@@ -258,12 +258,13 @@ async function resolveSeedPrices(targets: Commodity[], feedIds: Map<string, stri
       console.warn(`  ! Hermes price fetch failed: ${String(err)}`);
     }
   }
-  // KeeperSigned: the same manual file the keeper posts from.
+  // KeeperSigned and Switchboard (relayed by the keeper as KeeperSigned until the on-demand feeds exist):
+  // the same manual file the keeper posts from.
   const manualPath = path.join(process.cwd(), "apps", "keeper", "data", "manual-prices.json");
   if (existsSync(manualPath)) {
     const manual = JSON.parse(readFileSync(manualPath, "utf8")) as { symbol: string; price: number }[];
     for (const c of targets) {
-      if (c.oracle.kind !== OracleKind.KeeperSigned || out.has(c.symbol)) continue;
+      if ((c.oracle.kind !== OracleKind.KeeperSigned && c.oracle.kind !== OracleKind.Switchboard) || out.has(c.symbol)) continue;
       const m = manual.find((x) => x.symbol === c.symbol);
       if (m) out.set(c.symbol, BigInt(Math.round(m.price * 1e8)));
     }

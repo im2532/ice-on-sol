@@ -56,7 +56,7 @@ export const COLLECTOR_CRYPT_ITEM: Record<string, { searchTerm: string; referenc
   DATEJUST: { searchTerm: "Rolex Datejust 41 126334", reference: "126334" },
   ROYALOAK: { searchTerm: "Audemars Piguet Royal Oak 15510ST", reference: "15510ST" },
   NAUTILUS: { searchTerm: "Patek Philippe Nautilus 5811", reference: "5811-1G" },
-  SPEEDMASTER: { searchTerm: "Omega Speedmaster Moonwatch", reference: "310.30.42.50.01.001" },
+  SPEEDMSTR: { searchTerm: "Omega Speedmaster Moonwatch", reference: "310.30.42.50.01.001" },
   SANTOS: { searchTerm: "Cartier Santos WSSA0018", reference: "WSSA0018" },
   GSHOCK: { searchTerm: "Casio G-Shock DW-5600E", reference: "DW-5600E-1" },
   TISSOTPRX: { searchTerm: "Tissot PRX Powermatic 80", reference: "T137.407.11.041.00" },

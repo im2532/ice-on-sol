@@ -106,8 +106,8 @@ export const COMMODITIES: Commodity[] = [
   // CS2 SKINS ------------------------------------------------------------
   ...([
     ["AKREDLINE", "AK-47 Redline (FT)"], ["AWPASIIMOV", "AWP Asiimov (FT)"], ["DLORE", "AWP Dragon Lore (FT)"], ["HOWL", "M4A4 Howl (FT)"],
-    ["KARAMBIT", "Karambit Doppler (FN)"], ["BFLYFADE", "Butterfly Knife Fade (FN)"], ["DEAGLEBLAZE", "Desert Eagle Blaze (FN)"], ["GLOCKFADE", "Glock-18 Fade (FN)"],
-    ["PRINTSTREAM", "M4A1-S Printstream (FT)"], ["VICEGLOVES", "Sport Gloves Vice (FT)"], ["BRAVOCASE", "Operation Bravo Case"], ["VULCAN", "AK-47 Vulcan (FT)"],
+    ["KARAMBIT", "Karambit Doppler (FN)"], ["BFLYFADE", "Butterfly Knife Fade (FN)"], ["DEAGLBLAZE", "Desert Eagle Blaze (FN)"], ["GLOCKFADE", "Glock-18 Fade (FN)"],
+    ["PRNTSTREAM", "M4A1-S Printstream (FT)"], ["VICEGLOVES", "Sport Gloves Vice (FT)"], ["BRAVOCASE", "Operation Bravo Case"], ["VULCAN", "AK-47 Vulcan (FT)"],
   ] as const).map(([symbol, name]): Commodity => ({
     symbol, name, category: "cs2_skins", unit: "1 item", unitShort: "item", tier: "B", session: S.Continuous, phase: "mvp", emoji: "🔫",
     oracle: sb(`cs2_${symbol.toLowerCase()}_median3`), params: P.BMkt,
@@ -121,7 +121,7 @@ export const COMMODITIES: Commodity[] = [
   ...([
     ["ETB151", "151 Elite Trainer Box", "box"], ["ETBPRISM", "Prismatic Evolutions ETB", "box"], ["ETBRIVALS", "Destined Rivals ETB", "box"], ["ETBHEROES", "Ascended Heroes ETB", "box"],
     ["ETBCHAOS", "Chaos Rising ETB", "box"], ["ETBPHANTOM", "Phantasmal Flames ETB", "box"], ["ETBMASQ", "Twilight Masquerade ETB", "box"], ["ETBSPARKS", "Surging Sparks ETB", "box"],
-    ["ETBBOLT", "Black Bolt ETB", "box"], ["ETBFLARE", "White Flare ETB", "box"], ["ETBMEGA", "Mega Evolution ETB", "box"], ["ETBZENITH", "Crown Zenith ETB", "box"], ["ETBOBSIDIAN", "Obsidian Flames ETB", "box"],
+    ["ETBBOLT", "Black Bolt ETB", "box"], ["ETBFLARE", "White Flare ETB", "box"], ["ETBMEGA", "Mega Evolution ETB", "box"], ["ETBZENITH", "Crown Zenith ETB", "box"], ["ETBOBSIDN", "Obsidian Flames ETB", "box"],
     ["UMBREONEX", "Umbreon ex SIR 161/131", "card"], ["MOONBREON", "Umbreon VMAX Alt Art", "card"], ["ZARDEX199", "Charizard ex SIR 199/165", "card"], ["ZARDEX223", "Charizard ex SIR 223/197", "card"],
     ["ZARDBASE", "Base Set Charizard", "card"], ["PIKAEX238", "Pikachu ex SIR 238/191", "card"], ["MEWEX232", "Mew ex SIR 232/091", "card"], ["TRMEWTWO", "Team Rocket's Mewtwo ex SIR", "card"],
     ["MEGAZARDY", "Mega Charizard Y ex 294/217", "card"], ["GIRATINAV", "Giratina V Alt Art", "card"], ["GARCHOMPEX", "Cynthia's Garchomp ex SIR", "card"], ["ZOROARKEX", "N's Zoroark ex SIR", "card"],
@@ -140,7 +140,7 @@ export const COMMODITIES: Commodity[] = [
     ["SUBMARINER", "Rolex Submariner Date 126610LN", "Rolex Submariner"], ["DAYTONA", "Rolex Cosmograph Daytona 126500LN", "Rolex Daytona"],
     ["GMTMASTER", "Rolex GMT-Master II 126710BLNR", "Rolex GMT-Master II"], ["DATEJUST", "Rolex Datejust 41 126334", "Rolex Datejust"],
     ["ROYALOAK", "AP Royal Oak 15510ST", "AP Royal Oak"], ["NAUTILUS", "Patek Philippe Nautilus 5811/1G", "Patek Nautilus"],
-    ["SPEEDMASTER", "Omega Speedmaster Moonwatch 310.30.42.50.01.001", "Omega Speedmaster"], ["SANTOS", "Cartier Santos Large WSSA0018", "Cartier Santos"],
+    ["SPEEDMSTR", "Omega Speedmaster Moonwatch 310.30.42.50.01.001", "Omega Speedmaster"], ["SANTOS", "Cartier Santos Large WSSA0018", "Cartier Santos"],
     ["GSHOCK", "Casio G-Shock DW-5600E", "G-Shock DW-5600"], ["TISSOTPRX", "Tissot PRX Powermatic 80", "Tissot PRX"],
   ] as const).map(([symbol, name, displayName]): Commodity => ({
     symbol, name, displayName, category: "watches", unit: "1 watch (unworn, full set)", unitShort: "watch", tier: "C", session: S.Slow, phase: "mvp", emoji: "⌚",
@@ -153,7 +153,7 @@ export const INDEX_COINS: Commodity[] = [
   { symbol: "PMX", name: "Precious Metals Index", category: "metals", unit: "1 index unit", unitShort: "idx", tier: "AHours", session: S.CmeGlobex, phase: "mvp", emoji: "💎",
     oracle: { kind: O.Composite, legs: [{ symbol: "GLD", weightBps: 4000 }, { symbol: "SLV", weightBps: 3000 }, { symbol: "XPT", weightBps: 1500 }, { symbol: "XPD", weightBps: 1500 }] }, params: P.AHours },
   { symbol: "WATCHX", name: "Luxury Watch Index", category: "watches", unit: "1 index unit", unitShort: "idx", tier: "C", session: S.Slow, phase: "mvp", emoji: "⌚",
-    oracle: { kind: O.Composite, legs: [{ symbol: "SUBMARINER", weightBps: 2500 }, { symbol: "DAYTONA", weightBps: 2500 }, { symbol: "ROYALOAK", weightBps: 2000 }, { symbol: "NAUTILUS", weightBps: 2000 }, { symbol: "SPEEDMASTER", weightBps: 1000 }] }, params: P.C },
+    oracle: { kind: O.Composite, legs: [{ symbol: "SUBMARINER", weightBps: 2500 }, { symbol: "DAYTONA", weightBps: 2500 }, { symbol: "ROYALOAK", weightBps: 2000 }, { symbol: "NAUTILUS", weightBps: 2000 }, { symbol: "SPEEDMSTR", weightBps: 1000 }] }, params: P.C },
   { symbol: "CS2X", name: "CS2 Skins Index", category: "cs2_skins", unit: "1 index unit", unitShort: "idx", tier: "B", session: S.Continuous, phase: "mvp", emoji: "🎮",
     oracle: { kind: O.Composite, legs: [{ symbol: "KARAMBIT", weightBps: 2500 }, { symbol: "HOWL", weightBps: 2500 }, { symbol: "DLORE", weightBps: 2500 }, { symbol: "AWPASIIMOV", weightBps: 1500 }, { symbol: "AKREDLINE", weightBps: 1000 }] }, params: P.BMkt },
 ];

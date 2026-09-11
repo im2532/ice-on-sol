@@ -1,28 +1,452 @@
 [
-  { "symbol": "BURGER", "price": 5.91, "source": "economist-big-mac-index-2026H1", "updatedAt": "2026-09-11T00:00:00Z" },
-  { "symbol": "NUGGETS", "price": 5.79, "source": "menu-price-check-2026-09", "updatedAt": "2026-09-11T00:00:00Z" },
-  { "symbol": "BIGBURGER", "price": 6.49, "source": "menu-price-check-2026-09", "updatedAt": "2026-09-11T00:00:00Z" },
-  { "symbol": "CHIXSAND", "price": 4.95, "source": "menu-price-check-2026-09", "updatedAt": "2026-09-11T00:00:00Z" },
-  { "symbol": "TACO", "price": 1.89, "source": "menu-price-check-2026-09", "updatedAt": "2026-09-11T00:00:00Z" },
-  { "symbol": "BURRITO", "price": 10.75, "source": "menu-price-check-2026-09", "updatedAt": "2026-09-11T00:00:00Z" },
-  { "symbol": "LATTE", "price": 5.45, "source": "menu-price-check-2026-09", "updatedAt": "2026-09-11T00:00:00Z" },
-  { "symbol": "PIZZA", "price": 12.99, "source": "menu-price-check-2026-09", "updatedAt": "2026-09-11T00:00:00Z" },
-  { "symbol": "DBLBURGER", "price": 5.65, "source": "menu-price-check-2026-09", "updatedAt": "2026-09-11T00:00:00Z" },
-  { "symbol": "BACONBRGR", "price": 8.99, "source": "menu-price-check-2026-09", "updatedAt": "2026-09-11T00:00:00Z" },
-  { "symbol": "SPICYCHIX", "price": 5.99, "source": "menu-price-check-2026-09", "updatedAt": "2026-09-11T00:00:00Z" },
-  { "symbol": "MEDCOFFEE", "price": 2.99, "source": "menu-price-check-2026-09", "updatedAt": "2026-09-11T00:00:00Z" },
-  { "symbol": "FRIES", "price": 3.79, "source": "menu-price-check-2026-09", "updatedAt": "2026-09-11T00:00:00Z" },
-  { "symbol": "H2O", "price": 450.0, "source": "estimate-nqh2o-index-TODO-verify", "updatedAt": "2026-09-11T00:00:00Z" },
-  { "symbol": "LAMBO", "price": 260000.0, "source": "estimate-lamborghini-temerario-msrp-TODO-verify", "updatedAt": "2026-09-11T00:00:00Z" },
-
-  { "symbol": "SUBMARINER", "price": 13900.0, "source": "seed-estimate", "updatedAt": "2026-09-11T00:00:00Z" },
-  { "symbol": "DAYTONA", "price": 28500.0, "source": "seed-estimate", "updatedAt": "2026-09-11T00:00:00Z" },
-  { "symbol": "GMTMASTER", "price": 17200.0, "source": "seed-estimate", "updatedAt": "2026-09-11T00:00:00Z" },
-  { "symbol": "DATEJUST", "price": 10400.0, "source": "seed-estimate", "updatedAt": "2026-09-11T00:00:00Z" },
-  { "symbol": "ROYALOAK", "price": 52000.0, "source": "seed-estimate", "updatedAt": "2026-09-11T00:00:00Z" },
-  { "symbol": "NAUTILUS", "price": 128000.0, "source": "seed-estimate", "updatedAt": "2026-09-11T00:00:00Z" },
-  { "symbol": "SPEEDMASTER", "price": 6900.0, "source": "seed-estimate", "updatedAt": "2026-09-11T00:00:00Z" },
-  { "symbol": "SANTOS", "price": 7300.0, "source": "seed-estimate", "updatedAt": "2026-09-11T00:00:00Z" },
-  { "symbol": "GSHOCK", "price": 60.0, "source": "seed-estimate", "updatedAt": "2026-09-11T00:00:00Z" },
-  { "symbol": "TISSOTPRX", "price": 675.0, "source": "seed-estimate", "updatedAt": "2026-09-11T00:00:00Z" }
+  {
+    "symbol": "BURGER",
+    "price": 5.91,
+    "source": "economist-big-mac-index-2026H1",
+    "updatedAt": "2026-09-11T00:00:00Z"
+  },
+  {
+    "symbol": "NUGGETS",
+    "price": 5.79,
+    "source": "menu-price-check-2026-09",
+    "updatedAt": "2026-09-11T00:00:00Z"
+  },
+  {
+    "symbol": "BIGBURGER",
+    "price": 6.49,
+    "source": "menu-price-check-2026-09",
+    "updatedAt": "2026-09-11T00:00:00Z"
+  },
+  {
+    "symbol": "CHIXSAND",
+    "price": 4.95,
+    "source": "menu-price-check-2026-09",
+    "updatedAt": "2026-09-11T00:00:00Z"
+  },
+  {
+    "symbol": "TACO",
+    "price": 1.89,
+    "source": "menu-price-check-2026-09",
+    "updatedAt": "2026-09-11T00:00:00Z"
+  },
+  {
+    "symbol": "BURRITO",
+    "price": 10.75,
+    "source": "menu-price-check-2026-09",
+    "updatedAt": "2026-09-11T00:00:00Z"
+  },
+  {
+    "symbol": "LATTE",
+    "price": 5.45,
+    "source": "menu-price-check-2026-09",
+    "updatedAt": "2026-09-11T00:00:00Z"
+  },
+  {
+    "symbol": "PIZZA",
+    "price": 12.99,
+    "source": "menu-price-check-2026-09",
+    "updatedAt": "2026-09-11T00:00:00Z"
+  },
+  {
+    "symbol": "DBLBURGER",
+    "price": 5.65,
+    "source": "menu-price-check-2026-09",
+    "updatedAt": "2026-09-11T00:00:00Z"
+  },
+  {
+    "symbol": "BACONBRGR",
+    "price": 8.99,
+    "source": "menu-price-check-2026-09",
+    "updatedAt": "2026-09-11T00:00:00Z"
+  },
+  {
+    "symbol": "SPICYCHIX",
+    "price": 5.99,
+    "source": "menu-price-check-2026-09",
+    "updatedAt": "2026-09-11T00:00:00Z"
+  },
+  {
+    "symbol": "MEDCOFFEE",
+    "price": 2.99,
+    "source": "menu-price-check-2026-09",
+    "updatedAt": "2026-09-11T00:00:00Z"
+  },
+  {
+    "symbol": "FRIES",
+    "price": 3.79,
+    "source": "menu-price-check-2026-09",
+    "updatedAt": "2026-09-11T00:00:00Z"
+  },
+  {
+    "symbol": "H2O",
+    "price": 450.0,
+    "source": "estimate-nqh2o-index-TODO-verify",
+    "updatedAt": "2026-09-11T00:00:00Z"
+  },
+  {
+    "symbol": "LAMBO",
+    "price": 260000.0,
+    "source": "estimate-lamborghini-temerario-msrp-TODO-verify",
+    "updatedAt": "2026-09-11T00:00:00Z"
+  },
+  {
+    "symbol": "SUBMARINER",
+    "price": 13900.0,
+    "source": "seed-estimate",
+    "updatedAt": "2026-09-11T00:00:00Z"
+  },
+  {
+    "symbol": "DAYTONA",
+    "price": 28500.0,
+    "source": "seed-estimate",
+    "updatedAt": "2026-09-11T00:00:00Z"
+  },
+  {
+    "symbol": "GMTMASTER",
+    "price": 17200.0,
+    "source": "seed-estimate",
+    "updatedAt": "2026-09-11T00:00:00Z"
+  },
+  {
+    "symbol": "DATEJUST",
+    "price": 10400.0,
+    "source": "seed-estimate",
+    "updatedAt": "2026-09-11T00:00:00Z"
+  },
+  {
+    "symbol": "ROYALOAK",
+    "price": 52000.0,
+    "source": "seed-estimate",
+    "updatedAt": "2026-09-11T00:00:00Z"
+  },
+  {
+    "symbol": "NAUTILUS",
+    "price": 128000.0,
+    "source": "seed-estimate",
+    "updatedAt": "2026-09-11T00:00:00Z"
+  },
+  {
+    "symbol": "SPEEDMSTR",
+    "price": 6900.0,
+    "source": "seed-estimate",
+    "updatedAt": "2026-09-11T00:00:00Z"
+  },
+  {
+    "symbol": "SANTOS",
+    "price": 7300.0,
+    "source": "seed-estimate",
+    "updatedAt": "2026-09-11T00:00:00Z"
+  },
+  {
+    "symbol": "GSHOCK",
+    "price": 60.0,
+    "source": "seed-estimate",
+    "updatedAt": "2026-09-11T00:00:00Z"
+  },
+  {
+    "symbol": "TISSOTPRX",
+    "price": 675.0,
+    "source": "seed-estimate",
+    "updatedAt": "2026-09-11T00:00:00Z"
+  },
+  {
+    "symbol": "RB",
+    "price": 3.15,
+    "source": "seed-estimate-commodites.market-2026-09-11",
+    "updatedAt": "2026-09-11T00:00:00Z"
+  },
+  {
+    "symbol": "HO",
+    "price": 4.81,
+    "source": "seed-estimate-commodites.market-2026-09-11",
+    "updatedAt": "2026-09-11T00:00:00Z"
+  },
+  {
+    "symbol": "LBR",
+    "price": 570.0,
+    "source": "seed-estimate-commodites.market-2026-09-11",
+    "updatedAt": "2026-09-11T00:00:00Z"
+  },
+  {
+    "symbol": "ZM",
+    "price": 352.75,
+    "source": "seed-estimate-commodites.market-2026-09-11",
+    "updatedAt": "2026-09-11T00:00:00Z"
+  },
+  {
+    "symbol": "ZL",
+    "price": 0.6999,
+    "source": "seed-estimate-commodites.market-2026-09-11",
+    "updatedAt": "2026-09-11T00:00:00Z"
+  },
+  {
+    "symbol": "ZR",
+    "price": 16.14,
+    "source": "seed-estimate-commodites.market-2026-09-11",
+    "updatedAt": "2026-09-11T00:00:00Z"
+  },
+  {
+    "symbol": "ZO",
+    "price": 3.78,
+    "source": "seed-estimate-commodites.market-2026-09-11",
+    "updatedAt": "2026-09-11T00:00:00Z"
+  },
+  {
+    "symbol": "CT",
+    "price": 0.8737,
+    "source": "seed-estimate-commodites.market-2026-09-11",
+    "updatedAt": "2026-09-11T00:00:00Z"
+  },
+  {
+    "symbol": "OJ",
+    "price": 1.44,
+    "source": "seed-estimate-commodites.market-2026-09-11",
+    "updatedAt": "2026-09-11T00:00:00Z"
+  },
+  {
+    "symbol": "DC",
+    "price": 16.19,
+    "source": "seed-estimate-commodites.market-2026-09-11",
+    "updatedAt": "2026-09-11T00:00:00Z"
+  },
+  {
+    "symbol": "GF",
+    "price": 3.33,
+    "source": "seed-estimate-commodites.market-2026-09-11",
+    "updatedAt": "2026-09-11T00:00:00Z"
+  },
+  {
+    "symbol": "HE",
+    "price": 0.8195,
+    "source": "seed-estimate-commodites.market-2026-09-11",
+    "updatedAt": "2026-09-11T00:00:00Z"
+  },
+  {
+    "symbol": "AKREDLINE",
+    "price": 26.78,
+    "source": "seed-estimate-commodites.market-2026-09-11",
+    "updatedAt": "2026-09-11T00:00:00Z"
+  },
+  {
+    "symbol": "AWPASIIMOV",
+    "price": 110.1,
+    "source": "seed-estimate-commodites.market-2026-09-11",
+    "updatedAt": "2026-09-11T00:00:00Z"
+  },
+  {
+    "symbol": "DLORE",
+    "price": 6110.23,
+    "source": "seed-estimate-commodites.market-2026-09-11",
+    "updatedAt": "2026-09-11T00:00:00Z"
+  },
+  {
+    "symbol": "HOWL",
+    "price": 4336.95,
+    "source": "seed-estimate-commodites.market-2026-09-11",
+    "updatedAt": "2026-09-11T00:00:00Z"
+  },
+  {
+    "symbol": "KARAMBIT",
+    "price": 10049.99,
+    "source": "seed-estimate-commodites.market-2026-09-11",
+    "updatedAt": "2026-09-11T00:00:00Z"
+  },
+  {
+    "symbol": "BFLYFADE",
+    "price": 2174.56,
+    "source": "seed-estimate-commodites.market-2026-09-11",
+    "updatedAt": "2026-09-11T00:00:00Z"
+  },
+  {
+    "symbol": "DEAGLBLAZE",
+    "price": 639.97,
+    "source": "seed-estimate-commodites.market-2026-09-11",
+    "updatedAt": "2026-09-11T00:00:00Z"
+  },
+  {
+    "symbol": "GLOCKFADE",
+    "price": 1590.39,
+    "source": "seed-estimate-commodites.market-2026-09-11",
+    "updatedAt": "2026-09-11T00:00:00Z"
+  },
+  {
+    "symbol": "PRNTSTREAM",
+    "price": 195.57,
+    "source": "seed-estimate-commodites.market-2026-09-11",
+    "updatedAt": "2026-09-11T00:00:00Z"
+  },
+  {
+    "symbol": "VICEGLOVES",
+    "price": 434.9,
+    "source": "seed-estimate-commodites.market-2026-09-11",
+    "updatedAt": "2026-09-11T00:00:00Z"
+  },
+  {
+    "symbol": "BRAVOCASE",
+    "price": 57.6,
+    "source": "seed-estimate-commodites.market-2026-09-11",
+    "updatedAt": "2026-09-11T00:00:00Z"
+  },
+  {
+    "symbol": "VULCAN",
+    "price": 173.94,
+    "source": "seed-estimate-commodites.market-2026-09-11",
+    "updatedAt": "2026-09-11T00:00:00Z"
+  },
+  {
+    "symbol": "RSGP",
+    "price": 0.23,
+    "source": "seed-estimate-commodites.market-2026-09-11",
+    "updatedAt": "2026-09-11T00:00:00Z"
+  },
+  {
+    "symbol": "ETB151",
+    "price": 554.55,
+    "source": "seed-estimate-commodites.market-2026-09-11",
+    "updatedAt": "2026-09-11T00:00:00Z"
+  },
+  {
+    "symbol": "ETBPRISM",
+    "price": 146.92,
+    "source": "seed-estimate-commodites.market-2026-09-11",
+    "updatedAt": "2026-09-11T00:00:00Z"
+  },
+  {
+    "symbol": "ETBRIVALS",
+    "price": 114.97,
+    "source": "seed-estimate-commodites.market-2026-09-11",
+    "updatedAt": "2026-09-11T00:00:00Z"
+  },
+  {
+    "symbol": "ETBHEROES",
+    "price": 159.36,
+    "source": "seed-estimate-commodites.market-2026-09-11",
+    "updatedAt": "2026-09-11T00:00:00Z"
+  },
+  {
+    "symbol": "ETBCHAOS",
+    "price": 60.82,
+    "source": "seed-estimate-commodites.market-2026-09-11",
+    "updatedAt": "2026-09-11T00:00:00Z"
+  },
+  {
+    "symbol": "ETBPHANTOM",
+    "price": 154.87,
+    "source": "seed-estimate-commodites.market-2026-09-11",
+    "updatedAt": "2026-09-11T00:00:00Z"
+  },
+  {
+    "symbol": "ETBMASQ",
+    "price": 104.0,
+    "source": "seed-estimate-commodites.market-2026-09-11",
+    "updatedAt": "2026-09-11T00:00:00Z"
+  },
+  {
+    "symbol": "ETBSPARKS",
+    "price": 122.12,
+    "source": "seed-estimate-commodites.market-2026-09-11",
+    "updatedAt": "2026-09-11T00:00:00Z"
+  },
+  {
+    "symbol": "ETBBOLT",
+    "price": 170.66,
+    "source": "seed-estimate-commodites.market-2026-09-11",
+    "updatedAt": "2026-09-11T00:00:00Z"
+  },
+  {
+    "symbol": "ETBFLARE",
+    "price": 153.18,
+    "source": "seed-estimate-commodites.market-2026-09-11",
+    "updatedAt": "2026-09-11T00:00:00Z"
+  },
+  {
+    "symbol": "ETBMEGA",
+    "price": 125.07,
+    "source": "seed-estimate-commodites.market-2026-09-11",
+    "updatedAt": "2026-09-11T00:00:00Z"
+  },
+  {
+    "symbol": "ETBZENITH",
+    "price": 321.49,
+    "source": "seed-estimate-commodites.market-2026-09-11",
+    "updatedAt": "2026-09-11T00:00:00Z"
+  },
+  {
+    "symbol": "ETBOBSIDN",
+    "price": 286.27,
+    "source": "seed-estimate-commodites.market-2026-09-11",
+    "updatedAt": "2026-09-11T00:00:00Z"
+  },
+  {
+    "symbol": "UMBREONEX",
+    "price": 1430.09,
+    "source": "seed-estimate-commodites.market-2026-09-11",
+    "updatedAt": "2026-09-11T00:00:00Z"
+  },
+  {
+    "symbol": "MOONBREON",
+    "price": 2368.34,
+    "source": "seed-estimate-commodites.market-2026-09-11",
+    "updatedAt": "2026-09-11T00:00:00Z"
+  },
+  {
+    "symbol": "ZARDEX199",
+    "price": 369.38,
+    "source": "seed-estimate-commodites.market-2026-09-11",
+    "updatedAt": "2026-09-11T00:00:00Z"
+  },
+  {
+    "symbol": "ZARDEX223",
+    "price": 101.55,
+    "source": "seed-estimate-commodites.market-2026-09-11",
+    "updatedAt": "2026-09-11T00:00:00Z"
+  },
+  {
+    "symbol": "ZARDBASE",
+    "price": 869.02,
+    "source": "seed-estimate-commodites.market-2026-09-11",
+    "updatedAt": "2026-09-11T00:00:00Z"
+  },
+  {
+    "symbol": "PIKAEX238",
+    "price": 288.57,
+    "source": "seed-estimate-commodites.market-2026-09-11",
+    "updatedAt": "2026-09-11T00:00:00Z"
+  },
+  {
+    "symbol": "MEWEX232",
+    "price": 877.13,
+    "source": "seed-estimate-commodites.market-2026-09-11",
+    "updatedAt": "2026-09-11T00:00:00Z"
+  },
+  {
+    "symbol": "TRMEWTWO",
+    "price": 454.8,
+    "source": "seed-estimate-commodites.market-2026-09-11",
+    "updatedAt": "2026-09-11T00:00:00Z"
+  },
+  {
+    "symbol": "MEGAZARDY",
+    "price": 363.68,
+    "source": "seed-estimate-commodites.market-2026-09-11",
+    "updatedAt": "2026-09-11T00:00:00Z"
+  },
+  {
+    "symbol": "GIRATINAV",
+    "price": 835.33,
+    "source": "seed-estimate-commodites.market-2026-09-11",
+    "updatedAt": "2026-09-11T00:00:00Z"
+  },
+  {
+    "symbol": "GARCHOMPEX",
+    "price": 230.69,
+    "source": "seed-estimate-commodites.market-2026-09-11",
+    "updatedAt": "2026-09-11T00:00:00Z"
+  },
+  {
+    "symbol": "ZOROARKEX",
+    "price": 45.17,
+    "source": "seed-estimate-commodites.market-2026-09-11",
+    "updatedAt": "2026-09-11T00:00:00Z"
+  }
 ]

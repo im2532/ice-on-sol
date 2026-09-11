@@ -1,7 +1,7 @@
 /**
  * Watch pricing (secondary-market, unworn/full-set) for the `watches` category
  * (packages/registry/src/commodities.ts) — SUBMARINER, DAYTONA, GMTMASTER, DATEJUST,
- * ROYALOAK, NAUTILUS, SPEEDMASTER, SANTOS, GSHOCK, TISSOTPRX. Feeds the `watch_*_median3`
+ * ROYALOAK, NAUTILUS, SPEEDMSTR, SANTOS, GSHOCK, TISSOTPRX. Feeds the `watch_*_median3`
  * Switchboard-kind relay in `cycles/oracle.ts` (see `switchboard/jobs/watch-median.json`),
  * combined there with Collector Crypt (`sources/collectorcrypt.ts`) via `median3`.
  *
@@ -43,7 +43,7 @@ export const WATCH_REFERENCE: Record<string, WatchRef> = {
   DATEJUST: { reference: "126334", searchTerm: "Rolex Datejust 41 126334" },
   ROYALOAK: { reference: "15510ST.OO.1320ST.01", searchTerm: "Audemars Piguet Royal Oak 15510ST" },
   NAUTILUS: { reference: "5811/1G-001", searchTerm: "Patek Philippe Nautilus 5811/1G" },
-  SPEEDMASTER: { reference: "310.30.42.50.01.001", searchTerm: "Omega Speedmaster Moonwatch Professional" },
+  SPEEDMSTR: { reference: "310.30.42.50.01.001", searchTerm: "Omega Speedmaster Moonwatch Professional" },
   SANTOS: { reference: "WSSA0018", searchTerm: "Cartier Santos Large WSSA0018" },
   GSHOCK: { reference: "DW-5600E-1", searchTerm: "Casio G-Shock DW-5600E" },
   TISSOTPRX: { reference: "T137.407.11.041.00", searchTerm: "Tissot PRX Powermatic 80" },

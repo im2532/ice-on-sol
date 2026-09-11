@@ -164,19 +164,23 @@ async function relaySwitchboardPrices(pegDesk: PegDeskClient, rows: CommodityRow
           break;
         }
         default:
-          log.warn({ symbol: row.symbol, job: entry.oracle.switchboardJob }, "no keeper relay source for this Switchboard job (licensed vendor feed); skipped");
-          continue;
+          // Futures without a Pyth feed (RB/HO/LBR/…): no live keeper source until a licensed
+          // vendor feed exists — fall through to the manual-prices.json seed below.
+          reading = null;
+          break;
       }
     } catch (err) {
       log.warn({ symbol: row.symbol, err: String(err) }, "switchboard relay source fetch failed");
       continue;
     }
 
-    // Live sources returned fewer than 2 values: bootstrap from the manual-prices.json seed
-    // (fallback only — data/manual-prices.json's "seed-estimate" entries), marked with a wide
-    // confidence band so downstream consumers can tell it's not a real median. Per task spec,
-    // this only applies where a seed exists today (the watches category).
-    if ((!reading || reading.sourcesUsed < 2) && entry.category === "watches") {
+    // Live sources returned no value (or, for multi-source categories, fewer than 2): bootstrap
+    // from the manual-prices.json seed ("seed-estimate" entries), marked with a wide confidence
+    // band so downstream consumers can tell it's not a real median. Applies to every
+    // Switchboard-relayed coin that has a seed entry; cards/CS2 with exactly one live source
+    // keep the live reading.
+    const needsSeed = !reading || (reading.sourcesUsed < 2 && entry.category === "watches");
+    if (needsSeed) {
       try {
         const manualEntries = await readManualPrices();
         const seed = manualEntries.find((e) => e.symbol === row.symbol);
