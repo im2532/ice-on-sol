@@ -86,7 +86,7 @@ export function buildLaunchConfigParams(input: BuildLaunchConfigParamsInput): La
       tokenQuoteDecimal: TokenDecimal.SIX,
       tokenAuthorityOption: TokenAuthorityOption.Immutable,
       totalTokenSupply: LAUNCH.totalSupply,
-      leftover: 0,
+      leftover: LAUNCH.leftoverTokens, // absorbs the builder's rounding delta; see registry LAUNCH
     },
     fee: {
       baseFeeParams: {
@@ -179,9 +179,39 @@ export interface CreatePoolWithFirstBuyInput {
   firstBuyMinimumAmountOut: BN;
 }
 
+export interface CreateConfigAndPoolWithFirstBuyInput extends CreatePoolWithFirstBuyInput {
+  curveConfigParams: LaunchConfigParams;
+}
+
 /**
- * `creator.createPoolWithFirstBuy` (SDK 1.5.x: on the creator service, one tx = initialize pool +
- * first swap; the swap is only appended when `buyAmount > 0`). `baseMintKeypair` must sign.
+ * Config + pool + first buy for the one-transaction launch. `creator.createPoolWithFirstBuy` cannot be
+ * used there: it fetches the pool config from chain, which does not exist yet inside the same
+ * transaction. `partner.createConfigAndPoolWithFirstBuy` builds both from the params instead and
+ * returns them as two transactions; the caller concatenates the instructions. `configKeypair` and
+ * `baseMintKeypair` must both sign.
+ */
+export async function createConfigAndPoolWithFirstBuyIxs(
+  input: CreateConfigAndPoolWithFirstBuyInput,
+): Promise<{ configIxs: TransactionInstruction[]; poolIxs: TransactionInstruction[] }> {
+  const { client, config, curveConfigParams, baseMintKeypair, payer, creator, name, symbol, uri, firstBuyQuoteAmount, firstBuyMinimumAmountOut } = input;
+  const { createConfigTx, createPoolWithFirstBuyTx } = await client.partner.createConfigAndPoolWithFirstBuy({
+    payer,
+    config,
+    ...curveConfigParams,
+    preCreatePoolParam: { name, symbol, uri, poolCreator: creator, baseMint: baseMintKeypair.publicKey },
+    firstBuyParam: {
+      buyer: creator,
+      buyAmount: firstBuyQuoteAmount,
+      minimumAmountOut: firstBuyMinimumAmountOut,
+      referralTokenAccount: null,
+    },
+  });
+  return { configIxs: extractIxs(createConfigTx), poolIxs: extractIxs(createPoolWithFirstBuyTx) };
+}
+
+/**
+ * `creator.createPoolWithFirstBuy` for a config that ALREADY exists on chain (the SDK fetches it).
+ * For the one-transaction launch use `createConfigAndPoolWithFirstBuyIxs`. `baseMintKeypair` must sign.
  */
 export async function createPoolWithFirstBuyIxs(input: CreatePoolWithFirstBuyInput): Promise<TransactionInstruction[]> {
   const { client, config, baseMintKeypair, payer, creator, name, symbol, uri, firstBuyQuoteAmount, firstBuyMinimumAmountOut } = input;

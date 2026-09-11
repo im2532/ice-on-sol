@@ -29,7 +29,7 @@ import { LAUNCH } from "@icemarkets/registry";
 import { feeRouter as feeRouterPda } from "./pda";
 import { PegDeskClient, type CommodityAccountView, type OracleReading } from "./pegDesk";
 import { FEE_ROUTER_PROGRAM_ID, registerPoolIx } from "./feeRouter";
-import { buildLaunchConfigParams, createConfigIx, createPoolWithFirstBuyIxs, deriveDbcPoolAddress, makeDbcClient } from "./dbc";
+import { buildLaunchConfigParams, createConfigAndPoolWithFirstBuyIxs, deriveDbcPoolAddress, makeDbcClient } from "./dbc";
 import { getQuote, getSwapIxs, resolveAddressLookupTables, type JupiterSwapIxsResult } from "./jupiter";
 import { applySlippageDown, applySlippageUp } from "./pricing";
 
@@ -67,6 +67,9 @@ export interface BuildLaunchTransactionsParams {
   addressLookupTable?: AddressLookupTableAccount | null;
   /** Blockhash to compile against; fetched from `connection` ("confirmed") when omitted. */
   recentBlockhash?: { blockhash: string; lastValidBlockHeight: number };
+  /** Resume a launch whose DBC config transaction already landed: skip the config tx and create the
+   *  pool under this existing config (no second config rent). */
+  existingConfig?: PublicKey;
 }
 
 export interface BuildLaunchTransactionsResult {
@@ -76,6 +79,9 @@ export interface BuildLaunchTransactionsResult {
    * `sendTransaction(tx, conn, { signers })`, or `tx.sign([...])` before the wallet signs).
    */
   transactions: VersionedTransaction[];
+  /** Extra signers per transaction (parallel to `transactions`): the DBC config keypair on the config
+   *  tx, the base mint keypair on the launch tx. Send in order and confirm each before the next. */
+  signers: Keypair[][];
   blockhash: string;
   lastValidBlockHeight: number;
   configKeypair: Keypair;
@@ -93,6 +99,7 @@ export interface BuildLaunchTransactionsResult {
 export async function buildLaunchTransactions(params: BuildLaunchTransactionsParams): Promise<BuildLaunchTransactionsResult> {
   const slippageBps = params.slippageBps ?? 100; // 1% default
   const configKeypair = Keypair.generate();
+  const configPubkey = params.existingConfig ?? configKeypair.publicKey;
   const baseMintKeypair = Keypair.generate();
 
   // 1. Determine how much COIN the first buy needs, in COIN base units.
@@ -114,7 +121,9 @@ export async function buildLaunchTransactions(params: BuildLaunchTransactionsPar
 
   const dbcClient = makeDbcClient({ connection: params.connection });
 
-  const restIxsBuilder = async (usdcSourceAta: PublicKey): Promise<TransactionInstruction[]> => {
+  // The DBC createConfig instruction alone carries ~1 KB of curve data, so it cannot share a 1232-byte
+  // packet with the pool init + first buy + register_pool; it goes in its own transaction, sent first.
+  const restIxsBuilder = async (usdcSourceAta: PublicKey): Promise<{ configIxs: TransactionInstruction[]; launchIxs: TransactionInstruction[] }> => {
     const ixs: TransactionInstruction[] = [
       ComputeBudgetProgram.setComputeUnitLimit({ units: 600_000 }),
       ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 1 }),
@@ -137,20 +146,13 @@ export async function buildLaunchTransactions(params: BuildLaunchTransactionsPar
       ixs.push(buyExactOutIx);
     }
 
-    // dbc.createConfig
-    const createConfig = await createConfigIx({
-      client: dbcClient,
-      configKeypair,
-      payer: params.creator,
-      curveConfigParams,
-    });
-    ixs.push(...createConfig);
-
-    // dbc.initializePool + first buy (createPoolWithFirstBuy per CONTRACTS §5)
+    // dbc.createConfig + initializePool + first buy, built together (the config does not exist on chain
+    // yet, so the SDK's fetch-based createPoolWithFirstBuy cannot be used here; CONTRACTS §5).
     const minCoinOutForFirstBuy = applySlippageDown(coinForFirstBuy, 0n); // first buy has no independent slippage input; the DBC min-fee flag protects it
-    const createPoolAndBuy = await createPoolWithFirstBuyIxs({
+    const { configIxs, poolIxs } = await createConfigAndPoolWithFirstBuyIxs({
       client: dbcClient,
-      config: configKeypair.publicKey,
+      curveConfigParams,
+      config: configPubkey,
       baseMintKeypair,
       quoteMint: params.commodity.coinMint,
       payer: params.creator,
@@ -161,17 +163,17 @@ export async function buildLaunchTransactions(params: BuildLaunchTransactionsPar
       firstBuyQuoteAmount: new BN(coinForFirstBuy.toString()),
       firstBuyMinimumAmountOut: new BN(minCoinOutForFirstBuy.toString()),
     });
-    ixs.push(...createPoolAndBuy);
+    ixs.push(...poolIxs);
 
     // fee_router.register_pool (permissionless; CONTRACTS §2). Must come after the DBC pool init in
     // the same tx: it validates the pool/config bytes and creates PoolState + holder_vault.
-    const dbcPool = deriveDbcPoolAddress(configKeypair.publicKey, baseMintKeypair.publicKey, params.commodity.coinMint);
+    const dbcPool = deriveDbcPoolAddress(configPubkey, baseMintKeypair.publicKey, params.commodity.coinMint);
     ixs.push(
       registerPoolIx(
         {
           payer: params.creator,
           dbcPool,
-          dbcConfig: configKeypair.publicKey,
+          dbcConfig: configPubkey,
           commodity: params.pegDesk.commodityPda(params.commodity.symbol),
           baseMint: baseMintKeypair.publicKey,
           quoteMint: params.commodity.coinMint,
@@ -181,10 +183,11 @@ export async function buildLaunchTransactions(params: BuildLaunchTransactionsPar
       ),
     );
 
-    return ixs;
+    return { configIxs, launchIxs: ixs };
   };
 
   const transactions: VersionedTransaction[] = [];
+  const signers: Keypair[][] = [];
   const bh = params.recentBlockhash ?? (await params.connection.getLatestBlockhash("confirmed"));
   const launchAlts = params.addressLookupTable ? [params.addressLookupTable] : [];
   const compile = (instructions: TransactionInstruction[], alts: AddressLookupTableAccount[], what: string): VersionedTransaction => {
@@ -192,6 +195,24 @@ export async function buildLaunchTransactions(params: BuildLaunchTransactionsPar
     const tx = new VersionedTransaction(msg);
     assertTxSize(tx, what, alts.length > 0);
     return tx;
+  };
+
+  const pushLaunchTxs = ({ configIxs, launchIxs }: { configIxs: TransactionInstruction[]; launchIxs: TransactionInstruction[] }) => {
+    if (params.existingConfig) {
+      transactions.push(compile(launchIxs, launchAlts, "launch"));
+      signers.push([baseMintKeypair]);
+      return;
+    }
+    transactions.push(
+      compile(
+        [ComputeBudgetProgram.setComputeUnitLimit({ units: 200_000 }), ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 1 }), ...configIxs],
+        launchAlts,
+        "launch: DBC config",
+      ),
+    );
+    signers.push([configKeypair]);
+    transactions.push(compile(launchIxs, launchAlts, "launch"));
+    signers.push([baseMintKeypair]);
   };
 
   if (params.payWith === "SOL") {
@@ -228,15 +249,17 @@ export async function buildLaunchTransactions(params: BuildLaunchTransactionsPar
       ...(swap.cleanupInstruction ? [swap.cleanupInstruction] : []),
     ];
     transactions.push(compile(tx1Ixs, jupAlts, "SOL→USDC swap"));
-    transactions.push(compile(await restIxsBuilder(params.userUsdcAta), launchAlts, "launch"));
+    signers.push([]);
+    pushLaunchTxs(await restIxsBuilder(params.userUsdcAta));
   } else {
     // USDC or COIN pay-in: everything in one transaction.
     const usdcSourceAta = params.payWith === "USDC" ? params.userUsdcAta : params.userCoinAta;
-    transactions.push(compile(await restIxsBuilder(usdcSourceAta), launchAlts, "launch"));
+    pushLaunchTxs(await restIxsBuilder(usdcSourceAta));
   }
 
   return {
     transactions,
+    signers,
     blockhash: bh.blockhash,
     lastValidBlockHeight: bh.lastValidBlockHeight,
     configKeypair,

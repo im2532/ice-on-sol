@@ -8,7 +8,7 @@ ANCHOR_VERSION ?= 0.31.1
 # and avm/anchor activate it automatically on `anchor build`.
 ANCHOR_BUILD := anchor build
 
-.PHONY: bootstrap toolchain deps build idl web-deployments test devnet-deploy seed alt db keeper web fmt
+.PHONY: bootstrap toolchain deps build idl web-deployments test devnet-deploy init-programs seed alt db keeper web fmt
 
 ## One-shot dev machine setup (macOS / Linux). Idempotent.
 bootstrap: toolchain deps
@@ -48,6 +48,10 @@ devnet-deploy:
 	$(MAKE) idl
 	anchor deploy --provider.cluster devnet
 	pnpm exec tsx scripts/write-program-ids.ts
+
+## One-time fee_router / distributor configs on the current cluster (idempotent)
+init-programs:
+	pnpm exec tsx scripts/init-programs.ts
 
 ## Creates GlobalConfig + all Tier-A commodities on the current cluster
 seed:

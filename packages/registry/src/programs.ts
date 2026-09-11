@@ -53,6 +53,11 @@ export const LAUNCH = {
   initialMarketCapUsd: 5_000,
   migrationMarketCapUsd: 35_000,
   percentageSupplyOnMigration: 20,
+  // Base tokens reserved for the DBC leftoverReceiver (our treasury). Meteora's curve builder rounds the
+  // curve's real supply up by an amount that grows with the quote price (a few thousand tokens at a
+  // $260k quote); the excess must fit inside `leftover` or buildCurveWithTwoSegments throws
+  // "leftOverDelta must be less than totalLeftover". 100k of 1B (0.01%) leaves ~10× margin.
+  leftoverTokens: 100_000,
   feeTiersBps: [100, 200, 300] as const,
   migrationFeeOption: 6, // Customizable → fee = tier, collect in quote
   minFirstBuyUsd: 1,

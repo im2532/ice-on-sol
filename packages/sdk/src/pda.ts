@@ -22,7 +22,7 @@ export function symbolToBytes12(symbol: string): Buffer {
 
 /** SPL Token / Associated Token program ids (kept local so pda.ts only depends on web3.js). */
 export const TOKEN_PROGRAM = new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
-export const ASSOCIATED_TOKEN_PROGRAM = new PublicKey("ATokenGPvbd6o7Gc4LyfGNaJLvWUBEhQzHndkKbqnuv");
+export const ASSOCIATED_TOKEN_PROGRAM = new PublicKey("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL");
 
 /** Associated token address (same as spl-token `getAssociatedTokenAddressSync(mint, owner, true, tokenProgram)`). */
 export function ata(mint: PublicKey, owner: PublicKey, tokenProgram: PublicKey = TOKEN_PROGRAM): PublicKey {
