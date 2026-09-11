@@ -1,0 +1,19 @@
+{
+  "name": "futures_rbob_front_month_vendor",
+  "comment": "CHECK vs Switchboard On-Demand job spec, and vs the licensed data vendor's actual REST API (Databento/Barchart — see docs/research/03 §6a: 'about 12 futures not on Pyth, sourced from a licensed vendor through Switchboard'). Placeholder endpoint/path; not validated against a live oracle or a real vendor contract in this sandbox (no network). Market-data licensing note from docs/research/03 §5 applies: use a licensed vendor, don't scrape CME/ICE settlement prices directly.",
+  "tasks": [
+    {
+      "httpTask": {
+        "url": "https://hist.databento.com/v0/timeseries.get_range?dataset=GLBX.MDP3&symbols=RB.FUT&schema=trades&start=now-1m",
+        "headers": [{ "key": "Authorization", "value": "Basic ${DATA_VENDOR_API_KEY}" }]
+      }
+    },
+    {
+      "jsonParseTask": { "path": "$.data[-1].price" }
+    }
+  ],
+  "maxJobRangePct": 10,
+  "minJobResponses": 1,
+  "minOracleSamples": 1,
+  "maxStalenessSeconds": 3600
+}

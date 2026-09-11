@@ -1,0 +1,35 @@
+[package]
+name = "fee_router"
+description = "ICEmarkets fee router: DBC fee_claimer / DAMM v2 position owner; splits COIN fees to holders, buyback, protocol"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "fee_router"
+
+[features]
+default = []
+cpi = ["no-entrypoint"]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+anchor-debug = []
+custom-heap = []
+custom-panic = []
+idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
+
+[dependencies]
+anchor-lang = { workspace = true }
+anchor-spl = { workspace = true }
+
+# NOTE: Meteora CPI is done by hand in `src/cpi_ext/` (raw `Instruction` + `invoke_signed`) so this crate
+# builds without the git crates. To switch to the official typed CPI later:
+#   dynamic-bonding-curve = { workspace = true }   # features = ["cpi"] set at workspace level
+#   cp-amm = { workspace = true }
+# then replace `cpi_ext::dbc::*` / `cpi_ext::damm_v2::*` calls with
+#   dynamic_bonding_curve::cpi::claim_trading_fee(CpiContext::new_with_signer(..), max_base, max_quote)
+#   cp_amm::cpi::claim_position_fee(CpiContext::new_with_signer(..))
+# (account structs `dynamic_bonding_curve::cpi::accounts::ClaimTradingFeesCtx` etc.).

@@ -1,0 +1,45 @@
+{
+  "name": "cs2_akredline_median3",
+  "comment": "CHECK vs Switchboard On-Demand job spec (https://docs.switchboard.xyz) — this is a best-effort job definition per docs/research/03 §2 ('build a Switchboard job per coin, with 2-5 HttpTask sources, a median'); not validated against a live Switchboard oracle in this sandbox (no network). API keys are examples of variable-override names, not real secrets.",
+  "tasks": [
+    {
+      "httpTask": {
+        "url": "https://api.pricempire.com/v3/items/prices?market_hash_name=AK-47%20%7C%20Redline%20%28Field-Tested%29&currency=USD",
+        "headers": [{ "key": "Authorization", "value": "Bearer ${PRICEMPIRE_API_KEY}" }]
+      }
+    },
+    {
+      "jsonParseTask": { "path": "$.median" }
+    },
+    {
+      "conditionalTask": {
+        "attempt": [
+          {
+            "httpTask": {
+              "url": "https://csfloat.com/api/v1/listings?market_hash_name=AK-47%20%7C%20Redline%20%28Field-Tested%29&sort_by=lowest_price&limit=5",
+              "headers": [{ "key": "Authorization", "value": "${CSFLOAT_API_KEY}" }]
+            }
+          },
+          { "jsonParseTask": { "path": "$.data[0].price", "divide": [100] } }
+        ]
+      }
+    },
+    {
+      "httpTask": {
+        "url": "https://api.skinport.com/v1/items?app_id=730&currency=USD"
+      }
+    },
+    {
+      "jsonParseTask": {
+        "path": "$[?(@.market_hash_name=='AK-47 | Redline (Field-Tested)')].suggested_price"
+      }
+    },
+    {
+      "medianTask": {}
+    }
+  ],
+  "maxJobRangePct": 15,
+  "minJobResponses": 2,
+  "minOracleSamples": 1,
+  "maxStalenessSeconds": 300
+}

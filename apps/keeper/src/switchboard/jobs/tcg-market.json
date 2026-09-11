@@ -1,0 +1,19 @@
+{
+  "name": "tcg_etb151_market",
+  "comment": "CHECK vs Switchboard On-Demand job spec — best-effort per docs/research/03 §2, not validated against a live oracle in this sandbox (no network).",
+  "tasks": [
+    {
+      "httpTask": {
+        "url": "https://api.pokemontcg.io/v2/cards?q=name:%22151%20Elite%20Trainer%20Box%22&pageSize=1",
+        "headers": [{ "key": "X-Api-Key", "value": "${POKEMONTCG_API_KEY}" }]
+      }
+    },
+    {
+      "jsonParseTask": { "path": "$.data[0].tcgplayer.prices.holofoil.market" }
+    }
+  ],
+  "maxJobRangePct": 20,
+  "minJobResponses": 1,
+  "minOracleSamples": 1,
+  "maxStalenessSeconds": 86400
+}

@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "lib": ["ES2022", "DOM"],
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "declaration": true,
+    "types": ["mocha", "chai", "node"],
+    "baseUrl": ".",
+    "paths": {
+      "@icemarkets/registry": ["packages/registry/src"],
+      "@icemarkets/sdk": ["packages/sdk/src"]
+    }
+  },
+  "include": ["tests/**/*", "packages/**/*", "apps/keeper/**/*", "scripts/**/*"],
+  "exclude": ["node_modules", "apps/web", "target", "**/dist"]
+}

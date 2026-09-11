@@ -1,0 +1,14 @@
+{
+  "name": "@icemarkets/registry",
+  "version": "0.1.0",
+  "description": "Canonical list of ICEmarkets commodity coins: symbols, units, categories, oracle sources, risk tiers.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist", "src"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "validate": "tsx src/validate.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": { "tsx": "^4.19.2", "typescript": "^5.7.2" }
+}

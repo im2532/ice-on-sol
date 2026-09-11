@@ -1,0 +1,14 @@
+node_modules/
+dist/
+.next/
+target/
+.anchor/
+test-ledger/
+keys/
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+coverage/
+apps/web/public/idl/

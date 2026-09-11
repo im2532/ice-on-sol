@@ -1,0 +1,281 @@
+#!/usr/bin/env tsx
+/**
+ * Seeds `GlobalConfig` (if missing) + every `byPhase('mvp')` non-Composite commodity from
+ * `@icemarkets/registry` onto the configured cluster, then writes
+ *   deployments/<cluster>.json  — every created mint / PDA (read by create-index-coin.ts, the web app)
+ *   deployments/<cluster>.sql   — `commodities` upserts for apps/indexer/schema.sql (the keeper's
+ *                                 oracle/session cycles read commodity_pubkey / oracle_kind / … from it)
+ *
+ * Registry → CreateCommodityArgs mapping (programs/peg_desk/src/instructions/commodity.rs):
+ *   baseSpreadBps → base_spread_bps          closedSpreadBps → closed_spread_bps
+ *   confMultBps   → conf_mult_bps            maxAgeOpenSec   → max_age_open
+ *   maxAgeClosedSec → max_age_closed         session         → session_kind
+ *   oracle.kind   → oracle_kind              oracle.quote    → quote_scale (USD 0 / USc 1 / EUR 2)
+ *   oracle.feedId → feed_id (resolved via Hermes when null)   oracle.fxFeedId → fx_feed_id
+ *   supplyCapUsd  → supply_cap = floor(supplyCapUsd × 10^6 × 1e8 / price_1e8)   (coin base units)
+ *   perTxCapUsd   → per_tx_cap = floor(perTxCapUsd  × 10^6 × 1e8 / price_1e8)
+ *   tier A24/AHours → pyth_min_signatures 0 (VerificationLevel::Full); B/C → 5 (Partial ≥ 5)
+ * using the LIVE price at seed time: Hermes latest for PythPull, apps/keeper/data/manual-prices.json
+ * for KeeperSigned, and `SEED_PRICE_<SYMBOL>=<usd>` env overrides for anything else (Switchboard).
+ * Commodities without a price are skipped (caps can't be sized). Existing commodities are skipped.
+ *
+ * Env: RPC_URL, ADMIN_KEYPAIR_PATH, PEG_DESK_PROGRAM_ID, [SOLANA_CLUSTER=devnet], [USDC_MINT],
+ *      [TREASURY_PUBKEY=admin], [KEEPER_PUBKEYS=comma-separated], [IDL_DIR=target/idl], [HERMES_URL]
+ * Usage: pnpm exec tsx scripts/seed-commodities.ts   (after `anchor build` + deploy)
+ */
+import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
+import path from "node:path";
+import { AnchorProvider, Wallet } from "@coral-xyz/anchor";
+import { ComputeBudgetProgram, Connection, Keypair, PublicKey, Transaction, sendAndConfirmTransaction, type TransactionInstruction } from "@solana/web3.js";
+import { byPhase, OracleKind, USDC, type Commodity } from "@icemarkets/registry";
+import { PegDeskClient, scaleQuote } from "@icemarkets/sdk";
+
+const HERMES_URL = process.env.HERMES_URL ?? "https://hermes.pyth.network";
+const COIN_UNIT = 1_000_000n; // 6 decimals
+const PRICE_SCALE = 100_000_000n; // 1e8
+
+interface DeploymentEntry {
+  symbol: string;
+  commodityPda: string;
+  coinMint: string;
+  reserveVault: string;
+  feedId: string | null;
+  seedPriceUsd: number;
+  supplyCap: string;
+  perTxCap: string;
+}
+
+interface DeploymentFile {
+  cluster: string;
+  generatedAt: string;
+  globalConfig: string;
+  commodities: DeploymentEntry[];
+}
+
+async function main(): Promise<void> {
+  const cluster = process.env.SOLANA_CLUSTER ?? "devnet";
+  const connection = new Connection(requireEnv("RPC_URL"), "confirmed");
+  const admin = Keypair.fromSecretKey(Uint8Array.from(JSON.parse(readFileSync(requireEnv("ADMIN_KEYPAIR_PATH"), "utf8"))));
+  const pegDeskProgramId = new PublicKey(requireEnv("PEG_DESK_PROGRAM_ID"));
+  const usdcMint = new PublicKey(process.env.USDC_MINT ?? USDC[cluster as keyof typeof USDC] ?? USDC.devnet);
+  const treasury = new PublicKey(process.env.TREASURY_PUBKEY ?? admin.publicKey.toBase58());
+
+  const provider = new AnchorProvider(connection, new Wallet(admin), { commitment: "confirmed" });
+  const pegDesk = new PegDeskClient(provider, loadIdl("peg_desk"), pegDeskProgramId);
+
+  // ---- GlobalConfig ---------------------------------------------------------------------------
+  if (!(await connection.getAccountInfo(pegDesk.configPda()))) {
+    console.log("initialize_config (max_conf 200 bps, warn 10200, halt 9800)");
+    await send(connection, admin, [
+      await pegDesk.initializeConfigIx({ payer: admin.publicKey, reserveMint: usdcMint, treasury, maxConfBps: 200, reserveWarnBps: 10_200, reserveHaltBps: 9_800 }),
+    ]);
+  }
+  const keepers = (process.env.KEEPER_PUBKEYS ?? "").split(",").map((s) => s.trim()).filter(Boolean).map((s) => new PublicKey(s));
+  if (keepers.length > 0) {
+    console.log(`set_keepers (${keepers.length})`);
+    await send(connection, admin, [await pegDesk.setKeepersIx({ admin: admin.publicKey, keepers })]);
+  }
+
+  // ---- commodities ----------------------------------------------------------------------------
+  const targets = byPhase("mvp").filter((c) => c.oracle.kind !== OracleKind.Composite); // index coins: create-index-coin.ts
+  console.log(`Seeding ${targets.length} MVP commodities on ${cluster}...`);
+  const feedIds = await resolveFeedIds(targets);
+  const prices = await resolveSeedPrices(targets, feedIds);
+
+  const deployment: DeploymentFile = { cluster, generatedAt: new Date().toISOString(), globalConfig: pegDesk.configPda().toBase58(), commodities: [] };
+  const sql: string[] = ["-- generated by scripts/seed-commodities.ts", "begin;"];
+
+  for (const c of targets) {
+    try {
+      const price1e8 = prices.get(c.symbol);
+      if (!price1e8) {
+        console.warn(`  ! ${c.symbol}: no seed price (set SEED_PRICE_${c.symbol}=<usd>) — skipped`);
+        continue;
+      }
+      const entry = await seedOne(connection, pegDesk, admin, usdcMint, c, feedIds.get(c.symbol) ?? null, price1e8);
+      if (!entry) continue;
+      deployment.commodities.push(entry);
+      sql.push(commoditySql(c, entry));
+      console.log(`  ✓ ${c.symbol} mint=${entry.coinMint} cap=${entry.supplyCap} perTx=${entry.perTxCap}`);
+    } catch (err) {
+      console.error(`  ✗ ${c.symbol}: ${String(err)}`);
+    }
+  }
+  sql.push("commit;");
+
+  const outDir = path.join(process.cwd(), "deployments");
+  if (!existsSync(outDir)) mkdirSync(outDir, { recursive: true });
+  writeFileSync(path.join(outDir, `${cluster}.json`), JSON.stringify(deployment, null, 2));
+  writeFileSync(path.join(outDir, `${cluster}.sql`), sql.join("\n") + "\n");
+  console.log(`Wrote deployments/${cluster}.json and deployments/${cluster}.sql (psql "$DATABASE_URL" -f …)`);
+}
+
+/** USD caps → coin base units at the seed price: floor(usd × 10^6 × 1e8 / price_1e8). */
+export function usdToCoinBase(usd: number, price1e8: bigint): bigint {
+  return (BigInt(Math.round(usd * 100)) * COIN_UNIT * PRICE_SCALE) / (100n * price1e8);
+}
+
+async function seedOne(
+  connection: Connection,
+  pegDesk: PegDeskClient,
+  admin: Keypair,
+  usdcMint: PublicKey,
+  c: Commodity,
+  feedIdHex: string | null,
+  price1e8: bigint,
+): Promise<DeploymentEntry | null> {
+  const commodityPda = pegDesk.commodityPda(c.symbol);
+  if (await connection.getAccountInfo(commodityPda)) {
+    console.log(`  = ${c.symbol} already exists (${commodityPda.toBase58()}) — skipped`);
+    return null;
+  }
+  if (c.oracle.kind === OracleKind.PythPull && !feedIdHex) throw new Error("PythPull commodity without a resolvable feed id");
+
+  const coinMint = Keypair.generate();
+  const supplyCap = usdToCoinBase(c.params.supplyCapUsd, price1e8);
+  const perTxCap = usdToCoinBase(c.params.perTxCapUsd, price1e8);
+  const quoteScale = c.oracle.quote === "USc" ? 1 : c.oracle.quote === "EUR" ? 2 : 0;
+  // Switchboard (stand-in until switchboard-on-demand lands): reads a KeeperPrice-shaped account at
+  // feed_account = the commodity's own KeeperPrice PDA (oracle.rs read_switchboard). PythPull: the keeper
+  // points feed_account at its PriceUpdateV2 account via set_feed_account after the first post.
+  const feedAccount = c.oracle.kind === OracleKind.Switchboard ? pegDesk.keeperPricePda(commodityPda) : PublicKey.default;
+
+  const ix = await pegDesk.createCommodityIx({
+    admin: admin.publicKey,
+    payer: admin.publicKey,
+    coinMint: coinMint.publicKey,
+    reserveMint: usdcMint,
+    symbol: c.symbol,
+    oracleKind: c.oracle.kind,
+    sessionKind: c.session,
+    feedId: feedIdHex ? Buffer.from(feedIdHex, "hex") : Buffer.alloc(32),
+    feedAccount,
+    fxFeedId: c.oracle.fxFeedId ? Buffer.from(c.oracle.fxFeedId, "hex") : Buffer.alloc(32),
+    fxFeedAccount: PublicKey.default,
+    quoteScale,
+    pythMinSignatures: c.tier === "A24" || c.tier === "AHours" ? 0 : 5,
+    name: (c.displayName ?? c.name).slice(0, 32),
+    uri: process.env.METADATA_BASE_URI ? `${process.env.METADATA_BASE_URI}/${c.symbol}.json` : "", // CHECK: host metadata JSON before mainnet
+    params: {
+      baseSpreadBps: c.params.baseSpreadBps,
+      closedSpreadBps: c.params.closedSpreadBps,
+      confMultBps: c.params.confMultBps,
+      maxAgeOpenSec: c.params.maxAgeOpenSec,
+      maxAgeClosedSec: c.params.maxAgeClosedSec,
+      supplyCap,
+      perTxCap,
+    },
+  });
+  await send(connection, admin, [ix], [coinMint], 400_000);
+
+  return {
+    symbol: c.symbol,
+    commodityPda: commodityPda.toBase58(),
+    coinMint: coinMint.publicKey.toBase58(),
+    reserveVault: pegDesk.reservePda(commodityPda).toBase58(),
+    feedId: feedIdHex,
+    seedPriceUsd: Number(price1e8) / 1e8,
+    supplyCap: supplyCap.toString(),
+    perTxCap: perTxCap.toString(),
+  };
+}
+
+async function resolveFeedIds(targets: Commodity[]): Promise<Map<string, string>> {
+  const out = new Map<string, string>();
+  for (const c of targets) {
+    if (c.oracle.kind !== OracleKind.PythPull) continue;
+    if (c.oracle.feedId) {
+      out.set(c.symbol, c.oracle.feedId);
+      continue;
+    }
+    if (!c.oracle.pythSymbol) continue;
+    try {
+      const res = await fetch(`${HERMES_URL}/v2/price_feeds?query=${encodeURIComponent(c.oracle.pythSymbol)}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const body = (await res.json()) as { id: string; attributes?: { symbol?: string } }[];
+      const match = body.find((f) => f.attributes?.symbol === c.oracle.pythSymbol);
+      if (match) {
+        out.set(c.symbol, match.id.replace(/^0x/, ""));
+        console.log(`  resolved ${c.symbol} (${c.oracle.pythSymbol}) -> ${match.id}`);
+      } else {
+        console.warn(`  ! no exact Hermes match for ${c.symbol} (${c.oracle.pythSymbol})`);
+      }
+    } catch (err) {
+      console.warn(`  ! Hermes lookup failed for ${c.symbol}: ${String(err)}`);
+    }
+  }
+  return out;
+}
+
+/** Live USD price at 1e8 per symbol (see file header for sources). */
+async function resolveSeedPrices(targets: Commodity[], feedIds: Map<string, string>): Promise<Map<string, bigint>> {
+  const out = new Map<string, bigint>();
+  for (const c of targets) {
+    const override = process.env[`SEED_PRICE_${c.symbol}`];
+    if (override) out.set(c.symbol, BigInt(Math.round(Number(override) * 1e8)));
+  }
+  // PythPull: Hermes latest parsed prices, scaled exactly like pricing.rs scale_quote.
+  const pyth = targets.filter((c) => c.oracle.kind === OracleKind.PythPull && feedIds.has(c.symbol) && !out.has(c.symbol));
+  for (let i = 0; i < pyth.length; i += 20) {
+    const batch = pyth.slice(i, i + 20);
+    const qs = batch.map((c) => `ids[]=${feedIds.get(c.symbol)}`).join("&");
+    try {
+      const res = await fetch(`${HERMES_URL}/v2/updates/price/latest?${qs}&parsed=true`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const body = (await res.json()) as { parsed: { id: string; price: { price: string; expo: number } }[] };
+      for (const c of batch) {
+        const p = body.parsed.find((x) => x.id.replace(/^0x/, "") === feedIds.get(c.symbol));
+        if (!p || c.oracle.quote === "EUR") continue; // EUR needs fx; use SEED_PRICE_<SYM>
+        out.set(c.symbol, scaleQuote(BigInt(p.price.price), p.price.expo, c.oracle.quote === "USc" ? 1 : 0));
+      }
+    } catch (err) {
+      console.warn(`  ! Hermes price fetch failed: ${String(err)}`);
+    }
+  }
+  // KeeperSigned: the same manual file the keeper posts from.
+  const manualPath = path.join(process.cwd(), "apps", "keeper", "data", "manual-prices.json");
+  if (existsSync(manualPath)) {
+    const manual = JSON.parse(readFileSync(manualPath, "utf8")) as { symbol: string; price: number }[];
+    for (const c of targets) {
+      if (c.oracle.kind !== OracleKind.KeeperSigned || out.has(c.symbol)) continue;
+      const m = manual.find((x) => x.symbol === c.symbol);
+      if (m) out.set(c.symbol, BigInt(Math.round(m.price * 1e8)));
+    }
+  }
+  return out;
+}
+
+function commoditySql(c: Commodity, e: DeploymentEntry): string {
+  const q = (s: string | null | undefined) => (s == null ? "null" : `'${s.replace(/'/g, "''")}'`);
+  return `insert into commodities (symbol, name, display_name, category, emoji, unit, unit_short, mint, decimals, status,
+  supply_cap, commodity_pubkey, oracle_kind, session_kind, last_price_usd)
+values (${q(c.symbol)}, ${q(c.name)}, ${q(c.displayName)}, ${q(c.category)}, ${q(c.emoji)}, ${q(c.unit)}, ${q(c.unitShort)},
+  ${q(e.coinMint)}, 6, 'open', ${e.supplyCap}::numeric / 1e6, ${q(e.commodityPda)}, ${c.oracle.kind}, ${c.session}, ${e.seedPriceUsd})
+on conflict (symbol) do update set mint = excluded.mint, supply_cap = excluded.supply_cap, commodity_pubkey = excluded.commodity_pubkey,
+  oracle_kind = excluded.oracle_kind, session_kind = excluded.session_kind;`;
+}
+
+async function send(connection: Connection, payer: Keypair, ixs: TransactionInstruction[], extraSigners: Keypair[] = [], cu = 200_000): Promise<string> {
+  const tx = new Transaction().add(ComputeBudgetProgram.setComputeUnitLimit({ units: cu }), ...ixs);
+  return sendAndConfirmTransaction(connection, tx, [payer, ...extraSigners], { commitment: "confirmed" });
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function loadIdl(name: string): any {
+  const file = path.join(process.env.IDL_DIR ?? path.join(process.cwd(), "target", "idl"), `${name}.json`);
+  if (!existsSync(file)) throw new Error(`IDL not found at ${file} — run \`anchor build\` first`);
+  return JSON.parse(readFileSync(file, "utf8"));
+}
+
+function requireEnv(name: string): string {
+  const v = process.env[name];
+  if (!v) throw new Error(`Missing required env var: ${name}`);
+  return v;
+}
+
+if (require.main === module) {
+  main().catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
+}

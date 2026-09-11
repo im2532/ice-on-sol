@@ -1,0 +1,29 @@
+[package]
+name = "buyback"
+description = "ICEmarkets buyback: pulls GLD from fee_router buyback vault, swaps GLD->ICEmarkets on DAMM v2, burns ICEmarkets"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "buyback"
+
+[features]
+default = []
+cpi = ["no-entrypoint"]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+anchor-debug = []
+custom-heap = []
+custom-panic = []
+idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
+
+[dependencies]
+anchor-lang = { workspace = true }
+anchor-spl = { workspace = true }
+
+# NOTE: DAMM v2 swap + fee_router CPI are hand-built in `src/cpi_ext/` (no git crates). To switch to the
+# typed CPI later add `cp-amm = { workspace = true }` and call `cp_amm::cpi::swap(...)`.

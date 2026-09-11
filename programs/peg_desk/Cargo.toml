@@ -1,0 +1,31 @@
+[package]
+name = "peg_desk"
+description = "ICEmarkets Peg Desk: mints/burns commodity coins against a USDC reserve at oracle price +/- dynamic spread"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "peg_desk"
+
+[features]
+default = []
+cpi = ["no-entrypoint"]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
+# Declared so Anchor's generated cfgs don't trip `unexpected_cfgs` warnings.
+anchor-debug = []
+custom-heap = []
+custom-panic = []
+
+[dependencies]
+anchor-lang = { workspace = true }
+anchor-spl = { workspace = true, features = ["metadata"] }
+pyth-solana-receiver-sdk = { workspace = true }
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(target_os, values("solana"))'] }

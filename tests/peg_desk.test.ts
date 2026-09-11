@@ -1,0 +1,509 @@
+/**
+ * peg_desk integration tests (localnet via `anchor test`).
+ *
+ * Uses a KeeperSigned GLD market so no Pyth accounts are needed. Metaplex Token Metadata must be
+ * available on the validator — Anchor.toml clones it from mainnet ([[test.validator.clone]]).
+ *
+ * The IDL/types are not generated yet, so the program is used as `any`.
+ */
+import * as anchor from "@coral-xyz/anchor";
+import {
+  ComputeBudgetProgram,
+  Keypair,
+  LAMPORTS_PER_SOL,
+  PublicKey,
+  SYSVAR_CLOCK_PUBKEY,
+  SYSVAR_RENT_PUBKEY,
+  SystemProgram,
+} from "@solana/web3.js";
+import {
+  TOKEN_PROGRAM_ID,
+  createMint,
+  getAccount,
+  getMint,
+  getOrCreateAssociatedTokenAccount,
+  mintTo,
+} from "@solana/spl-token";
+import { expect } from "chai";
+
+const BN = anchor.BN;
+
+// ---- constants mirrored from programs/peg_desk/src/constants.rs ----------------------------
+const SEED = {
+  config: Buffer.from("config"),
+  commodity: Buffer.from("cmdty"),
+  reserve: Buffer.from("reserve"),
+  keeperPrice: Buffer.from("kp"),
+  mintAuth: Buffer.from("mint_auth"),
+};
+const TOKEN_METADATA_PROGRAM_ID = new PublicKey("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s");
+const USD = 100_000_000; // 1e8
+const ONE = 1_000_000; // 1 token at 6 decimals
+const ORACLE_KEEPER_SIGNED = 2;
+const SESSION_CONTINUOUS = 0;
+const STATUS = { Open: 0, Closed: 1, Halted: 2 };
+
+const GLD_PRICE = 2_000 * USD; // $2,000.00
+
+function symbolBytes(s: string): number[] {
+  const b = Buffer.alloc(12);
+  b.write(s, "ascii");
+  return Array.from(b);
+}
+
+function pda(seeds: (Buffer | Uint8Array)[], programId: PublicKey): PublicKey {
+  return PublicKey.findProgramAddressSync(seeds, programId)[0];
+}
+
+/** Asserts the promise rejects with the given Anchor error name (e.g. "StaleOracle"). */
+async function expectAnchorError(p: Promise<unknown>, code: string): Promise<void> {
+  let threw = false;
+  try {
+    await p;
+  } catch (e: any) {
+    threw = true;
+    const got: string | undefined = e?.error?.errorCode?.code;
+    const haystack = `${got ?? ""} ${e?.message ?? ""} ${(e?.logs ?? []).join("\n")} ${String(e)}`;
+    expect(haystack, `expected ${code}`).to.include(code);
+  }
+  expect(threw, `expected transaction to fail with ${code}`).to.equal(true);
+}
+
+/** All-None SetParamsArgs; override the fields you want to set. */
+function params(overrides: Record<string, unknown>) {
+  return {
+    sessionKind: null,
+    feedId: null,
+    fxFeedId: null,
+    quoteScale: null,
+    baseSpreadBps: null,
+    closedSpreadBps: null,
+    confMultBps: null,
+    maxAgeOpen: null,
+    maxAgeClosed: null,
+    supplyCap: null,
+    perTxCap: null,
+    pythMinSignatures: null,
+    ...overrides,
+  };
+}
+
+describe("peg_desk", () => {
+  const provider = anchor.AnchorProvider.env();
+  anchor.setProvider(provider);
+  const program = (anchor.workspace as any).PegDesk as any;
+  const connection = provider.connection;
+  const adminWallet = provider.wallet as anchor.Wallet;
+  const admin = adminWallet.payer;
+
+  const keeper = Keypair.generate();
+  const user = Keypair.generate();
+  const treasuryOwner = Keypair.generate();
+  const gldMint = Keypair.generate();
+
+  const configPda = pda([SEED.config], program.programId);
+  const mintAuth = pda([SEED.mintAuth], program.programId);
+  const gldSymbol = symbolBytes("GLD");
+  const gldPda = pda([SEED.commodity, Buffer.from(gldSymbol)], program.programId);
+  const reserveVault = pda([SEED.reserve, gldPda.toBuffer()], program.programId);
+  const keeperPricePda = pda([SEED.keeperPrice, gldPda.toBuffer()], program.programId);
+  const metadataPda = pda(
+    [Buffer.from("metadata"), TOKEN_METADATA_PROGRAM_ID.toBuffer(), gldMint.publicKey.toBuffer()],
+    TOKEN_METADATA_PROGRAM_ID,
+  );
+
+  let usdcMint: PublicKey;
+  let userUsdc: PublicKey;
+  let userCoin: PublicKey;
+  let adminUsdc: PublicKey;
+  let treasuryUsdc: PublicKey;
+  let lastPushed = 0;
+
+  // ---- helpers ------------------------------------------------------------------------------
+
+  async function chainNow(): Promise<number> {
+    const info = await connection.getAccountInfo(SYSVAR_CLOCK_PUBKEY);
+    // Clock: slot u64, epoch_start_timestamp i64, epoch u64, leader_schedule_epoch u64, unix_timestamp i64
+    return Number(info!.data.readBigInt64LE(32));
+  }
+
+  async function balance(ata: PublicKey): Promise<bigint> {
+    return (await getAccount(connection, ata)).amount;
+  }
+
+  /** Keeper posts a price; publish_time strictly increases across calls. */
+  async function pushPrice(price: number, opts: { publishTime?: number; conf?: number } = {}) {
+    const now = await chainNow();
+    const publishTime = opts.publishTime ?? Math.max(now, lastPushed + 1);
+    await program.methods
+      .keeperUpdatePrice(new BN(price), new BN(opts.conf ?? 0), new BN(publishTime), Array(32).fill(7))
+      .accountsPartial({
+        keeper: keeper.publicKey,
+        config: configPda,
+        commodity: gldPda,
+        keeperPrice: keeperPricePda,
+        systemProgram: SystemProgram.programId,
+      })
+      .signers([keeper])
+      .rpc();
+    lastPushed = Math.max(lastPushed, publishTime);
+  }
+
+  function tradeAccounts() {
+    return {
+      user: user.publicKey,
+      config: configPda,
+      commodity: gldPda,
+      coinMint: gldMint.publicKey,
+      mintAuth,
+      reserveVault,
+      userUsdc,
+      userCoin,
+      priceFeed: null,
+      fxFeed: null,
+      keeperPrice: keeperPricePda,
+      tokenProgram: TOKEN_PROGRAM_ID,
+    };
+  }
+
+  const buy = (usdcIn: number, minCoinOut = 0) =>
+    program.methods
+      .buy(new BN(usdcIn), new BN(minCoinOut))
+      .accountsPartial(tradeAccounts())
+      .signers([user])
+      .rpc();
+
+  const sell = (coinIn: number, minUsdcOut = 0) =>
+    program.methods
+      .sell(new BN(coinIn), new BN(minUsdcOut))
+      .accountsPartial(tradeAccounts())
+      .signers([user])
+      .rpc();
+
+  const setStatus = (signer: Keypair, status: number) =>
+    program.methods
+      .setStatus(status)
+      .accountsPartial({ authority: signer.publicKey, config: configPda, commodity: gldPda })
+      .signers(signer === admin ? [] : [signer])
+      .rpc();
+
+  const setParams = (overrides: Record<string, unknown>) =>
+    program.methods
+      .setCommodityParams(params(overrides))
+      .accountsPartial({ authority: admin.publicKey, config: configPda, commodity: gldPda })
+      .rpc();
+
+  const sweep = (amount: number) =>
+    program.methods
+      .sweepSpreadFees(new BN(amount))
+      .accountsPartial({
+        authority: keeper.publicKey,
+        config: configPda,
+        commodity: gldPda,
+        coinMint: gldMint.publicKey,
+        reserveVault,
+        treasuryUsdc,
+        tokenProgram: TOKEN_PROGRAM_ID,
+      })
+      .signers([keeper])
+      .rpc();
+
+  // ---- setup ----------------------------------------------------------------------------------
+
+  before(async () => {
+    const sig = await connection.requestAirdrop(keeper.publicKey, 2 * LAMPORTS_PER_SOL);
+    const bh = await connection.getLatestBlockhash();
+    await connection.confirmTransaction({ signature: sig, ...bh }, "confirmed");
+
+    usdcMint = await createMint(connection, admin, admin.publicKey, null, 6);
+    userUsdc = (await getOrCreateAssociatedTokenAccount(connection, admin, usdcMint, user.publicKey)).address;
+    adminUsdc = (await getOrCreateAssociatedTokenAccount(connection, admin, usdcMint, admin.publicKey)).address;
+    treasuryUsdc = (await getOrCreateAssociatedTokenAccount(connection, admin, usdcMint, treasuryOwner.publicKey))
+      .address;
+    await mintTo(connection, admin, usdcMint, userUsdc, admin, 100_000 * ONE);
+    await mintTo(connection, admin, usdcMint, adminUsdc, admin, 100_000 * ONE);
+  });
+
+  // ---- tests ----------------------------------------------------------------------------------
+
+  it("initializes the global config and keeper set", async () => {
+    await program.methods
+      .initializeConfig(200, 10_200, 9_800)
+      .accountsPartial({
+        payer: admin.publicKey,
+        config: configPda,
+        reserveMint: usdcMint,
+        treasury: treasuryOwner.publicKey,
+        systemProgram: SystemProgram.programId,
+      })
+      .rpc();
+
+    await program.methods
+      .setKeepers([keeper.publicKey])
+      .accountsPartial({ admin: admin.publicKey, config: configPda })
+      .rpc();
+
+    const cfg = await program.account.globalConfig.fetch(configPda);
+    expect(cfg.admin.toBase58()).to.equal(admin.publicKey.toBase58());
+    expect(cfg.reserveMint.toBase58()).to.equal(usdcMint.toBase58());
+    expect(cfg.treasury.toBase58()).to.equal(treasuryOwner.publicKey.toBase58());
+    expect(cfg.keeperCount).to.equal(1);
+    expect(cfg.keepers[0].toBase58()).to.equal(keeper.publicKey.toBase58());
+    expect(cfg.maxConfBps).to.equal(200);
+    expect(cfg.reserveWarnBps).to.equal(10_200);
+    expect(cfg.reserveHaltBps).to.equal(9_800);
+    expect(cfg.globalPause).to.equal(false);
+  });
+
+  it("keeper may pause but only admin may unpause", async () => {
+    await program.methods
+      .setGlobalPause(true)
+      .accountsPartial({ authority: keeper.publicKey, config: configPda })
+      .signers([keeper])
+      .rpc();
+    await expectAnchorError(
+      program.methods
+        .setGlobalPause(false)
+        .accountsPartial({ authority: keeper.publicKey, config: configPda })
+        .signers([keeper])
+        .rpc(),
+      "Unauthorized",
+    );
+    await program.methods
+      .setGlobalPause(false)
+      .accountsPartial({ authority: admin.publicKey, config: configPda })
+      .rpc();
+    expect((await program.account.globalConfig.fetch(configPda)).globalPause).to.equal(false);
+  });
+
+  it("creates GLD with a KeeperSigned oracle, PDA mint authority and no freeze authority", async () => {
+    const args = {
+      symbol: gldSymbol,
+      oracleKind: ORACLE_KEEPER_SIGNED,
+      sessionKind: SESSION_CONTINUOUS,
+      feedId: Array(32).fill(0),
+      feedAccount: PublicKey.default,
+      fxFeedId: Array(32).fill(0),
+      fxFeedAccount: PublicKey.default,
+      quoteScale: 0,
+      baseSpreadBps: 10,
+      closedSpreadBps: 150,
+      confMultBps: 50,
+      maxAgeOpen: 60,
+      maxAgeClosed: 3_600,
+      supplyCap: new BN(1_000 * ONE),
+      perTxCap: new BN(100 * ONE),
+      pythMinSignatures: 0,
+      name: "ICEmarkets Gold",
+      uri: "https://icemarkets.exchange/meta/GLD.json",
+    };
+
+    await program.methods
+      .createCommodity(args)
+      .accountsPartial({
+        payer: admin.publicKey,
+        admin: admin.publicKey,
+        config: configPda,
+        mintAuth,
+        reserveMint: usdcMint,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        tokenMetadataProgram: TOKEN_METADATA_PROGRAM_ID,
+        systemProgram: SystemProgram.programId,
+        rent: SYSVAR_RENT_PUBKEY,
+        commodity: gldPda,
+        coinMint: gldMint.publicKey,
+        reserveVault,
+        metadata: metadataPda,
+      })
+      .preInstructions([ComputeBudgetProgram.setComputeUnitLimit({ units: 400_000 })])
+      .signers([gldMint])
+      .rpc();
+
+    const c = await program.account.commodity.fetch(gldPda);
+    expect(Buffer.from(c.symbol).toString("ascii").replace(/\0+$/, "")).to.equal("GLD");
+    expect(c.coinMint.toBase58()).to.equal(gldMint.publicKey.toBase58());
+    expect(c.reserveVault.toBase58()).to.equal(reserveVault.toBase58());
+    expect(c.oracleKind).to.equal(ORACLE_KEEPER_SIGNED);
+    expect(c.status).to.equal(STATUS.Open);
+    expect(c.decimals).to.equal(6);
+
+    const mint = await getMint(connection, gldMint.publicKey);
+    expect(mint.decimals).to.equal(6);
+    expect(mint.mintAuthority!.toBase58()).to.equal(mintAuth.toBase58());
+    expect(mint.freezeAuthority).to.equal(null);
+    expect(Number(mint.supply)).to.equal(0);
+
+    const md = await connection.getAccountInfo(metadataPda);
+    expect(md, "metadata account").to.not.equal(null);
+    expect(md!.owner.toBase58()).to.equal(TOKEN_METADATA_PROGRAM_ID.toBase58());
+
+    userCoin = (await getOrCreateAssociatedTokenAccount(connection, admin, gldMint.publicKey, user.publicKey)).address;
+  });
+
+  it("anyone can seed the reserve", async () => {
+    await program.methods
+      .depositReserve(new BN(10_000 * ONE))
+      .accountsPartial({
+        depositor: admin.publicKey,
+        commodity: gldPda,
+        reserveVault,
+        from: adminUsdc,
+        tokenProgram: TOKEN_PROGRAM_ID,
+      })
+      .rpc();
+    expect(Number(await balance(reserveVault))).to.equal(10_000 * ONE);
+    const c = await program.account.commodity.fetch(gldPda);
+    expect(c.reserveBalanceCached.toNumber()).to.equal(10_000 * ONE);
+  });
+
+  it("rejects a buy on a stale oracle", async () => {
+    const now = await chainNow();
+    await pushPrice(GLD_PRICE, { publishTime: now - 1_000 }); // max_age_open = 60
+    await expectAnchorError(buy(2_002 * ONE), "StaleOracle");
+  });
+
+  it("buys at oracle + spread and mints COIN", async () => {
+    await pushPrice(GLD_PRICE);
+    const usdcBefore = await balance(userUsdc);
+
+    // spread = 10 bps (conf 0, fresh, no prior supply) → ask $2,002 → exactly 1 GLD for $2,002
+    await buy(2_002 * ONE, 999_000);
+
+    expect(Number(await balance(userCoin))).to.equal(ONE);
+    expect(Number(usdcBefore - (await balance(userUsdc)))).to.equal(2_002 * ONE);
+    expect(Number(await balance(reserveVault))).to.equal(12_002 * ONE);
+
+    const c = await program.account.commodity.fetch(gldPda);
+    expect(c.lastPrice.toNumber()).to.equal(GLD_PRICE);
+    expect(c.lastPublishTime.toNumber()).to.equal(lastPushed);
+    expect(c.reserveBalanceCached.toNumber()).to.equal(12_002 * ONE);
+  });
+
+  it("enforces min_coin_out slippage", async () => {
+    await pushPrice(GLD_PRICE);
+    await expectAnchorError(buy(2_002 * ONE, ONE + 1), "SlippageExceeded");
+  });
+
+  it("sells at oracle − spread, burns COIN, pays from reserve", async () => {
+    await pushPrice(GLD_PRICE);
+    const usdcBefore = await balance(userUsdc);
+    // bid $1,998 → 0.5 GLD pays $999
+    await sell(ONE / 2, 998 * ONE);
+    expect(Number(await balance(userCoin))).to.equal(ONE / 2);
+    expect(Number((await balance(userUsdc)) - usdcBefore)).to.equal(999 * ONE);
+    expect(Number((await getMint(connection, gldMint.publicKey)).supply)).to.equal(ONE / 2);
+    expect(Number(await balance(reserveVault))).to.equal(11_003 * ONE);
+  });
+
+  it("enforces per-tx cap and supply cap", async () => {
+    await pushPrice(GLD_PRICE);
+
+    await setParams({ perTxCap: new BN(ONE / 10) }); // 0.1 GLD
+    await expectAnchorError(buy(2_002 * ONE), "PerTxCapExceeded");
+
+    // supply is 0.5 GLD; cap at 1.5 GLD, try to mint ~1.2 more (within the 1.5 per-tx cap)
+    await setParams({ supplyCap: new BN((3 * ONE) / 2), perTxCap: new BN((3 * ONE) / 2) });
+    await expectAnchorError(buy(2_403 * ONE), "SupplyCapExceeded");
+
+    await setParams({ supplyCap: new BN(1_000 * ONE), perTxCap: new BN(100 * ONE) });
+  });
+
+  it("Closed is sell-only at closed_spread; keeper cannot reopen a Halted market", async () => {
+    await setStatus(keeper, STATUS.Closed);
+    await pushPrice(GLD_PRICE);
+    await expectAnchorError(buy(100 * ONE), "MarketClosed");
+
+    // closed spread 150 bps → bid $1,970 → 0.1 GLD pays $197
+    const usdcBefore = await balance(userUsdc);
+    await sell(ONE / 10);
+    expect(Number((await balance(userUsdc)) - usdcBefore)).to.equal(197 * ONE);
+
+    await setStatus(keeper, STATUS.Open);
+
+    await setStatus(keeper, STATUS.Halted);
+    await pushPrice(GLD_PRICE);
+    await expectAnchorError(sell(ONE / 10), "MarketHalted");
+    await expectAnchorError(setStatus(keeper, STATUS.Open), "Unauthorized");
+    await setStatus(admin, STATUS.Open);
+    expect((await program.account.commodity.fetch(gldPda)).status).to.equal(STATUS.Open);
+  });
+
+  it("keeper price is monotonic and move-bounded", async () => {
+    await pushPrice(GLD_PRICE);
+    await expectAnchorError(pushPrice(GLD_PRICE, { publishTime: lastPushed - 5 }), "OracleNotMonotonic");
+    await expectAnchorError(pushPrice(GLD_PRICE, { publishTime: lastPushed }), "TooSoon");
+    // default max_move_bps = 500 (±5%)
+    await expectAnchorError(pushPrice(Math.round(GLD_PRICE * 1.06)), "MoveTooLarge");
+    await pushPrice(Math.round(GLD_PRICE * 1.04));
+    await pushPrice(GLD_PRICE);
+
+    // non-keeper cannot post
+    await expectAnchorError(
+      program.methods
+        .keeperUpdatePrice(new BN(GLD_PRICE), new BN(0), new BN(lastPushed + 1), Array(32).fill(0))
+        .accountsPartial({
+          keeper: user.publicKey,
+          config: configPda,
+          commodity: gldPda,
+          keeperPrice: keeperPricePda,
+          systemProgram: SystemProgram.programId,
+        })
+        .signers([user])
+        .rpc(),
+      "Unauthorized",
+    );
+  });
+
+  it("rejects trades while globally paused", async () => {
+    await program.methods
+      .setGlobalPause(true)
+      .accountsPartial({ authority: keeper.publicKey, config: configPda })
+      .signers([keeper])
+      .rpc();
+    await pushPrice(GLD_PRICE);
+    await expectAnchorError(sell(ONE / 10), "Paused");
+    await program.methods
+      .setGlobalPause(false)
+      .accountsPartial({ authority: admin.publicKey, config: configPda })
+      .rpc();
+  });
+
+  it("sweeps spread fees only while the reserve stays ≥ 102%", async () => {
+    // Fresh trade so last_price / last_publish_time are within max_age for the sweep check.
+    await pushPrice(GLD_PRICE);
+    await buy(20 * ONE);
+
+    const vault = Number(await balance(reserveVault));
+    const supply = Number((await getMint(connection, gldMint.publicKey)).supply);
+    const liability = (supply * GLD_PRICE) / USD; // USDC base units (equal decimals)
+
+    // leaving only ~101% of liability must fail
+    const tooMuch = Math.floor(vault - liability * 1.01);
+    await expectAnchorError(sweep(tooMuch), "ReserveRatioTooLow");
+
+    const treasuryBefore = await balance(treasuryUsdc);
+    await sweep(100 * ONE);
+    expect(Number((await balance(treasuryUsdc)) - treasuryBefore)).to.equal(100 * ONE);
+    expect(Number(await balance(reserveVault))).to.equal(vault - 100 * ONE);
+    const c = await program.account.commodity.fetch(gldPda);
+    expect(c.reserveBalanceCached.toNumber()).to.equal(vault - 100 * ONE);
+
+    // non-keeper cannot sweep
+    await expectAnchorError(
+      program.methods
+        .sweepSpreadFees(new BN(1))
+        .accountsPartial({
+          authority: user.publicKey,
+          config: configPda,
+          commodity: gldPda,
+          coinMint: gldMint.publicKey,
+          reserveVault,
+          treasuryUsdc,
+          tokenProgram: TOKEN_PROGRAM_ID,
+        })
+        .signers([user])
+        .rpc(),
+      "Unauthorized",
+    );
+  });
+});

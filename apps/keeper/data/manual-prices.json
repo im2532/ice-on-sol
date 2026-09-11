@@ -1,0 +1,17 @@
+[
+  { "symbol": "BURGER", "price": 5.91, "source": "economist-big-mac-index-2026H1", "updatedAt": "2026-09-11T00:00:00Z" },
+  { "symbol": "NUGGETS", "price": 5.79, "source": "menu-price-check-2026-09", "updatedAt": "2026-09-11T00:00:00Z" },
+  { "symbol": "BIGBURGER", "price": 6.49, "source": "menu-price-check-2026-09", "updatedAt": "2026-09-11T00:00:00Z" },
+  { "symbol": "CHIXSAND", "price": 4.95, "source": "menu-price-check-2026-09", "updatedAt": "2026-09-11T00:00:00Z" },
+  { "symbol": "TACO", "price": 1.89, "source": "menu-price-check-2026-09", "updatedAt": "2026-09-11T00:00:00Z" },
+  { "symbol": "BURRITO", "price": 10.75, "source": "menu-price-check-2026-09", "updatedAt": "2026-09-11T00:00:00Z" },
+  { "symbol": "LATTE", "price": 5.45, "source": "menu-price-check-2026-09", "updatedAt": "2026-09-11T00:00:00Z" },
+  { "symbol": "PIZZA", "price": 12.99, "source": "menu-price-check-2026-09", "updatedAt": "2026-09-11T00:00:00Z" },
+  { "symbol": "DBLBURGER", "price": 5.65, "source": "menu-price-check-2026-09", "updatedAt": "2026-09-11T00:00:00Z" },
+  { "symbol": "BACONBRGR", "price": 8.99, "source": "menu-price-check-2026-09", "updatedAt": "2026-09-11T00:00:00Z" },
+  { "symbol": "SPICYCHIX", "price": 5.99, "source": "menu-price-check-2026-09", "updatedAt": "2026-09-11T00:00:00Z" },
+  { "symbol": "MEDCOFFEE", "price": 2.99, "source": "menu-price-check-2026-09", "updatedAt": "2026-09-11T00:00:00Z" },
+  { "symbol": "FRIES", "price": 3.79, "source": "menu-price-check-2026-09", "updatedAt": "2026-09-11T00:00:00Z" },
+  { "symbol": "H2O", "price": 450.0, "source": "estimate-nqh2o-index-TODO-verify", "updatedAt": "2026-09-11T00:00:00Z" },
+  { "symbol": "LAMBO", "price": 260000.0, "source": "estimate-lamborghini-temerario-msrp-TODO-verify", "updatedAt": "2026-09-11T00:00:00Z" }
+]
