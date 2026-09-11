@@ -59,6 +59,15 @@ async function main(): Promise<void> {
   process.on("SIGTERM", () => shutdown("SIGTERM"));
 }
 
+// Errors thrown outside a cycle's try/catch (e.g. web3.js confirmation/websocket callbacks hitting an
+// RPC 429) must not take the whole keeper down; log them and let the next cycle retry.
+process.on("unhandledRejection", (reason) => {
+  logger.error({ err: String(reason) }, "unhandled rejection (continuing)");
+});
+process.on("uncaughtException", (err) => {
+  logger.error({ err: String(err) }, "uncaught exception (continuing)");
+});
+
 function scheduleCycle(cycle: ScheduledCycle): void {
   const runOnce = async () => {
     if (shuttingDown) return;

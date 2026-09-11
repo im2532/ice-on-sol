@@ -8,7 +8,7 @@ ANCHOR_VERSION ?= 0.31.1
 # and avm/anchor activate it automatically on `anchor build`.
 ANCHOR_BUILD := anchor build
 
-.PHONY: bootstrap toolchain deps build idl web-deployments test devnet-deploy seed alt keeper web fmt
+.PHONY: bootstrap toolchain deps build idl web-deployments test devnet-deploy seed alt db keeper web fmt
 
 ## One-shot dev machine setup (macOS / Linux). Idempotent.
 bootstrap: toolchain deps
@@ -57,6 +57,10 @@ seed:
 alt:
 	pnpm exec tsx scripts/create-alt.ts
 	$(MAKE) web-deployments
+
+## Embedded dev Postgres (no system install needed): applies indexer schema + deployments/<cluster>.sql
+db:
+	pnpm exec tsx scripts/dev-postgres.ts
 
 keeper:
 	pnpm --filter @icemarkets/keeper dev

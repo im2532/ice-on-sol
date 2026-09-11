@@ -58,7 +58,7 @@ export async function runOracleCycle(pegDesk: PegDeskClient): Promise<void> {
   const byOracleKind = groupByOracleKind(dbCommodities);
 
   if (byOracleKind.pythPull.length > 0) {
-    await runPythPullBatch(pegDesk, connection, keeper.publicKey, byOracleKind.pythPull, cfg.hermesUrl);
+    await runPythPullBatch(pegDesk, connection, keeper.publicKey, byOracleKind.pythPull, cfg.hermesUrl, cfg.pythApiKey);
   }
   if (byOracleKind.keeperSigned.length > 0) {
     await runKeeperSignedBatch(pegDesk, byOracleKind.keeperSigned);
@@ -222,8 +222,10 @@ async function runPythPullBatch(
   keeperPubkey: PublicKey,
   rows: CommodityRow[],
   hermesUrl: string,
+  pythApiKey: string | undefined,
 ): Promise<void> {
-  const hermes = new HermesClient(hermesUrl, {});
+  if (!pythApiKey) log.warn("PYTH_API_KEY not set: Hermes price updates return 401 without it (required since 2026-08-26)");
+  const hermes = new HermesClient(hermesUrl, pythApiKey ? { headers: { Authorization: `Bearer ${pythApiKey}` } } : {});
 
   // Map db row -> registry feed id (registry is the source of truth for feed ids; db just tracks on-chain state).
   const withFeedIds = rows

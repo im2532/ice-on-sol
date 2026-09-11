@@ -79,6 +79,8 @@ export interface KeeperConfig {
   usdcMint: string;
 
   hermesUrl: string;
+  /** Pyth API key: Hermes price endpoints require `Authorization: Bearer` since 2026-08-26. */
+  pythApiKey: string | undefined;
   switchboardQueue: string | undefined;
   pricempireApiKey: string | undefined;
   csfloatApiKey: string | undefined;
@@ -133,6 +135,7 @@ export function loadConfig(): KeeperConfig {
     usdcMint: resolveUsdcMint(cluster),
 
     hermesUrl: optional("HERMES_URL", "https://hermes.pyth.network"),
+    pythApiKey: process.env.PYTH_API_KEY || undefined,
     switchboardQueue: process.env.SWITCHBOARD_QUEUE,
     pricempireApiKey: process.env.PRICEMPIRE_API_KEY,
     csfloatApiKey: process.env.CSFLOAT_API_KEY,

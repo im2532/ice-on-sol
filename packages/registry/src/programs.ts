@@ -1,9 +1,9 @@
 /** Program ids and well-known addresses. Placeholders are replaced by scripts/write-program-ids.ts after deploy. */
 export const PROGRAM_IDS = {
-  pegDesk: "PegDesk111111111111111111111111111111111111",
-  feeRouter: "FeeRoutr111111111111111111111111111111111111",
-  distributor: "Distrib1111111111111111111111111111111111111",
-  buyback: "Buyback1111111111111111111111111111111111111",
+  pegDesk: "6jMv6pdi3nB4RRmJSojDy2cHRLMgKNM3ZEeJFngWrqQN",
+  feeRouter: "9bnCKVesMxQPDaWAmiT21vaES2QgtdXinfXciTCZrbEt",
+  distributor: "AEGw9dc3MUYR3aJXzZJjQmQDsJBJuT1RfsjoByNv4dV6",
+  buyback: "2jsn1m1EnUx2AixWn8KSvWa7bqgQJrLqr2pQenzok4Lk",
   // external
   dbc: "dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN",
   dammV2: "cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG",

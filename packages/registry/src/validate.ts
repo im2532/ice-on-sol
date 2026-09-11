@@ -6,6 +6,8 @@ for (const c of ALL) {
   if (seen.has(c.symbol)) errors.push(`duplicate symbol ${c.symbol}`);
   seen.add(c.symbol);
   if (!/^[A-Z0-9]{2,12}$/.test(c.symbol)) errors.push(`${c.symbol}: symbol must be 2–12 uppercase alnum`);
+  // peg_desk passes the symbol verbatim to Metaplex token metadata, whose symbol limit is 10 bytes (create_commodity fails with 0xc otherwise).
+  if (c.symbol.length > 10) errors.push(`${c.symbol}: symbol must be ≤ 10 chars (Metaplex metadata symbol limit)`);
   if (c.oracle.kind === OracleKind.PythPull) {
     if (!c.oracle.pythSymbol) errors.push(`${c.symbol}: pyth symbol missing`);
     if (c.oracle.feedId && !/^[0-9a-f]{64}$/.test(c.oracle.feedId)) errors.push(`${c.symbol}: bad feed id`);
