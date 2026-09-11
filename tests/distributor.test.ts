@@ -14,7 +14,7 @@ import {
   getAssociatedTokenAddressSync,
   mintTo,
 } from "@solana/spl-token";
-import { Keypair, LAMPORTS_PER_SOL, PublicKey, SystemProgram } from "@solana/web3.js";
+import { Keypair, LAMPORTS_PER_SOL, PublicKey, SystemProgram, Transaction, type TransactionInstruction } from "@solana/web3.js";
 import { assert } from "chai";
 
 import type { Distributor } from "../target/types/distributor";
@@ -42,6 +42,22 @@ async function expectError(p: Promise<unknown>, needle?: string): Promise<void> 
     return;
   }
   assert.fail(`expected transaction to fail${needle ? ` with ${needle}` : ""}`);
+}
+
+/**
+ * `source_authority` is an `UncheckedAccount` (direct mode: a signer owning `source_vault`; router
+ * mode: fee_router PoolState PDA), so the IDL marks it non-signer and web3.js would reject the extra
+ * signer. Flip the account meta before sending.
+ */
+async function sendSignedBySourceAuthority(
+  provider: anchor.AnchorProvider,
+  builder: { instruction(): Promise<TransactionInstruction> },
+  sourceAuthority: Keypair,
+  extraSigners: Keypair[] = [],
+): Promise<string> {
+  const ix = await builder.instruction();
+  for (const k of ix.keys) if (k.pubkey.equals(sourceAuthority.publicKey)) k.isSigner = true;
+  return provider.sendAndConfirm(new Transaction().add(ix), [sourceAuthority, ...extraSigners]);
 }
 
 describe("distributor", () => {
@@ -113,7 +129,9 @@ describe("distributor", () => {
     await airdrop(rogue.publicKey);
     const [e] = PublicKey.findProgramAddressSync([EPOCH_SEED, pool.toBuffer(), u32le(99)], program.programId);
     await expectError(
-      program.methods
+      sendSignedBySourceAuthority(
+        provider,
+        program.methods
         .openEpoch({
           pool,
           index: 99,
@@ -135,16 +153,19 @@ describe("distributor", () => {
           tokenProgram: TOKEN_PROGRAM_ID,
           associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
           systemProgram: SystemProgram.programId,
-        })
-        .signers([rogue, funder])
-        .rpc(),
+        }),
+        funder,
+        [rogue],
+      ),
       "Unauthorized",
     );
   });
 
   it("open_epoch (direct mode) funds the epoch vault", async () => {
     const now = Math.floor(Date.now() / 1000);
-    await program.methods
+    await sendSignedBySourceAuthority(
+      provider,
+      program.methods
       .openEpoch({
         pool,
         index,
@@ -166,9 +187,9 @@ describe("distributor", () => {
         tokenProgram: TOKEN_PROGRAM_ID,
         associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
-      })
-      .signers([funder])
-      .rpc();
+      }),
+      funder,
+    );
 
     const e = await program.account.epoch.fetch(epoch);
     assert.equal(e.totalAmount.toString(), TOTAL.toString());

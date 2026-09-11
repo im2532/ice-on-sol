@@ -4,25 +4,30 @@
  * function so a rename is a one-line fix") — `launch.ts` and `trade.ts` never import the
  * Meteora SDK directly, they call through here.
  *
- * // CHECK vs SDK @meteora-ag/dynamic-bonding-curve-sdk ^1.5.12
- * Field names below are transcribed from docs/research/02-solana-launchpad-infra.md and
- * docs/CONTRACTS.md §5's parameter block, which were themselves read off the SDK source at
- * commit dated 7 Sep 2026 (see that doc). This package could not be installed in this
- * environment (no network access) so none of this has been compiled against the real
- * types. Before shipping: `pnpm add @meteora-ag/dynamic-bonding-curve-sdk@1.5.12`, then
- * fix whatever `tsc` flags here — it should be confined to this file.
+ * Compiled against @meteora-ag/dynamic-bonding-curve-sdk 1.5.12 (typecheck passes). The
+ * CONTRACTS.md §5 parameter block is flat; 1.5.x nests it into
+ * `{ token, fee, migration, liquidityDistribution, lockedVesting, activationType }` and moves
+ * `feeClaimer` / `leftoverReceiver` / `quoteMint` onto `partner.createConfig`.
  */
-import { PublicKey, Connection, TransactionInstruction, Keypair } from "@solana/web3.js";
+import { PublicKey, Connection, TransactionInstruction, Keypair, Commitment } from "@solana/web3.js";
 import BN from "bn.js";
 import { PROGRAM_IDS, LAUNCH } from "@icemarkets/registry";
 
-// CHECK vs SDK: exact export names / package path.
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 import {
   DynamicBondingCurveClient,
   buildCurveWithTwoSegments,
-  // CHECK vs SDK: deriveDbcPoolAddress / derivePoolAuthority / deriveConfigAddress helper
-  // names vary by SDK minor version; re-export whichever the pinned version provides.
+  ActivationType,
+  BaseFeeMode,
+  CollectFeeMode,
+  DammV2DynamicFeeMode,
+  DAMM_V2_MIGRATION_FEE_ADDRESS,
+  MigratedCollectFeeMode,
+  MigrationFeeOption,
+  MigrationOption,
+  TokenAuthorityOption,
+  TokenDecimal,
+  TokenType,
+  type CreateConfigParams,
 } from "@meteora-ag/dynamic-bonding-curve-sdk";
 
 export const DBC_PROGRAM_ID = new PublicKey(PROGRAM_IDS.dbc);
@@ -56,87 +61,104 @@ export interface BuildLaunchConfigParamsInput {
   quoteMint: PublicKey;
 }
 
+/** Everything `partner.createConfig` needs except the per-launch `config` keypair and `payer`. */
+export type LaunchConfigParams = Omit<CreateConfigParams, "config" | "payer">;
+
 /**
- * Builds the DBC config param block exactly as specified in CONTRACTS.md §5, via
- * `buildCurveWithTwoSegments`. Returns the object ready to pass to
- * `DynamicBondingCurveClient.partner.createConfig`.
- *
- * CHECK vs SDK: `buildCurveWithTwoSegments`'s parameter names/shape (in particular
- * `lockedVestingParam`, `baseFeeParams.feeSchedulerParam`, `migrationFee`,
- * `tokenUpdateAuthority` enum values, and whether `feeClaimer`/`leftoverReceiver`/
- * `quoteMint`/`enableFirstSwapWithMinFee`/`poolFeeBps` are top-level or nested under a
- * `curveConfig`/`poolConfig` wrapper) must be checked against the installed SDK version;
- * this transcribes CONTRACTS.md §5 verbatim.
+ * Builds the DBC config param block specified in CONTRACTS.md §5 via `buildCurveWithTwoSegments`,
+ * plus the three account fields (`feeClaimer`, `leftoverReceiver`, `quoteMint`) that the SDK takes
+ * on `createConfig` rather than in the curve builder. Spread the result into `createConfigIx`.
  */
-export function buildLaunchConfigParams(input: BuildLaunchConfigParamsInput) {
+export function buildLaunchConfigParams(input: BuildLaunchConfigParamsInput): LaunchConfigParams {
   const { coinUsdPrice, feeTierBps, routerPda, treasury, quoteMint } = input;
   if (coinUsdPrice <= 0) throw new Error("buildLaunchConfigParams: coinUsdPrice must be > 0");
 
   const initialMarketCap = LAUNCH.initialMarketCapUsd / coinUsdPrice; // in COIN units
   const migrationMarketCap = LAUNCH.migrationMarketCapUsd / coinUsdPrice; // in COIN units
 
-  // CHECK vs SDK: buildCurveWithTwoSegments signature.
-  return buildCurveWithTwoSegments({
-    totalTokenSupply: LAUNCH.totalSupply,
+  const configParameters = buildCurveWithTwoSegments({
     initialMarketCap,
     migrationMarketCap,
     percentageSupplyOnMigration: LAUNCH.percentageSupplyOnMigration,
-    migrationOption: 1, // DAMM v2
-    tokenBaseDecimal: 6,
-    tokenQuoteDecimal: 6,
-    lockedVestingParam: undefined, // none
-    baseFeeParams: {
-      feeSchedulerParam: {
-        startingFeeBps: feeTierBps,
-        endingFeeBps: feeTierBps,
-        numberOfPeriod: 0,
-        totalDuration: 0,
+    token: {
+      tokenType: TokenType.SPLToken,
+      tokenBaseDecimal: TokenDecimal.SIX,
+      tokenQuoteDecimal: TokenDecimal.SIX,
+      tokenAuthorityOption: TokenAuthorityOption.Immutable,
+      totalTokenSupply: LAUNCH.totalSupply,
+      leftover: 0,
+    },
+    fee: {
+      baseFeeParams: {
+        baseFeeMode: BaseFeeMode.FeeSchedulerLinear,
+        feeSchedulerParam: {
+          startingFeeBps: feeTierBps,
+          endingFeeBps: feeTierBps,
+          numberOfPeriod: 0,
+          totalDuration: 0,
+        },
+      },
+      dynamicFeeEnabled: false,
+      collectFeeMode: CollectFeeMode.QuoteToken, // fees in COIN
+      creatorTradingFeePercentage: 0,
+      poolCreationFee: 0,
+      enableFirstSwapWithMinFee: true,
+    },
+    migration: {
+      migrationOption: MigrationOption.MET_DAMM_V2,
+      migrationFeeOption: MigrationFeeOption.Customizable, // LAUNCH.migrationFeeOption (6)
+      migrationFee: { feePercentage: 0, creatorFeePercentage: 0 },
+      // Customizable ⇒ the migrated DAMM v2 pool's fee is set here: same tier, collected in quote.
+      migratedPoolFee: {
+        collectFeeMode: MigratedCollectFeeMode.QuoteToken,
+        dynamicFee: DammV2DynamicFeeMode.Disabled,
+        poolFeeBps: feeTierBps,
       },
     },
-    dynamicFeeEnabled: false,
-    activationType: 1, // timestamp
-    collectFeeMode: 0, // quote (COIN)
-    migrationFeeOption: LAUNCH.migrationFeeOption, // 6 = Customizable
-    migrationFee: { feePercentage: 0, creatorFeePercentage: 0 },
-    partnerLpPercentage: 0,
-    partnerLockedLpPercentage: 100,
-    creatorLpPercentage: 0,
-    creatorLockedLpPercentage: 0,
-    creatorTradingFeePercentage: 0,
-    leftover: 0,
-    tokenUpdateAuthority: 1, // immutable
-    feeClaimer: routerPda,
-    leftoverReceiver: treasury,
-    quoteMint,
-    enableFirstSwapWithMinFee: true,
-    poolFeeBps: feeTierBps,
+    liquidityDistribution: {
+      // 100% of migrated LP permanently locked to the partner (fee_router's router PDA).
+      partnerPermanentLockedLiquidityPercentage: 100,
+      partnerLiquidityPercentage: 0,
+      creatorPermanentLockedLiquidityPercentage: 0,
+      creatorLiquidityPercentage: 0,
+    },
+    lockedVesting: {
+      totalLockedVestingAmount: 0,
+      numberOfVestingPeriod: 0,
+      cliffUnlockAmount: 0,
+      totalVestingDuration: 0,
+      cliffDurationFromMigrationTime: 0,
+    },
+    activationType: ActivationType.Timestamp,
   });
+
+  return { ...configParameters, feeClaimer: routerPda, leftoverReceiver: treasury, quoteMint };
 }
 
 export interface DbcClientOpts {
   connection: Connection;
+  commitment?: Commitment;
 }
 
-/** CHECK vs SDK: `new DynamicBondingCurveClient(connection, cluster?)` constructor shape. */
 export function makeDbcClient(opts: DbcClientOpts): DynamicBondingCurveClient {
-  return new DynamicBondingCurveClient(opts.connection);
+  return new DynamicBondingCurveClient(opts.connection, opts.commitment ?? "confirmed");
 }
 
 export interface CreateConfigIxInput {
   client: DynamicBondingCurveClient;
   configKeypair: Keypair;
   payer: PublicKey;
-  curveConfigParams: ReturnType<typeof buildLaunchConfigParams>;
+  curveConfigParams: LaunchConfigParams;
 }
 
-/** CHECK vs SDK: `client.partner.createConfig(...)` argument names (`config`/`payer`/`params`). */
+/** `partner.createConfig`; the returned ixs need `configKeypair` as a signer. */
 export async function createConfigIx(input: CreateConfigIxInput): Promise<TransactionInstruction[]> {
   const { client, configKeypair, payer, curveConfigParams } = input;
   const tx = await client.partner.createConfig({
     payer,
     config: configKeypair.publicKey,
     ...curveConfigParams,
-  } as any);
+  });
   return extractIxs(tx);
 }
 
@@ -144,6 +166,7 @@ export interface CreatePoolWithFirstBuyInput {
   client: DynamicBondingCurveClient;
   config: PublicKey;
   baseMintKeypair: Keypair;
+  /** Not needed by the SDK call (read from the config account); kept for symmetry with the launch flow. */
   quoteMint: PublicKey;
   payer: PublicKey;
   creator: PublicKey;
@@ -157,27 +180,28 @@ export interface CreatePoolWithFirstBuyInput {
 }
 
 /**
- * CHECK vs SDK: `client.pool.createPoolWithFirstBuy` argument shape — in some SDK minor
- * versions this is two calls (`createPool` then `swap`) rather than one combined method;
- * confirm against the installed version and split this function if so.
+ * `creator.createPoolWithFirstBuy` (SDK 1.5.x: on the creator service, one tx = initialize pool +
+ * first swap; the swap is only appended when `buyAmount > 0`). `baseMintKeypair` must sign.
  */
 export async function createPoolWithFirstBuyIxs(input: CreatePoolWithFirstBuyInput): Promise<TransactionInstruction[]> {
-  const { client, config, baseMintKeypair, quoteMint, payer, creator, name, symbol, uri, firstBuyQuoteAmount, firstBuyMinimumAmountOut } =
-    input;
-  const tx = await client.pool.createPoolWithFirstBuy({
-    config,
-    baseMint: baseMintKeypair.publicKey,
-    quoteMint,
-    payer,
-    creator,
-    name,
-    symbol,
-    uri,
-    firstBuyParam: {
-      quoteAmount: firstBuyQuoteAmount,
-      minimumAmountOut: firstBuyMinimumAmountOut,
+  const { client, config, baseMintKeypair, payer, creator, name, symbol, uri, firstBuyQuoteAmount, firstBuyMinimumAmountOut } = input;
+  const tx = await client.creator.createPoolWithFirstBuy({
+    createPoolParam: {
+      name,
+      symbol,
+      uri,
+      payer,
+      poolCreator: creator,
+      config,
+      baseMint: baseMintKeypair.publicKey,
     },
-  } as any);
+    firstBuyParam: {
+      buyer: creator,
+      buyAmount: firstBuyQuoteAmount,
+      minimumAmountOut: firstBuyMinimumAmountOut,
+      referralTokenAccount: null,
+    },
+  });
   return extractIxs(tx);
 }
 
@@ -191,8 +215,8 @@ export interface DbcSwapInput {
   swapBaseForQuote: boolean;
 }
 
-/** CHECK vs SDK: `client.pool.swap` (a.k.a. `swap2`) argument names and the instructions-sysvar
- *  requirement noted in docs/research/02 when the anti-sniper min-fee flag is set. */
+/** `pool.swap` (exact-in). The SDK adds the instructions sysvar itself when the pool's
+ *  anti-sniper min-fee flag requires it. */
 export async function swapIx(input: DbcSwapInput): Promise<TransactionInstruction[]> {
   const { client, pool, owner, amountIn, minimumAmountOut, swapBaseForQuote } = input;
   const tx = await client.pool.swap({
@@ -201,7 +225,8 @@ export async function swapIx(input: DbcSwapInput): Promise<TransactionInstructio
     amountIn,
     minimumAmountOut,
     swapBaseForQuote,
-  } as any);
+    referralTokenAccount: null,
+  });
   return extractIxs(tx);
 }
 
@@ -209,32 +234,39 @@ export interface MigrateToDammV2Input {
   client: DynamicBondingCurveClient;
   pool: PublicKey;
   payer: PublicKey;
+  /** DAMM v2 config the migrated pool is created under. Defaults to Meteora's config for our
+   *  `migrationFeeOption` (Customizable). */
+  dammConfig?: PublicKey;
 }
 
-/** CHECK vs SDK: `client.migration.migrateToDammV2` argument shape; may return multiple txs
- *  (create position + lock liquidity as separate steps) rather than a single ix list. */
-export async function migrateToDammV2Ixs(input: MigrateToDammV2Input): Promise<TransactionInstruction[]> {
+/** Meteora's DAMM v2 config for `LAUNCH.migrationFeeOption` (index into the SDK's per-option table). */
+export const DAMM_V2_MIGRATION_CONFIG: PublicKey = DAMM_V2_MIGRATION_FEE_ADDRESS[LAUNCH.migrationFeeOption];
+
+export interface MigrateToDammV2Result {
+  ixs: TransactionInstruction[];
+  /** The two new position-NFT mint keypairs; both must sign the migration transaction. */
+  signers: Keypair[];
+}
+
+/** `migration.migrateToDammV2`: one tx that migrates and creates the two locked positions. */
+export async function migrateToDammV2Ixs(input: MigrateToDammV2Input): Promise<MigrateToDammV2Result> {
   const { client, pool, payer } = input;
-  const tx = await client.migration.migrateToDammV2({ dbcPool: pool, payer } as any);
-  return extractIxs(tx);
+  const res = await client.migration.migrateToDammV2({ pool, payer, dammConfig: input.dammConfig ?? DAMM_V2_MIGRATION_CONFIG });
+  return { ixs: res.transaction.instructions, signers: [res.firstPositionNftKeypair, res.secondPositionNftKeypair] };
 }
 
-/** CHECK vs SDK: `client.state.getPool` return shape (curve progress, is_migrated, partner fee fields). */
+/** `state.getPool` → the decoded `VirtualPool` account (`isMigrated`, reserves, partner fee fields, ...). */
 export async function getPoolState(client: DynamicBondingCurveClient, pool: PublicKey) {
   return client.state.getPool(pool);
 }
 
 /**
- * Normalizes whatever the SDK hands back (a `Transaction`, a `VersionedTransaction`, or a
- * raw `TransactionInstruction[]` — this varies by method and SDK minor version) into a
- * flat instruction array so callers can compose them into their own transaction(s).
- * CHECK vs SDK: confirm each method's actual return type and adjust extraction per call site
- * if some return VersionedTransaction (whose instructions live in a compiled message and
- * need `TransactionMessage.decompile` plus an `AddressLookupTableAccount[]`, not a plain array).
+ * Every SDK 1.5.x service method used here returns a legacy `Transaction`; flatten it so callers
+ * can compose the instructions into their own (versioned, ALT-compiled) transactions.
  */
 function extractIxs(tx: unknown): TransactionInstruction[] {
   if (Array.isArray(tx)) return tx as TransactionInstruction[];
   const t = tx as { instructions?: TransactionInstruction[] };
   if (t?.instructions) return t.instructions;
-  throw new Error("dbc.ts: unrecognized transaction shape returned by SDK — see extractIxs CHECK note");
+  throw new Error("dbc.ts: unrecognized transaction shape returned by SDK");
 }

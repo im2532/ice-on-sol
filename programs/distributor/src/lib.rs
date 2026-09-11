@@ -17,7 +17,7 @@ pub mod state;
 
 pub use instructions::*;
 
-declare_id!("Distrib1111111111111111111111111111111111111");
+declare_id!("AEGw9dc3MUYR3aJXzZJjQmQDsJBJuT1RfsjoByNv4dV6");
 
 #[program]
 pub mod distributor {

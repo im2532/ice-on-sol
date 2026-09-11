@@ -13,3 +13,4 @@ keys/
 coverage/
 apps/web/public/idl/
 apps/web/public/deployments/
+apps/web/tsconfig.tsbuildinfo

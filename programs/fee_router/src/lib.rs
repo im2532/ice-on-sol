@@ -18,7 +18,7 @@ pub mod state;
 
 pub use instructions::*;
 
-declare_id!("FeeRoutr111111111111111111111111111111111111");
+declare_id!("9bnCKVesMxQPDaWAmiT21vaES2QgtdXinfXciTCZrbEt");
 
 #[program]
 pub mod fee_router {

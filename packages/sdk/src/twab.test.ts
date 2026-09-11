@@ -1,4 +1,5 @@
 import { expect } from "chai";
+import { expectBig } from "./testUtils";
 import { computeTwab, computeShares, type BalanceEvent } from "./twab";
 
 describe("twab.ts", () => {
@@ -86,7 +87,7 @@ describe("twab.ts", () => {
       for (const v of shares.values()) sum += v;
       expect(sum).to.equal(1_000_000n);
       // w2 has 3x the twab of w1
-      expect(shares.get("w2")! / shares.get("w1")!).to.be.at.least(2n);
+      expectBig(shares.get("w2")! / shares.get("w1")!).atLeast(2n);
     });
 
     it("excludes wallets below minHoldingUsd", () => {

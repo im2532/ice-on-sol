@@ -36,8 +36,8 @@ export async function runMigrateCycle(): Promise<void> {
       if (!isMigrated) {
         if (!curveComplete) continue;
         log.info({ pool: pool.dbc_pool }, "migrating pool to DAMM v2");
-        const migrateIxs = await migrateToDammV2Ixs({ client: dbcClient, pool: new PublicKey(pool.dbc_pool), payer: keeper.publicKey });
-        await sendWithPriority(migrateIxs);
+        const migrate = await migrateToDammV2Ixs({ client: dbcClient, pool: new PublicKey(pool.dbc_pool), payer: keeper.publicKey });
+        await sendWithPriority(migrate.ixs, { extraSigners: migrate.signers });
       }
 
       const pos = await findNewPosition(pool);

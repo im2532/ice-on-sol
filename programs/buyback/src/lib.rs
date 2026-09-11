@@ -13,7 +13,7 @@ pub mod state;
 
 pub use instructions::*;
 
-declare_id!("Buyback1111111111111111111111111111111111111");
+declare_id!("2jsn1m1EnUx2AixWn8KSvWa7bqgQJrLqr2pQenzok4Lk");
 
 #[program]
 pub mod buyback {

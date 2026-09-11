@@ -1,4 +1,5 @@
 import { expect } from "chai";
+import { expectBig } from "./testUtils";
 import {
   Status,
   agePenaltyBps,
@@ -122,8 +123,8 @@ describe("pricing.ts (BigInt port of pricing.rs)", () => {
     it("ask is above price, bid is below, symmetric around p", () => {
       const ask = askPrice(PRICE_4000, 10n);
       const bid = bidPrice(PRICE_4000, 10n);
-      expect(ask).to.be.above(PRICE_4000);
-      expect(bid).to.be.below(PRICE_4000);
+      expectBig(ask).above(PRICE_4000);
+      expectBig(bid).below(PRICE_4000);
       expect(ask - PRICE_4000).to.equal(PRICE_4000 - bid);
     });
     it("bid floors at 0 for pathological spreads >= 10000 bps", () => {
@@ -138,9 +139,9 @@ describe("pricing.ts (BigInt port of pricing.rs)", () => {
       const usdcIn = 100_000000n; // $100
       const coinOut = coinOutForUsdcIn(usdcIn, ask, 6, 6);
       // ~0.024975... oz -> coin base units (6dp)
-      expect(coinOut).to.be.above(0n);
-      expect(coinOut).to.be.below(25000n); // < 0.025 coin
-      expect(coinOut).to.be.above(24900n);
+      expectBig(coinOut).above(0n);
+      expectBig(coinOut).below(25000n); // < 0.025 coin
+      expectBig(coinOut).above(24900n);
     });
     it("rounds down (floor), never overpays the user", () => {
       // pick numbers that don't divide evenly
@@ -149,14 +150,14 @@ describe("pricing.ts (BigInt port of pricing.rs)", () => {
       const coinOut = coinOutForUsdcIn(usdcIn, ask, 6, 6);
       const exact = (usdcIn * 10n ** 6n * 10n ** 8n) / (ask * 10n ** 6n);
       expect(coinOut).to.equal(exact / 1n); // already integer division; sanity check no throw
-      expect(coinOut * ask).to.be.at.most(usdcIn * 10n ** 8n); // never implies more value than paid
+      expectBig(coinOut * ask).atMost(usdcIn * 10n ** 8n); // never implies more value than paid
     });
     it("usdc_out rounds down symmetrically", () => {
       const bid = bidPrice(PRICE_4000, 10n);
       const coinIn = 25000n; // 0.025 coin
       const usdcOut = usdcOutForCoinIn(coinIn, bid, 6, 6);
-      expect(usdcOut).to.be.above(0n);
-      expect(usdcOut).to.be.below(100_000000n); // less than $100 since bid < price and rounds down
+      expectBig(usdcOut).above(0n);
+      expectBig(usdcOut).below(100_000000n); // less than $100 since bid < price and rounds down
     });
   });
 
@@ -167,13 +168,13 @@ describe("pricing.ts (BigInt port of pricing.rs)", () => {
       const maxIn = maxUsdcInForCoinOut(coinOut, ask, 6, 6);
       // feeding maxIn back through coinOutForUsdcIn must yield >= coinOut
       const backOut = coinOutForUsdcIn(maxIn, ask, 6, 6);
-      expect(backOut).to.be.at.least(coinOut);
+      expectBig(backOut).atLeast(coinOut);
       // and one base unit less must NOT be enough (tight ceil, when there's a remainder)
       const numerator = coinOut * ask * 10n ** 6n;
       const denominator = 10n ** 6n * 10n ** 8n;
       if (numerator % denominator !== 0n) {
         const backOutMinusOne = coinOutForUsdcIn(maxIn - 1n, ask, 6, 6);
-        expect(backOutMinusOne).to.be.below(coinOut);
+        expectBig(backOutMinusOne).below(coinOut);
       }
     });
   });
@@ -193,8 +194,8 @@ describe("pricing.ts (BigInt port of pricing.rs)", () => {
       const reserve = 4000_000000n; // still only $4000 reserved
       const rallyPrice = 4200_00000000n; // price rallied to $4200
       const ratio = reserveRatioBps(reserve, supply, rallyPrice)!;
-      expect(ratio).to.be.below(GLD_PARAMS.reserveHaltBps === 9_800n ? 9_800n : ratio); // sanity
-      expect(ratio).to.be.below(10_000n);
+      expectBig(ratio).below(GLD_PARAMS.reserveHaltBps === 9_800n ? 9_800n : ratio); // sanity
+      expectBig(ratio).below(10_000n);
     });
   });
 
@@ -212,14 +213,14 @@ describe("pricing.ts (BigInt port of pricing.rs)", () => {
       const usdcIn = 100_000000n;
       const buy = quoteBuy(usdcIn, spread);
       const exactOut = quoteBuyExactOut(buy.coinOut, spread);
-      expect(exactOut.maxUsdcIn).to.be.at.most(usdcIn); // ceil of a slightly smaller amount than what produced coinOut
+      expectBig(exactOut.maxUsdcIn).atMost(usdcIn); // ceil of a slightly smaller amount than what produced coinOut
     });
 
     it("quoteSell of the bought amount returns less USDC than was paid (spread cost, round trip)", () => {
       const usdcIn = 1000_000000n;
       const buy = quoteBuy(usdcIn, spread);
       const sell = quoteSell(buy.coinOut, spread);
-      expect(sell.usdcOut).to.be.below(usdcIn);
+      expectBig(sell.usdcOut).below(usdcIn);
     });
   });
 

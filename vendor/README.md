@@ -1,0 +1,1 @@
+# Meteora IDLs fetched from mainnet: `anchor idl fetch dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN -o vendor/idl/dynamic_bonding_curve.json` and cp_amm likewise. Used by scripts/print-discriminators.ts.

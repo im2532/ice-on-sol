@@ -22,7 +22,7 @@ pub use state::IndexLeg;
 // Placeholder id (43 chars; the original 44-char "PegDesk1…" decoded to 33 bytes). Anchor.toml,
 // .env.example and packages/registry/src/programs.ts use the same value; scripts/write-program-ids.ts
 // replaces all of them with the deployed keypair address.
-declare_id!("PegDesk111111111111111111111111111111111111");
+declare_id!("6jMv6pdi3nB4RRmJSojDy2cHRLMgKNM3ZEeJFngWrqQN");
 
 #[program]
 pub mod peg_desk {
