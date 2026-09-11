@@ -59,8 +59,8 @@ export default function MarketsPage() {
           </div>
 
           <div className="mt-9 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <StatTile label="Markets" value={stats ? stats.marketsCount.toLocaleString() : "—"} />
-            <StatTile label="Commodities" value={stats ? stats.commoditiesCount.toLocaleString() : "—"} />
+            <StatTile label="Markets" value={stats ? stats.marketsCount.toLocaleString("en-US") : "—"} />
+            <StatTile label="Commodities" value={stats ? stats.commoditiesCount.toLocaleString("en-US") : "—"} />
             <StatTile label="24h volume" value={stats ? compact(stats.volume24hUsd) : "—"} />
             <StatTile label="Value locked" value={stats ? compact(stats.valueLockedUsd) : "—"} />
           </div>
@@ -210,7 +210,7 @@ export default function MarketsPage() {
         </div>
 
         <p className="mb-3 mt-4 text-xs text-muted">
-          {marketsData ? `${marketsData.total.toLocaleString()} markets` : "Loading…"}
+          {marketsData ? `${marketsData.total.toLocaleString("en-US")} markets` : "Loading…"}
         </p>
 
         {isLoading ? (

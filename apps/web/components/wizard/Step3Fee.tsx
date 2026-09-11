@@ -99,7 +99,7 @@ export default function Step3Fee({ value, onChange, commoditySymbol, youReceive 
         <p className="mt-2 text-xs text-muted">
           You receive ≈{" "}
           <span className="font-nums text-text">
-            {youReceive != null ? youReceive.toLocaleString(undefined, { maximumFractionDigits: 0 }) : "—"}
+            {youReceive != null ? youReceive.toLocaleString("en-US", { maximumFractionDigits: 0 }) : "—"}
           </span>{" "}
           of your coin, first buy in {value.payWith}. Fees pay out in {commoditySymbol}.
         </p>

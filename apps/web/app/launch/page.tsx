@@ -154,12 +154,12 @@ export default function LaunchPage() {
           <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted">Overview</h2>
           <dl className="space-y-2.5 text-sm">
             <Row k="Paired with" v={pairedWith} />
-            <Row k="Supply" v={LAUNCH.totalSupply.toLocaleString()} />
+            <Row k="Supply" v={LAUNCH.totalSupply.toLocaleString("en-US")} />
             <Row k="Opens at" v={`${usd(LAUNCH.initialMarketCapUsd, { decimals: 0 })} cap`} />
             <Row k="Curve cap" v={usd(LAUNCH.migrationMarketCapUsd, { decimals: 0 })} />
             <Row k="Trading fee" v={`${fee.feeBps / 100}%`} />
             <Row k="First buy" v={fee.firstBuyUsd ? `$${fee.firstBuyUsd}` : "—"} />
-            <Row k="You receive" v={youReceive != null ? youReceive.toLocaleString(undefined, { maximumFractionDigits: 0 }) : "—"} />
+            <Row k="You receive" v={youReceive != null ? youReceive.toLocaleString("en-US", { maximumFractionDigits: 0 }) : "—"} />
           </dl>
           <p className="mt-4 text-xs text-muted">
             On-chain cost ≈ 0.025 SOL (config rent + Metaplex + pool) plus your first buy.

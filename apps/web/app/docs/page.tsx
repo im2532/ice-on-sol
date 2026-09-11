@@ -42,10 +42,10 @@ export default function DocsPage() {
 
           <Section id="launch" title="Launch">
             <p>
-              Every market opens with a fixed supply of {LAUNCH.totalSupply.toLocaleString()} tokens, all of
+              Every market opens with a fixed supply of {LAUNCH.totalSupply.toLocaleString("en-US")} tokens, all of
               it seeded into a Meteora Dynamic Bonding Curve pool quoted in the commodity coin you pick.
-              The curve runs from a ${LAUNCH.initialMarketCapUsd.toLocaleString()} opening cap to a $
-              {LAUNCH.migrationMarketCapUsd.toLocaleString()} migration cap, with{" "}
+              The curve runs from a ${LAUNCH.initialMarketCapUsd.toLocaleString("en-US")} opening cap to a $
+              {LAUNCH.migrationMarketCapUsd.toLocaleString("en-US")} migration cap, with{" "}
               {LAUNCH.percentageSupplyOnMigration}% of supply reserved above it so the pool keeps quoting
               with no cliff. You pick the trading fee (1/2/3%) and make a first buy of at least $
               {LAUNCH.minFirstBuyUsd} — everything lands in one on-chain transaction for a USDC or COIN
