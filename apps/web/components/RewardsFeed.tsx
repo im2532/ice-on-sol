@@ -4,8 +4,8 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { fetchRecentPayouts } from "@/lib/api";
 import { fmtAmount, shortenAddress, timeAgo } from "@/lib/format";
-import { swatch } from "@/lib/visual";
 import { PAYOUT } from "@icemarkets/registry";
+import CommodityLogo from "./CommodityLogo";
 
 /** Minutes:seconds left in the current payout cycle, from the fixed cycle length. */
 function nextCycle(nowSec: number): string {
@@ -55,11 +55,7 @@ export default function RewardsFeed({ limit = 4 }: { limit?: number }) {
           ))}
         {rows.map((p) => (
           <li key={p.id} className="flex items-center gap-3 border-b border-white/[0.06] py-2.5 last:border-0">
-            <span
-              className="h-7 w-7 shrink-0 rounded-[9px] opacity-60"
-              style={{ background: swatch(p.commoditySymbol) }}
-              aria-hidden="true"
-            />
+            <CommodityLogo symbol={p.commoditySymbol} size={28} />
             <span className="flex min-w-0 flex-1 flex-col">
               <span className="mono truncate text-[13px]">
                 {shortenAddress(p.wallet)} <span className="text-muted">received</span>{" "}

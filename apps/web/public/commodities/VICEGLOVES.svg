@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="Vice Gloves">
+  <defs>
+    <linearGradient id="VICEGLOVES-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#7DF9FF"/>
+      <stop offset="1" stop-color="#B026FF"/>
+    </linearGradient>
+    <linearGradient id="VICEGLOVES-gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.34"/>
+      <stop offset="0.55" stop-color="#FFFFFF" stop-opacity="0.04"/>
+      <stop offset="1" stop-color="#000000" stop-opacity="0.18"/>
+    </linearGradient>
+    <linearGradient id="VICEGLOVES-sweep" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0"/>
+      <stop offset="0.5" stop-color="#FFFFFF" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="VICEGLOVES-clip"><rect x="8" y="8" width="240" height="240" rx="64"/></clipPath>
+    <filter id="VICEGLOVES-shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#000" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+  <style>
+    .VICEGLOVES-sweep { animation: VICEGLOVES-sweep 6s cubic-bezier(.4,0,.2,1) infinite; }
+    @keyframes VICEGLOVES-sweep { 0%, 55% { transform: translateX(-260px) skewX(-20deg); } 100% { transform: translateX(300px) skewX(-20deg); } }
+    .VICEGLOVES-left, .VICEGLOVES-right { transform-origin: 128px 160px; animation: VICEGLOVES-flex 3.4s ease-in-out infinite; }
+    @keyframes VICEGLOVES-flex { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(3deg); } }
+    @media (prefers-reduced-motion: reduce) { .VICEGLOVES-sweep, .VICEGLOVES-left, .VICEGLOVES-right { animation: none; } }
+  </style>
+
+  <!-- badge -->
+  <rect x="8" y="8" width="240" height="240" rx="64" fill="url(#VICEGLOVES-bg)" filter="url(#VICEGLOVES-shadow)"/>
+  <rect x="8" y="8" width="240" height="240" rx="64" fill="url(#VICEGLOVES-gloss)"/>
+  <rect x="9" y="9" width="238" height="238" rx="63" fill="none" stroke="#FFFFFF" stroke-opacity="0.28" stroke-width="2"/>
+
+  <!-- glyph -->
+  <g class="VICEGLOVES-left" fill="none" stroke="#FFFFFF" stroke-width="12" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M92 190 V150 Q92 130 104 130 V116 Q104 106 112 106 V96 Q112 88 120 88 V100 Q124 90 132 92 V150 Q132 174 112 190 Z"/>
+  </g>
+  <g class="VICEGLOVES-right" fill="none" stroke="#FFFFFF" stroke-width="12" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M164 190 V150 Q164 130 152 130 V116 Q152 106 144 106 V96 Q144 88 136 88 V100"/>
+  </g>
+
+  <!-- specular sweep (always last, clipped to the badge) -->
+  <g clip-path="url(#VICEGLOVES-clip)">
+    <rect class="VICEGLOVES-sweep" x="0" y="0" width="80" height="256" fill="url(#VICEGLOVES-sweep)"/>
+  </g>
+</svg>

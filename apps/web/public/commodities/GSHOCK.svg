@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="G-Shock">
+  <defs>
+    <linearGradient id="GSHOCK-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#CBD5E1"/>
+      <stop offset="1" stop-color="#334155"/>
+    </linearGradient>
+    <linearGradient id="GSHOCK-gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.34"/>
+      <stop offset="0.55" stop-color="#FFFFFF" stop-opacity="0.04"/>
+      <stop offset="1" stop-color="#000000" stop-opacity="0.18"/>
+    </linearGradient>
+    <linearGradient id="GSHOCK-sweep" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0"/>
+      <stop offset="0.5" stop-color="#FFFFFF" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="GSHOCK-clip"><rect x="8" y="8" width="240" height="240" rx="64"/></clipPath>
+    <filter id="GSHOCK-shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#000" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+  <style>
+    .GSHOCK-sweep { animation: GSHOCK-sweep 6s cubic-bezier(.4,0,.2,1) infinite; }
+    @keyframes GSHOCK-sweep { 0%, 55% { transform: translateX(-260px) skewX(-20deg); } 100% { transform: translateX(300px) skewX(-20deg); } }
+    .GSHOCK-second { transform-origin: 128px 128px; animation: GSHOCK-tick 6s steps(8) infinite; }
+    @keyframes GSHOCK-tick { 0% { transform: rotate(0deg) translate(0,0); } 100% { transform: rotate(360deg) translate(0,0); } }
+    @media (prefers-reduced-motion: reduce) { .GSHOCK-sweep, .GSHOCK-second { animation: none; } }
+  </style>
+
+  <!-- badge -->
+  <rect x="8" y="8" width="240" height="240" rx="64" fill="url(#GSHOCK-bg)" filter="url(#GSHOCK-shadow)"/>
+  <rect x="8" y="8" width="240" height="240" rx="64" fill="url(#GSHOCK-gloss)"/>
+  <rect x="9" y="9" width="238" height="238" rx="63" fill="none" stroke="#FFFFFF" stroke-opacity="0.28" stroke-width="2"/>
+
+  <!-- glyph -->
+  <rect x="72" y="72" width="112" height="112" rx="18" fill="none" stroke="#FFFFFF" stroke-width="12"/>
+  <rect x="94" y="104" width="68" height="48" rx="6" fill="none" stroke="#FFFFFF" stroke-width="7"/>
+  <g stroke="#FFFFFF" stroke-width="6" stroke-linecap="round">
+    <line x1="104" y1="118" x2="118" y2="118"/>
+    <line x1="104" y1="128" x2="122" y2="128"/>
+    <line x1="104" y1="138" x2="114" y2="138"/>
+  </g>
+  <g class="GSHOCK-second"><rect x="150" y="112" width="6" height="6" fill="#FFFFFF"/></g>
+
+  <!-- specular sweep (always last, clipped to the badge) -->
+  <g clip-path="url(#GSHOCK-clip)">
+    <rect class="GSHOCK-sweep" x="0" y="0" width="80" height="256" fill="url(#GSHOCK-sweep)"/>
+  </g>
+</svg>

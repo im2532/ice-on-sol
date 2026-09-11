@@ -8,6 +8,7 @@ import { compact, fmtAmount } from "@/lib/format";
 import { curveLabel, signed, swatch } from "@/lib/visual";
 import type { Market } from "@/lib/types";
 import Bonding from "./Bonding";
+import CommodityLogo from "./CommodityLogo";
 
 type Tab = "all" | "new" | "migrated";
 
@@ -149,7 +150,8 @@ export default function MarketsTable() {
               <span className="h-[34px] w-[34px] shrink-0 rounded-[10px]" style={{ background: swatch(m.ticker) }} aria-hidden="true" />
               <span className="flex min-w-0 flex-1 flex-col leading-tight">
                 <span className="mono truncate text-[13px] font-semibold">{m.ticker}</span>
-                <span className="text-[11px] text-muted">
+                <span className="flex items-center gap-1 text-[11px] text-muted">
+                  <CommodityLogo symbol={m.commoditySymbol} size={14} />
                   {m.commoditySymbol} · {m.migrated ? "graduated" : `${curveLabel(m.curveProgressPct, false)} of curve`}
                 </span>
               </span>
@@ -211,7 +213,8 @@ function Row({ market: m }: { market: Market }) {
         </Link>
       </td>
       <td className="td py-0">
-        <Link href={`/commodities/${m.commoditySymbol}`} className="chip mono">
+        <Link href={`/commodities/${m.commoditySymbol}`} className="chip mono gap-1.5 pl-2">
+          <CommodityLogo symbol={m.commoditySymbol} size={16} />
           {m.commoditySymbol}
         </Link>
       </td>

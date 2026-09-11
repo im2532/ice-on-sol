@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="Soybeans">
+  <defs>
+    <linearGradient id="ZS-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#B7F27B"/>
+      <stop offset="1" stop-color="#2E7D32"/>
+    </linearGradient>
+    <linearGradient id="ZS-gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.34"/>
+      <stop offset="0.55" stop-color="#FFFFFF" stop-opacity="0.04"/>
+      <stop offset="1" stop-color="#000000" stop-opacity="0.18"/>
+    </linearGradient>
+    <linearGradient id="ZS-sweep" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0"/>
+      <stop offset="0.5" stop-color="#FFFFFF" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="ZS-clip"><rect x="8" y="8" width="240" height="240" rx="64"/></clipPath>
+    <filter id="ZS-shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#000" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+  <style>
+    .ZS-sweep { animation: ZS-sweep 6s cubic-bezier(.4,0,.2,1) infinite; }
+    @keyframes ZS-sweep { 0%, 55% { transform: translateX(-260px) skewX(-20deg); } 100% { transform: translateX(300px) skewX(-20deg); } }
+    .ZS-glyph { transform-origin: 128px 130px; animation: ZS-rock 3.2s ease-in-out infinite; }
+    @keyframes ZS-rock { 0%, 100% { transform: rotate(-4deg); } 50% { transform: rotate(4deg); } }
+    @media (prefers-reduced-motion: reduce) { .ZS-sweep, .ZS-glyph { animation: none; } }
+  </style>
+
+  <!-- badge -->
+  <rect x="8" y="8" width="240" height="240" rx="64" fill="url(#ZS-bg)" filter="url(#ZS-shadow)"/>
+  <rect x="8" y="8" width="240" height="240" rx="64" fill="url(#ZS-gloss)"/>
+  <rect x="9" y="9" width="238" height="238" rx="63" fill="none" stroke="#FFFFFF" stroke-opacity="0.28" stroke-width="2"/>
+
+  <!-- glyph: pod with 3 beans -->
+  <g class="ZS-glyph" fill="none" stroke="#FFFFFF" stroke-width="12" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M100 190 C70 150 78 96 128 70 C178 96 186 150 156 190 C144 202 112 202 100 190 Z"/>
+    <circle cx="128" cy="102" r="14"/>
+    <circle cx="128" cy="132" r="14"/>
+    <circle cx="128" cy="162" r="14"/>
+  </g>
+
+  <!-- specular sweep (always last, clipped to the badge) -->
+  <g clip-path="url(#ZS-clip)">
+    <rect class="ZS-sweep" x="0" y="0" width="80" height="256" fill="url(#ZS-sweep)"/>
+  </g>
+</svg>

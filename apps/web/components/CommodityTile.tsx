@@ -1,8 +1,9 @@
 import Link from "next/link";
 import type { CommodityQuote } from "@/lib/types";
 import { fmtPriceUsd } from "@/lib/format";
-import { signed, swatch } from "@/lib/visual";
+import { signed } from "@/lib/visual";
 import StatusPill from "./StatusPill";
+import CommodityLogo from "./CommodityLogo";
 
 interface CommodityTileProps {
   commodity: CommodityQuote;
@@ -23,11 +24,7 @@ export default function CommodityTile({ commodity, badge, href, footer }: Commod
     <>
       <span className="flex items-start justify-between gap-2">
         <span className="flex min-w-0 items-center gap-2.5">
-          <span
-            className="h-8 w-8 shrink-0 rounded-[10px]"
-            style={{ background: swatch(commodity.symbol) }}
-            aria-hidden="true"
-          />
+          <CommodityLogo symbol={commodity.symbol} size={36} />
           <span className="flex min-w-0 flex-col leading-tight">
             <span className="mono text-[13px] font-semibold">{commodity.symbol}</span>
             <span className="truncate text-[11px] text-muted">{commodity.displayName ?? commodity.name}</span>

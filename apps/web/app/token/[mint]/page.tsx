@@ -6,10 +6,11 @@ import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { fetchCandles, fetchCommodity, fetchMarket, fetchRecentPayouts, fetchTrades } from "@/lib/api";
 import { compact, fmtAmount, fmtPrice, fmtPriceUsd, pct, shortenAddress, timeAgo, usd } from "@/lib/format";
-import { curveLabel, signed, swatch, swatchColor } from "@/lib/visual";
+import { curveLabel, signed, swatch } from "@/lib/visual";
 import Chart from "@/components/Chart";
 import TradePanel from "@/components/TradePanel";
 import TradesTable from "@/components/TradesTable";
+import CommodityLogo from "@/components/CommodityLogo";
 import { bySymbol } from "@icemarkets/registry";
 
 type Denom = "usd" | "coin";
@@ -91,12 +92,8 @@ export default function TokenPage() {
               <span className="mono text-sm text-positive sm:text-base">{market.ticker}</span>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <Link href={`/commodities/${market.commoditySymbol}`} className="chip tap">
-                <span
-                  className="h-2 w-2 shrink-0 rounded-sm"
-                  style={{ background: swatchColor(market.commoditySymbol) }}
-                  aria-hidden="true"
-                />
+              <Link href={`/commodities/${market.commoditySymbol}`} className="chip tap gap-1.5 pl-2">
+                <CommodityLogo symbol={market.commoditySymbol} size={16} />
                 Paired with {market.commoditySymbol} · {commodityName}
               </Link>
               <span className="chip mono">
@@ -253,10 +250,14 @@ export default function TokenPage() {
               Paired with
             </h2>
             <div className="flex items-center justify-between gap-2">
-              <Link href={`/commodities/${market.commoditySymbol}`} className="text-sm font-semibold hover:text-lavender">
-                {market.commoditySymbol} · {commodityName}
+              <Link href={`/commodities/${market.commoditySymbol}`} className="flex min-w-0 items-center gap-2.5 hover:text-lavender">
+                <CommodityLogo symbol={market.commoditySymbol} size={40} />
+                <span className="flex min-w-0 flex-col leading-tight">
+                  <span className="truncate text-sm font-semibold">{market.commoditySymbol}</span>
+                  <span className="truncate text-xs text-muted">{commodityName}</span>
+                </span>
               </Link>
-              <span className="mono text-sm">
+              <span className="mono shrink-0 text-sm">
                 {commodity ? fmtPriceUsd(commodity.priceUsd) : "—"}
                 {commodity && <span className="text-muted"> / {commodity.unitShort}</span>}
               </span>

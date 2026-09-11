@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="Gold">
+  <defs>
+    <linearGradient id="GLD-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#F6D365"/>
+      <stop offset="1" stop-color="#B8860B"/>
+    </linearGradient>
+    <linearGradient id="GLD-gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.34"/>
+      <stop offset="0.55" stop-color="#FFFFFF" stop-opacity="0.04"/>
+      <stop offset="1" stop-color="#000000" stop-opacity="0.18"/>
+    </linearGradient>
+    <linearGradient id="GLD-sweep" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0"/>
+      <stop offset="0.5" stop-color="#FFFFFF" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="GLD-clip"><rect x="8" y="8" width="240" height="240" rx="64"/></clipPath>
+    <filter id="GLD-shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#000" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+  <style>
+    .GLD-sweep { animation: GLD-sweep 6s cubic-bezier(.4,0,.2,1) infinite; }
+    @keyframes GLD-sweep { 0%, 55% { transform: translateX(-260px) skewX(-20deg); } 100% { transform: translateX(300px) skewX(-20deg); } }
+    .GLD-glyph { transform-origin: 128px 128px; animation: GLD-float 3.2s ease-in-out infinite; }
+    @keyframes GLD-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+    @media (prefers-reduced-motion: reduce) { .GLD-sweep, .GLD-glyph { animation: none; } }
+  </style>
+
+  <!-- badge -->
+  <rect x="8" y="8" width="240" height="240" rx="64" fill="url(#GLD-bg)" filter="url(#GLD-shadow)"/>
+  <rect x="8" y="8" width="240" height="240" rx="64" fill="url(#GLD-gloss)"/>
+  <rect x="9" y="9" width="238" height="238" rx="63" fill="none" stroke="#FFFFFF" stroke-opacity="0.28" stroke-width="2"/>
+
+  <!-- glyph: three stacked ingots -->
+  <g class="GLD-glyph" fill="none" stroke="#FFFFFF" stroke-width="12" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M72 168 L88 132 H168 L184 168 Z"/>
+    <path d="M96 132 L110 98 H176 L190 132"/>
+    <path d="M120 98 L132 70 H176"/>
+  </g>
+
+  <!-- specular sweep (always last, clipped to the badge) -->
+  <g clip-path="url(#GLD-clip)">
+    <rect class="GLD-sweep" x="0" y="0" width="80" height="256" fill="url(#GLD-sweep)"/>
+  </g>
+</svg>

@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="WatchX">
+  <defs>
+    <linearGradient id="WATCHX-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#9945FF"/>
+      <stop offset="1" stop-color="#14F195"/>
+    </linearGradient>
+    <linearGradient id="WATCHX-gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.34"/>
+      <stop offset="0.55" stop-color="#FFFFFF" stop-opacity="0.04"/>
+      <stop offset="1" stop-color="#000000" stop-opacity="0.18"/>
+    </linearGradient>
+    <linearGradient id="WATCHX-sweep" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0"/>
+      <stop offset="0.5" stop-color="#FFFFFF" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="WATCHX-clip"><rect x="8" y="8" width="240" height="240" rx="64"/></clipPath>
+    <filter id="WATCHX-shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#000" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+  <style>
+    .WATCHX-sweep { animation: WATCHX-sweep 6s cubic-bezier(.4,0,.2,1) infinite; }
+    @keyframes WATCHX-sweep { 0%, 55% { transform: translateX(-260px) skewX(-20deg); } 100% { transform: translateX(300px) skewX(-20deg); } }
+    .WATCHX-hand { transform-origin: 128px 128px; animation: WATCHX-tick 4s steps(8) infinite; }
+    @keyframes WATCHX-tick { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    @media (prefers-reduced-motion: reduce) { .WATCHX-sweep, .WATCHX-hand { animation: none; } }
+  </style>
+
+  <!-- badge -->
+  <rect x="8" y="8" width="240" height="240" rx="64" fill="url(#WATCHX-bg)" filter="url(#WATCHX-shadow)"/>
+  <rect x="8" y="8" width="240" height="240" rx="64" fill="url(#WATCHX-gloss)"/>
+  <rect x="9" y="9" width="238" height="238" rx="63" fill="none" stroke="#FFFFFF" stroke-opacity="0.28" stroke-width="2"/>
+
+  <!-- glyph -->
+  <g class="WATCHX-glyph" fill="none" stroke="#FFFFFF" stroke-width="12" stroke-linecap="round" stroke-linejoin="round">
+    <polygon points="102.0,66.0 134.9,85.0 134.9,123.0 102.0,142.0 69.1,123.0 69.1,85.0"/>
+    <polygon points="154.0,66.0 186.9,85.0 186.9,123.0 154.0,142.0 121.1,123.0 121.1,85.0"/>
+    <polygon points="128.0,114.0 160.9,133.0 160.9,171.0 128.0,190.0 95.1,171.0 95.1,133.0"/>
+  </g>
+  <g class="WATCHX-hand" stroke="#FFFFFF" stroke-width="10" stroke-linecap="round">
+    <line x1="118" y1="128" x2="138" y2="128"/>
+    <line x1="128" y1="118" x2="128" y2="138"/>
+  </g>
+
+  <!-- specular sweep (always last, clipped to the badge) -->
+  <g clip-path="url(#WATCHX-clip)">
+    <rect class="WATCHX-sweep" x="0" y="0" width="80" height="256" fill="url(#WATCHX-sweep)"/>
+  </g>
+</svg>

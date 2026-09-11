@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="ZARDEX223 card">
+  <!--
+    ICEmarkets commodity mark — "Glacier badge" family. Every mark = this frame + one glyph.
+    Rules: 256 viewBox; badge radius 64; per-category gradient (see _PALETTE.md); glass overlay;
+    glyph drawn in white strokes (stroke-width 12, round caps/joins) inside the 56..200 box;
+    two animations: the shared specular sweep (6 s) + ONE glyph micro-motion (2–4 s, subtle).
+    All animation CSS lives in <style>; reduced-motion disables it. Unique ids per file: prefix with SYMBOL.
+  -->
+  <defs>
+    <linearGradient id="ZARDEX223-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FFF06B"/>
+      <stop offset="1" stop-color="#E5484D"/>
+    </linearGradient>
+    <linearGradient id="ZARDEX223-gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.34"/>
+      <stop offset="0.55" stop-color="#FFFFFF" stop-opacity="0.04"/>
+      <stop offset="1" stop-color="#000000" stop-opacity="0.18"/>
+    </linearGradient>
+    <linearGradient id="ZARDEX223-sweep" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0"/>
+      <stop offset="0.5" stop-color="#FFFFFF" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="ZARDEX223-clip"><rect x="8" y="8" width="240" height="240" rx="64"/></clipPath>
+    <filter id="ZARDEX223-shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#000" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+  <style>
+    .ZARDEX223-sweep { animation: ZARDEX223-sweep 6s cubic-bezier(.4,0,.2,1) infinite; }
+    @keyframes ZARDEX223-sweep { 0%, 55% { transform: translateX(-260px) skewX(-20deg); } 100% { transform: translateX(300px) skewX(-20deg); } }
+    .ZARDEX223-glyph { transform-origin: 128px 128px; animation: ZARDEX223-float 3.2s ease-in-out infinite; }
+    @keyframes ZARDEX223-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+    .ZARDEX223-shimmer { animation: ZARDEX223-shimmer 2.6s ease-in-out infinite; }
+    @keyframes ZARDEX223-shimmer { 0%, 100% { opacity: 0.12; } 50% { opacity: 0.55; } }
+    @media (prefers-reduced-motion: reduce) { .ZARDEX223-sweep, .ZARDEX223-glyph, .ZARDEX223-shimmer { animation: none; } }
+  </style>
+
+  <!-- badge -->
+  <rect x="8" y="8" width="240" height="240" rx="64" fill="url(#ZARDEX223-bg)" filter="url(#ZARDEX223-shadow)"/>
+  <rect x="8" y="8" width="240" height="240" rx="64" fill="url(#ZARDEX223-gloss)"/>
+  <rect x="9" y="9" width="238" height="238" rx="63" fill="none" stroke="#FFFFFF" stroke-opacity="0.28" stroke-width="2"/>
+
+  <!-- glyph -->
+  <g class="ZARDEX223-glyph" fill="none" stroke="#FFFFFF" stroke-width="12" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="86" y="64" width="84" height="130" rx="14"/>
+    <rect x="98" y="78" width="60" height="88" rx="8"/>
+    <path d="M110 96 C100 112 96 126 104 140 C102 130 108 124 112 120 C111 130 119 134 118 144 C128 134 130 118 120 106 C120 114 116 112 110 96 Z"/>
+    <path d="M148 96 C138 112 134 126 142 140 C140 130 146 124 150 120 C149 130 157 134 156 144 C166 134 168 118 158 106 C158 114 154 112 148 96 Z"/>
+  </g>
+
+  <g class="ZARDEX223-shimmer" clip-path="url(#ZARDEX223-clip)">
+    <line x1="60" y1="40" x2="118" y2="224" stroke="#FFFFFF" stroke-width="10" stroke-linecap="round" opacity="0.3"/>
+  </g>
+
+  <!-- specular sweep (always last, clipped to the badge) -->
+  <g clip-path="url(#ZARDEX223-clip)">
+    <rect class="ZARDEX223-sweep" x="0" y="0" width="80" height="256" fill="url(#ZARDEX223-sweep)"/>
+  </g>
+</svg>

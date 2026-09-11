@@ -30,6 +30,16 @@ const nextConfig: NextConfig = {
     // registry/sdk are TS source, not pre-built — allow Next to compile them directly.
     externalDir: true,
   },
+  async headers() {
+    return [
+      {
+        // The 96 commodity marks in /public/commodities are immutable per SYMBOL — a changed mark
+        // ships under the same path only when its file content changes, so cache it for a year.
+        source: "/commodities/:path*",
+        headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
+      },
+    ];
+  },
 };
 
 export default nextConfig;

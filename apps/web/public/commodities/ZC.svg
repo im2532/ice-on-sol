@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="Corn">
+  <defs>
+    <linearGradient id="ZC-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#B7F27B"/>
+      <stop offset="1" stop-color="#2E7D32"/>
+    </linearGradient>
+    <linearGradient id="ZC-gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.34"/>
+      <stop offset="0.55" stop-color="#FFFFFF" stop-opacity="0.04"/>
+      <stop offset="1" stop-color="#000000" stop-opacity="0.18"/>
+    </linearGradient>
+    <linearGradient id="ZC-sweep" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0"/>
+      <stop offset="0.5" stop-color="#FFFFFF" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="ZC-clip"><rect x="8" y="8" width="240" height="240" rx="64"/></clipPath>
+    <filter id="ZC-shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#000" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+  <style>
+    .ZC-sweep { animation: ZC-sweep 6s cubic-bezier(.4,0,.2,1) infinite; }
+    @keyframes ZC-sweep { 0%, 55% { transform: translateX(-260px) skewX(-20deg); } 100% { transform: translateX(300px) skewX(-20deg); } }
+    .ZC-glyph { transform-origin: 128px 190px; animation: ZC-breeze 3.8s ease-in-out infinite; }
+    @keyframes ZC-breeze { 0%, 100% { transform: rotate(-3deg); } 50% { transform: rotate(3deg); } }
+    @media (prefers-reduced-motion: reduce) { .ZC-sweep, .ZC-glyph { animation: none; } }
+  </style>
+
+  <!-- badge -->
+  <rect x="8" y="8" width="240" height="240" rx="64" fill="url(#ZC-bg)" filter="url(#ZC-shadow)"/>
+  <rect x="8" y="8" width="240" height="240" rx="64" fill="url(#ZC-gloss)"/>
+  <rect x="9" y="9" width="238" height="238" rx="63" fill="none" stroke="#FFFFFF" stroke-opacity="0.28" stroke-width="2"/>
+
+  <!-- glyph: cob with husk leaves -->
+  <g class="ZC-glyph" fill="none" stroke="#FFFFFF" stroke-width="12" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M128 66 C104 66 100 100 100 130 C100 170 108 194 128 196 C148 194 156 170 156 130 C156 100 152 66 128 66 Z"/>
+    <path d="M106 90 H150"/>
+    <path d="M103 110 H153"/>
+    <path d="M101 132 H155"/>
+    <path d="M103 154 H153"/>
+    <path d="M108 174 H148"/>
+    <path d="M100 170 C80 160 70 130 78 100"/>
+    <path d="M156 170 C176 160 186 130 178 100"/>
+  </g>
+
+  <!-- specular sweep (always last, clipped to the badge) -->
+  <g clip-path="url(#ZC-clip)">
+    <rect class="ZC-sweep" x="0" y="0" width="80" height="256" fill="url(#ZC-sweep)"/>
+  </g>
+</svg>

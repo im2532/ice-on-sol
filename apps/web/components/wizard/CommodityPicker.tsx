@@ -5,9 +5,9 @@ import { useQuery } from "@tanstack/react-query";
 import { CATEGORY_LABEL, INDEX_COINS } from "@icemarkets/registry";
 import type { Category } from "@icemarkets/registry";
 import { fetchCommodities } from "@/lib/api";
-import { swatch } from "@/lib/visual";
 import { fmtPrice } from "@/lib/format";
 import type { CommodityQuote } from "@/lib/types";
+import CommodityLogo from "@/components/CommodityLogo";
 
 type Filter = Category | "all" | "index";
 
@@ -153,11 +153,7 @@ export default function CommodityPicker({
                   : { borderColor: "rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)" }
               }
             >
-              <span
-                className="h-[34px] w-[34px] shrink-0 rounded-[10px]"
-                style={{ background: swatch(c.symbol) }}
-                aria-hidden="true"
-              />
+              <CommodityLogo symbol={c.symbol} size={36} />
               <span className="flex min-w-0 flex-1 flex-col leading-tight">
                 <span className="mono text-[13px] font-semibold">{c.symbol}</span>
                 <span className="truncate text-[11px] text-muted">

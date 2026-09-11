@@ -8,6 +8,7 @@ import { closedBuyTooltip, sessionOpensCopy } from "@/lib/session";
 import { fmtAmount, fmtPrice, pct } from "@/lib/format";
 import type { MarketStatus } from "@/lib/types";
 import { toast } from "./Toast";
+import CommodityLogo from "./CommodityLogo";
 
 const SLIPPAGE_PCT = 0.5;
 
@@ -237,9 +238,10 @@ export default function TradePanel({
                 disabled={off}
                 title={payDisabled(p) ? closedTooltip : undefined}
                 onClick={() => setPayWith(p)}
-                className={`chip tap ${on ? "chip-on" : ""} disabled:cursor-not-allowed disabled:opacity-40`}
+                className={`chip tap gap-1.5 ${p === "COIN" ? "pl-2" : ""} ${on ? "chip-on" : ""} disabled:cursor-not-allowed disabled:opacity-40`}
                 style={{ height: 30 }}
               >
+                {p === "COIN" && <CommodityLogo symbol={coinSymbol} size={14} />}
                 {p === "COIN" ? coinSymbol : p}
               </button>
             );

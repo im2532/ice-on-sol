@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="California Water">
+  <defs>
+    <linearGradient id="H2O-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#7DD3FC"/>
+      <stop offset="1" stop-color="#0369A1"/>
+    </linearGradient>
+    <linearGradient id="H2O-gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.34"/>
+      <stop offset="0.55" stop-color="#FFFFFF" stop-opacity="0.04"/>
+      <stop offset="1" stop-color="#000000" stop-opacity="0.18"/>
+    </linearGradient>
+    <linearGradient id="H2O-sweep" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0"/>
+      <stop offset="0.5" stop-color="#FFFFFF" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="H2O-clip"><rect x="8" y="8" width="240" height="240" rx="64"/></clipPath>
+    <filter id="H2O-shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#000" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+  <style>
+    .H2O-sweep { animation: H2O-sweep 6s cubic-bezier(.4,0,.2,1) infinite; }
+    @keyframes H2O-sweep { 0%, 55% { transform: translateX(-260px) skewX(-20deg); } 100% { transform: translateX(300px) skewX(-20deg); } }
+    .H2O-glyph { transform-origin: 128px 128px; animation: H2O-drift 3.6s ease-in-out infinite; }
+    @keyframes H2O-drift { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(6px); } }
+    @media (prefers-reduced-motion: reduce) { .H2O-sweep, .H2O-glyph { animation: none; } }
+  </style>
+
+  <!-- badge -->
+  <rect x="8" y="8" width="240" height="240" rx="64" fill="url(#H2O-bg)" filter="url(#H2O-shadow)"/>
+  <rect x="8" y="8" width="240" height="240" rx="64" fill="url(#H2O-gloss)"/>
+  <rect x="9" y="9" width="238" height="238" rx="63" fill="none" stroke="#FFFFFF" stroke-opacity="0.28" stroke-width="2"/>
+
+  <!-- glyph: two stacked waves drifting -->
+  <g class="H2O-glyph" fill="none" stroke="#FFFFFF" stroke-width="12" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M74 112 Q94 96 114 112 T154 112 T194 112"/>
+    <path d="M74 150 Q94 134 114 150 T154 150 T194 150"/>
+  </g>
+
+  <!-- specular sweep (always last, clipped to the badge) -->
+  <g clip-path="url(#H2O-clip)">
+    <rect class="H2O-sweep" x="0" y="0" width="80" height="256" fill="url(#H2O-sweep)"/>
+  </g>
+</svg>

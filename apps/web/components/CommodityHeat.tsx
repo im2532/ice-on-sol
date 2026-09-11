@@ -7,6 +7,7 @@ import type { Category } from "@icemarkets/registry";
 import type { CommodityQuote } from "@/lib/types";
 import { heatBackground, signed } from "@/lib/visual";
 import { fmtPrice } from "@/lib/format";
+import CommodityLogo from "./CommodityLogo";
 
 const CATEGORY_ORDER: Category[] = [
   "metals",
@@ -113,11 +114,14 @@ export default function CommodityHeat({ commodities }: { commodities: CommodityQ
                 aria-label={`${c.symbol}, ${c.displayName ?? c.name}, ${signed(c.change24h)} percent in 24 hours`}
               >
                 <span className="flex items-start justify-between gap-2">
-                  <span
-                    className="mono font-semibold"
-                    style={{ fontSize: 11, letterSpacing: "-0.01em" }}
-                  >
-                    {c.symbol}
+                  <span className="flex items-center gap-1.5">
+                    <CommodityLogo symbol={c.symbol} size={big ? 28 : 24} />
+                    <span
+                      className="mono font-semibold"
+                      style={{ fontSize: 11, letterSpacing: "-0.01em" }}
+                    >
+                      {c.symbol}
+                    </span>
                   </span>
                   {big && (
                     <span

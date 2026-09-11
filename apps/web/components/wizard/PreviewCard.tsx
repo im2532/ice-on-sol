@@ -5,6 +5,7 @@ import { fmtPrice, pct, usd } from "@/lib/format";
 import { swatch } from "@/lib/visual";
 import type { CommodityQuote } from "@/lib/types";
 import type { FeeState } from "./FeeAndBuy";
+import CommodityLogo from "@/components/CommodityLogo";
 
 interface PreviewCardProps {
   name: string;
@@ -64,7 +65,8 @@ export default function PreviewCard({
             <span className="display truncate text-xl font-bold">{name || "Untitled market"}</span>
             <span className="mono text-[13px] text-positive">{displayTicker}</span>
           </div>
-          <span className="chip" style={{ whiteSpace: "normal", height: "auto", paddingBlock: 4 }}>
+          <span className="chip gap-1.5 pl-2" style={{ whiteSpace: "normal", height: "auto", paddingBlock: 4 }}>
+            <CommodityLogo symbol={commoditySymbol} size={14} />
             Paired with {commoditySymbol}
             {commodity ? ` · ${commodity.displayName ?? commodity.name}` : ""}
           </span>

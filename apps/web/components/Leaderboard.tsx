@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { LeaderboardRow } from "@/lib/types";
 import { fmtAmount, usd } from "@/lib/format";
 import { swatch } from "@/lib/visual";
+import CommodityLogo from "./CommodityLogo";
 
 /** Markets ranked by what they have paid holders, styled like the home page's Markets table. */
 export default function Leaderboard({ rows }: { rows: LeaderboardRow[] }) {
@@ -38,7 +39,8 @@ export default function Leaderboard({ rows }: { rows: LeaderboardRow[] }) {
                 </Link>
               </td>
               <td className="td">
-                <Link href={`/commodities/${r.pairedWith}`} className="chip mono">
+                <Link href={`/commodities/${r.pairedWith}`} className="chip mono gap-1.5 pl-2">
+                  <CommodityLogo symbol={r.pairedWith} size={16} />
                   {r.pairedWith}
                 </Link>
               </td>

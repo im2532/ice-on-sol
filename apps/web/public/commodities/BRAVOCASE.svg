@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="Bravo Case">
+  <defs>
+    <linearGradient id="BRAVOCASE-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#7DF9FF"/>
+      <stop offset="1" stop-color="#B026FF"/>
+    </linearGradient>
+    <linearGradient id="BRAVOCASE-gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.34"/>
+      <stop offset="0.55" stop-color="#FFFFFF" stop-opacity="0.04"/>
+      <stop offset="1" stop-color="#000000" stop-opacity="0.18"/>
+    </linearGradient>
+    <linearGradient id="BRAVOCASE-sweep" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0"/>
+      <stop offset="0.5" stop-color="#FFFFFF" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="BRAVOCASE-clip"><rect x="8" y="8" width="240" height="240" rx="64"/></clipPath>
+    <filter id="BRAVOCASE-shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#000" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+  <style>
+    .BRAVOCASE-sweep { animation: BRAVOCASE-sweep 6s cubic-bezier(.4,0,.2,1) infinite; }
+    @keyframes BRAVOCASE-sweep { 0%, 55% { transform: translateX(-260px) skewX(-20deg); } 100% { transform: translateX(300px) skewX(-20deg); } }
+    .BRAVOCASE-latch { transform-origin: 128px 157px; animation: BRAVOCASE-click 3s ease-in-out infinite; }
+    @keyframes BRAVOCASE-click { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(8deg); } }
+    @media (prefers-reduced-motion: reduce) { .BRAVOCASE-sweep, .BRAVOCASE-latch { animation: none; } }
+  </style>
+
+  <!-- badge -->
+  <rect x="8" y="8" width="240" height="240" rx="64" fill="url(#BRAVOCASE-bg)" filter="url(#BRAVOCASE-shadow)"/>
+  <rect x="8" y="8" width="240" height="240" rx="64" fill="url(#BRAVOCASE-gloss)"/>
+  <rect x="9" y="9" width="238" height="238" rx="63" fill="none" stroke="#FFFFFF" stroke-opacity="0.28" stroke-width="2"/>
+
+  <!-- glyph -->
+  <g class="BRAVOCASE-glyph" fill="none" stroke="#FFFFFF" stroke-width="12" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="70" y="90" width="116" height="86" rx="14"/>
+    <path d="M70 128 H186"/>
+    <circle cx="128" cy="108" r="9"/>
+    <path d="M128 117 V123"/>
+  </g>
+  <g class="BRAVOCASE-latch">
+    <rect x="118" y="150" width="20" height="14" rx="4" fill="#FFFFFF" opacity="0.9"/>
+  </g>
+
+  <!-- specular sweep (always last, clipped to the badge) -->
+  <g clip-path="url(#BRAVOCASE-clip)">
+    <rect class="BRAVOCASE-sweep" x="0" y="0" width="80" height="256" fill="url(#BRAVOCASE-sweep)"/>
+  </g>
+</svg>

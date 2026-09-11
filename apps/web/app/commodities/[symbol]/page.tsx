@@ -6,12 +6,13 @@ import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { fetchCommodity, fetchCommodityPriceHistory, fetchMarkets } from "@/lib/api";
 import { compact, fmtPriceUsd, pct, shortenAddress, timeAgo } from "@/lib/format";
-import { signed, swatch } from "@/lib/visual";
+import { signed } from "@/lib/visual";
 import { formatDuration } from "@/lib/session";
 import Chart from "@/components/Chart";
 import TradePanel from "@/components/TradePanel";
 import StatusPill from "@/components/StatusPill";
 import MarketCard from "@/components/MarketCard";
+import CommodityLogo from "@/components/CommodityLogo";
 import { INDEX_COINS, OracleKind, SessionKind, bySymbol } from "@icemarkets/registry";
 
 type Range = "24h" | "7d" | "30d";
@@ -82,11 +83,7 @@ export default function CommodityPage() {
 
       <header className="mt-4 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
         <div className="flex items-center gap-4 sm:gap-[18px]">
-          <span
-            className="h-14 w-14 shrink-0 rounded-[18px] sm:h-[72px] sm:w-[72px] sm:rounded-[22px]"
-            style={{ background: swatch(commodity.symbol), boxShadow: "inset 0 1px 0 rgba(255,255,255,0.5)" }}
-            aria-hidden="true"
-          />
+          <CommodityLogo symbol={commodity.symbol} size={72} />
           <div className="flex min-w-0 flex-col gap-1.5">
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
               <h1 className="display text-2xl font-bold sm:text-[32px]">{displayName}</h1>

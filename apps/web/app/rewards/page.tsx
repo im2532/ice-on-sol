@@ -6,9 +6,9 @@ import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { fetchLeaderboard, fetchWalletRewards } from "@/lib/api";
 import { fmtAmount, usd } from "@/lib/format";
-import { swatch } from "@/lib/visual";
 import Leaderboard from "@/components/Leaderboard";
 import FeeDonut from "@/components/FeeDonut";
+import CommodityLogo from "@/components/CommodityLogo";
 import { claim } from "@/lib/actions";
 
 const STEPS: [string, string][] = [
@@ -111,11 +111,7 @@ export default function RewardsPage() {
                     className="flex items-center justify-between gap-3 rounded-[14px] border border-white/[0.08] bg-white/[0.03] px-3.5 py-2.5"
                   >
                     <span className="flex min-w-0 items-center gap-2.5">
-                      <span
-                        className="h-7 w-7 shrink-0 rounded-[9px]"
-                        style={{ background: swatch(c.symbol) }}
-                        aria-hidden="true"
-                      />
+                      <CommodityLogo symbol={c.symbol} size={28} />
                       <span className="mono text-sm">{c.symbol}</span>
                     </span>
                     <span className="flex shrink-0 items-center gap-2.5">

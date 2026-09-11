@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="ETBMEGA Elite Trainer Box">
+  <!--
+    ICEmarkets commodity mark — "Glacier badge" family. Every mark = this frame + one glyph.
+    Rules: 256 viewBox; badge radius 64; per-category gradient (see _PALETTE.md); glass overlay;
+    glyph drawn in white strokes (stroke-width 12, round caps/joins) inside the 56..200 box;
+    two animations: the shared specular sweep (6 s) + ONE glyph micro-motion (2–4 s, subtle).
+    All animation CSS lives in <style>; reduced-motion disables it. Unique ids per file: prefix with SYMBOL.
+  -->
+  <defs>
+    <linearGradient id="ETBMEGA-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FFF06B"/>
+      <stop offset="1" stop-color="#E5484D"/>
+    </linearGradient>
+    <linearGradient id="ETBMEGA-gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.34"/>
+      <stop offset="0.55" stop-color="#FFFFFF" stop-opacity="0.04"/>
+      <stop offset="1" stop-color="#000000" stop-opacity="0.18"/>
+    </linearGradient>
+    <linearGradient id="ETBMEGA-sweep" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0"/>
+      <stop offset="0.5" stop-color="#FFFFFF" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="ETBMEGA-clip"><rect x="8" y="8" width="240" height="240" rx="64"/></clipPath>
+    <filter id="ETBMEGA-shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#000" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+  <style>
+    .ETBMEGA-sweep { animation: ETBMEGA-sweep 6s cubic-bezier(.4,0,.2,1) infinite; }
+    @keyframes ETBMEGA-sweep { 0%, 55% { transform: translateX(-260px) skewX(-20deg); } 100% { transform: translateX(300px) skewX(-20deg); } }
+    .ETBMEGA-lid { transform-origin: 128px 100px; animation: ETBMEGA-lid 3s ease-in-out infinite; }
+    @keyframes ETBMEGA-lid { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-2px); } }
+    @media (prefers-reduced-motion: reduce) { .ETBMEGA-sweep, .ETBMEGA-lid { animation: none; } }
+  </style>
+
+  <!-- badge -->
+  <rect x="8" y="8" width="240" height="240" rx="64" fill="url(#ETBMEGA-bg)" filter="url(#ETBMEGA-shadow)"/>
+  <rect x="8" y="8" width="240" height="240" rx="64" fill="url(#ETBMEGA-gloss)"/>
+  <rect x="9" y="9" width="238" height="238" rx="63" fill="none" stroke="#FFFFFF" stroke-opacity="0.28" stroke-width="2"/>
+
+  <!-- glyph -->
+  <g class="ETBMEGA-glyph" fill="none" stroke="#FFFFFF" stroke-width="12" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="70" y="112" width="116" height="76" rx="10"/>
+    <g class="ETBMEGA-lid">
+      <path d="M70 112 L86 88 H170 L186 112"/>
+    </g>
+    <path d="M128 112 L160 150 H140 V178 H116 V150 H96 Z"/>
+  </g>
+
+
+  <!-- specular sweep (always last, clipped to the badge) -->
+  <g clip-path="url(#ETBMEGA-clip)">
+    <rect class="ETBMEGA-sweep" x="0" y="0" width="80" height="256" fill="url(#ETBMEGA-sweep)"/>
+  </g>
+</svg>

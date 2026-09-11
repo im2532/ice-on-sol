@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="Dragon Lore">
+  <defs>
+    <linearGradient id="DLORE-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#7DF9FF"/>
+      <stop offset="1" stop-color="#B026FF"/>
+    </linearGradient>
+    <linearGradient id="DLORE-gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.34"/>
+      <stop offset="0.55" stop-color="#FFFFFF" stop-opacity="0.04"/>
+      <stop offset="1" stop-color="#000000" stop-opacity="0.18"/>
+    </linearGradient>
+    <linearGradient id="DLORE-sweep" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0"/>
+      <stop offset="0.5" stop-color="#FFFFFF" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="DLORE-clip"><rect x="8" y="8" width="240" height="240" rx="64"/></clipPath>
+    <filter id="DLORE-shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#000" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+  <style>
+    .DLORE-sweep { animation: DLORE-sweep 6s cubic-bezier(.4,0,.2,1) infinite; }
+    @keyframes DLORE-sweep { 0%, 55% { transform: translateX(-260px) skewX(-20deg); } 100% { transform: translateX(300px) skewX(-20deg); } }
+    .DLORE-wing { transform-origin: 50px 126px; animation: DLORE-sway 3.6s ease-in-out infinite; }
+    @keyframes DLORE-sway { 0%, 100% { transform: rotate(-5deg); } 50% { transform: rotate(5deg); } }
+    @media (prefers-reduced-motion: reduce) { .DLORE-sweep, .DLORE-wing { animation: none; } }
+  </style>
+
+  <!-- badge -->
+  <rect x="8" y="8" width="240" height="240" rx="64" fill="url(#DLORE-bg)" filter="url(#DLORE-shadow)"/>
+  <rect x="8" y="8" width="240" height="240" rx="64" fill="url(#DLORE-gloss)"/>
+  <rect x="9" y="9" width="238" height="238" rx="63" fill="none" stroke="#FFFFFF" stroke-opacity="0.28" stroke-width="2"/>
+
+  <!-- glyph -->
+  <g fill="none" stroke="#FFFFFF" stroke-width="12" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="58" y="108" width="34" height="26" rx="8"/>
+    <rect x="80" y="112" width="50" height="26" rx="8"/>
+    <rect x="74" y="82" width="62" height="16" rx="8"/>
+    <line x1="82" y1="138" x2="67" y2="164"/>
+    <rect x="110" y="138" width="16" height="18" rx="4"/>
+  </g>
+  <g fill="none" stroke="#FFFFFF" stroke-width="10" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="130" y1="125" x2="196" y2="125"/>
+    <path d="M170 131 L160 155 M170 131 L180 157"/>
+  </g>
+  <path class="DLORE-wing" d="M58 118 Q42 112 42 126 Q54 128 58 136 Z" fill="#FFFFFF" opacity="0.9"/>
+
+  <!-- specular sweep (always last, clipped to the badge) -->
+  <g clip-path="url(#DLORE-clip)">
+    <rect class="DLORE-sweep" x="0" y="0" width="80" height="256" fill="url(#DLORE-sweep)"/>
+  </g>
+</svg>

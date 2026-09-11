@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="Spicy Chicken">
+  <defs>
+    <linearGradient id="SPICYCHIX-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FFD166"/>
+      <stop offset="1" stop-color="#FF6B2C"/>
+    </linearGradient>
+    <linearGradient id="SPICYCHIX-gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.34"/>
+      <stop offset="0.55" stop-color="#FFFFFF" stop-opacity="0.04"/>
+      <stop offset="1" stop-color="#000000" stop-opacity="0.18"/>
+    </linearGradient>
+    <linearGradient id="SPICYCHIX-sweep" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0"/>
+      <stop offset="0.5" stop-color="#FFFFFF" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="SPICYCHIX-clip"><rect x="8" y="8" width="240" height="240" rx="64"/></clipPath>
+    <filter id="SPICYCHIX-shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#000" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+  <style>
+    .SPICYCHIX-sweep { animation: SPICYCHIX-sweep 6s cubic-bezier(.4,0,.2,1) infinite; }
+    @keyframes SPICYCHIX-sweep { 0%, 55% { transform: translateX(-260px) skewX(-20deg); } 100% { transform: translateX(300px) skewX(-20deg); } }
+    .SPICYCHIX-glyph { transform-origin: 178px 190px; animation: SPICYCHIX-flicker 2.6s ease-in-out infinite; }
+    @keyframes SPICYCHIX-flicker { 0%, 100% { transform: scaleY(1); opacity: 1; } 50% { transform: scaleY(1.1); opacity: 0.75; } }
+    @media (prefers-reduced-motion: reduce) { .SPICYCHIX-sweep, .SPICYCHIX-glyph { animation: none; } }
+  </style>
+
+  <!-- badge -->
+  <rect x="8" y="8" width="240" height="240" rx="64" fill="url(#SPICYCHIX-bg)" filter="url(#SPICYCHIX-shadow)"/>
+  <rect x="8" y="8" width="240" height="240" rx="64" fill="url(#SPICYCHIX-gloss)"/>
+  <rect x="9" y="9" width="238" height="238" rx="63" fill="none" stroke="#FFFFFF" stroke-opacity="0.28" stroke-width="2"/>
+
+  <!-- glyph: sandwich with small flame accent -->
+  <g fill="none" stroke="#FFFFFF" stroke-width="12" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M70 100 Q108 80 146 100"/>
+    <path d="M66 114 H150"/>
+    <path d="M68 128 Q108 148 148 128"/>
+  </g>
+  <g class="SPICYCHIX-glyph" fill="none" stroke="#FFFFFF" stroke-width="12" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M175 190 C160 178 160 156 172 144 C170 156 182 156 182 144 C190 156 196 172 186 182 C190 174 182 172 180 178 C182 184 178 190 175 190 Z"/>
+    <ellipse cx="175" cy="172" rx="5" ry="7" fill="#FFFFFF" fill-opacity="0.9" stroke="none"/>
+  </g>
+
+  <!-- specular sweep (always last, clipped to the badge) -->
+  <g clip-path="url(#SPICYCHIX-clip)">
+    <rect class="SPICYCHIX-sweep" x="0" y="0" width="80" height="256" fill="url(#SPICYCHIX-sweep)"/>
+  </g>
+</svg>

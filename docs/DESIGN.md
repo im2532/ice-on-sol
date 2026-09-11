@@ -143,6 +143,7 @@ those words in the tree, they are a leftover and should be replaced.
 ### Shared
 | File | Role |
 | --- | --- |
+| `components/CommodityLogo.tsx` | `<CommodityLogo symbol size className rounded?>` — one commodity's animated SVG mark, with a `swatch()` initials fallback. See §7. |
 | `components/Bonding.tsx` | Gradient curve bar + "72%" / "Graduated". |
 | `components/CommodityTile.tsx` | One commodity coin on `/commodities`. |
 | `components/MarketCard.tsx` | One market as a glass card. |
@@ -191,7 +192,56 @@ Rules that hold everywhere:
   never ellipsized.
 - Percentages render through `signed()` so gains read `+18.4%` and losses `−4.2%`.
 
-## 6. Accessibility
+## 7. Commodity marks
+
+Every commodity coin — the 96 in `packages/registry/src/commodities.ts` (`COMMODITIES` +
+`INDEX_COINS`, exported together as `ALL`) — has a hand-drawn, lightly animated SVG mark at
+`apps/web/public/commodities/<SYMBOL>.svg`. `_TEMPLATE.svg` and `_PALETTE.md` live in the same
+folder as authoring references and must **never** be served as a coin's logo (they aren't named
+after a registry symbol, so `CommodityLogo` never resolves to them by construction).
+
+### Family rules
+
+- **One mark per registry `symbol`**, filename exactly `<SYMBOL>.svg` (the on-chain symbol, same
+  casing as `commodities.ts`).
+- Same viewBox and construction as `_TEMPLATE.svg`; palette drawn from `_PALETTE.md` so marks read
+  as one family at a glance in `/commodities` and the heat grid.
+- Subtle SVG-native animation only (a slow gradient drift, a soft pulse) — nothing that competes
+  with the mono numbers around it, and everything collapses under
+  `prefers-reduced-motion: reduce` per the usual Glacier rule (§2).
+- Served statically from `/public`, so no build step touches them; `next.config.ts` sends
+  `Cache-Control: public, max-age=31536000, immutable` for `/commodities/:path*`.
+
+### Rendering: `CommodityLogo`
+
+`components/CommodityLogo.tsx` — `<CommodityLogo symbol size={32} className rounded? />`.
+Renders `<img src="/commodities/<SYMBOL>.svg">` lazily; `onError` swaps to the existing
+`swatch()` gradient with the symbol's first two letters in 11px mono — the same fallback the
+system already used everywhere before hand-drawn marks existed, so a coin mid-rollout never shows
+a broken image. Wrapped in `React.memo`.
+
+Sizes in use across the app:
+
+| Size | Where |
+| --- | --- |
+| 14–16px | Inline chips — "Pay with", "Paired with", the Markets table's Commodity chip |
+| 28–32px | Table rows, tiles' corner mark, rewards rows |
+| 36–40px | `/launch` CommodityPicker rows, CommodityTile, the token page's "Paired with" card |
+| 48–56px | Heat-grid big tiles, `/dev/logos` |
+| 72px | `/commodities/[symbol]` page header |
+
+A memecoin **market**'s own image keeps the generated market `swatch()` until it has a real
+uploaded image — `CommodityLogo` is only ever used for a commodity coin, never a market.
+
+### Adding a new coin's mark
+
+1. Add the coin to `COMMODITIES` (or `INDEX_COINS`) in `packages/registry/src/commodities.ts`.
+2. Duplicate `_TEMPLATE.svg` to `<SYMBOL>.svg` in `apps/web/public/commodities/`, and pick colors
+   from `_PALETTE.md` (or extend it, for a new category).
+3. Nothing else to wire up — every call site renders by `symbol`, so the new file is picked up
+   everywhere the coin already appears. Check it at `/dev/logos` in development.
+
+## 8. Accessibility
 
 Focus-visible green rings everywhere; `.tap` guarantees 44px targets on phones; tabs carry
 `role="tab"` + `aria-selected`, filters `aria-pressed`, the curve bar `role="progressbar"` with

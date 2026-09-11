@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="Heating Oil">
+  <defs>
+    <linearGradient id="HO-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FF8C42"/>
+      <stop offset="1" stop-color="#5B2ED6"/>
+    </linearGradient>
+    <linearGradient id="HO-gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.34"/>
+      <stop offset="0.55" stop-color="#FFFFFF" stop-opacity="0.04"/>
+      <stop offset="1" stop-color="#000000" stop-opacity="0.18"/>
+    </linearGradient>
+    <linearGradient id="HO-sweep" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0"/>
+      <stop offset="0.5" stop-color="#FFFFFF" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="HO-clip"><rect x="8" y="8" width="240" height="240" rx="64"/></clipPath>
+    <filter id="HO-shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#000" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+  <style>
+    .HO-sweep { animation: HO-sweep 6s cubic-bezier(.4,0,.2,1) infinite; }
+    @keyframes HO-sweep { 0%, 55% { transform: translateX(-260px) skewX(-20deg); } 100% { transform: translateX(300px) skewX(-20deg); } }
+    .HO-glyph { transform-origin: 128px 128px; animation: HO-heatrise 3.2s ease-in-out infinite; }
+    @keyframes HO-heatrise { 0%, 100% { transform: translateY(0); opacity: 1; } 50% { transform: translateY(-4px); opacity: 0.85; } }
+    @media (prefers-reduced-motion: reduce) { .HO-sweep, .HO-glyph { animation: none; } }
+  </style>
+
+  <!-- badge -->
+  <rect x="8" y="8" width="240" height="240" rx="64" fill="url(#HO-bg)" filter="url(#HO-shadow)"/>
+  <rect x="8" y="8" width="240" height="240" rx="64" fill="url(#HO-gloss)"/>
+  <rect x="9" y="9" width="238" height="238" rx="63" fill="none" stroke="#FFFFFF" stroke-opacity="0.28" stroke-width="2"/>
+
+  <!-- glyph: radiator with wavy heat lines rising -->
+  <g class="HO-glyph" fill="none" stroke="#FFFFFF" stroke-width="12" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="88" y="140" width="104" height="40" rx="8"/>
+    <path d="M108 140 V180"/>
+    <path d="M132 140 V180"/>
+    <path d="M156 140 V180"/>
+    <path d="M112 128 Q120 112 112 96 Q104 80 112 66"/>
+    <path d="M148 128 Q156 112 148 96 Q140 80 148 66"/>
+  </g>
+
+  <!-- specular sweep (always last, clipped to the badge) -->
+  <g clip-path="url(#HO-clip)">
+    <rect class="HO-sweep" x="0" y="0" width="80" height="256" fill="url(#HO-sweep)"/>
+  </g>
+</svg>

@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="Cocoa">
+  <defs>
+    <linearGradient id="CC-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FFD166"/>
+      <stop offset="1" stop-color="#C2410C"/>
+    </linearGradient>
+    <linearGradient id="CC-gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.34"/>
+      <stop offset="0.55" stop-color="#FFFFFF" stop-opacity="0.04"/>
+      <stop offset="1" stop-color="#000000" stop-opacity="0.18"/>
+    </linearGradient>
+    <linearGradient id="CC-sweep" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0"/>
+      <stop offset="0.5" stop-color="#FFFFFF" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="CC-clip"><rect x="8" y="8" width="240" height="240" rx="64"/></clipPath>
+    <filter id="CC-shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#000" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+  <style>
+    .CC-sweep { animation: CC-sweep 6s cubic-bezier(.4,0,.2,1) infinite; }
+    @keyframes CC-sweep { 0%, 55% { transform: translateX(-260px) skewX(-20deg); } 100% { transform: translateX(300px) skewX(-20deg); } }
+    .CC-glyph { transform-origin: 128px 130px; animation: CC-float 3.6s ease-in-out infinite; }
+    @keyframes CC-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+    @media (prefers-reduced-motion: reduce) { .CC-sweep, .CC-glyph { animation: none; } }
+  </style>
+
+  <!-- badge -->
+  <rect x="8" y="8" width="240" height="240" rx="64" fill="url(#CC-bg)" filter="url(#CC-shadow)"/>
+  <rect x="8" y="8" width="240" height="240" rx="64" fill="url(#CC-gloss)"/>
+  <rect x="9" y="9" width="238" height="238" rx="63" fill="none" stroke="#FFFFFF" stroke-opacity="0.28" stroke-width="2"/>
+
+  <!-- glyph: ribbed cacao pod -->
+  <g class="CC-glyph" fill="none" stroke="#FFFFFF" stroke-width="12" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M128 62 C160 70 176 100 176 130 C176 168 156 196 128 198 C100 196 80 168 80 130 C80 100 96 70 128 62 Z"/>
+    <path d="M104 76 C96 104 96 156 108 188"/>
+    <path d="M118 66 C112 100 112 160 120 196"/>
+    <path d="M136 66 C142 100 142 160 134 196"/>
+    <path d="M150 76 C158 104 158 156 146 188"/>
+  </g>
+
+  <!-- specular sweep (always last, clipped to the badge) -->
+  <g clip-path="url(#CC-clip)">
+    <rect class="CC-sweep" x="0" y="0" width="80" height="256" fill="url(#CC-sweep)"/>
+  </g>
+</svg>
