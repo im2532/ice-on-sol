@@ -24,7 +24,7 @@ const CATEGORY_ORDER: Category[] = [
 ];
 
 const VISIBLE_CHIPS = 6;
-const TILE_COUNT = 13;
+const TILE_COUNT = 11; // GLD (2×2 = 4 cells) + HG (2×1 = 2) + 9 singles = 15 cells = exactly 3 rows of 5, no orphans
 /** The two busiest commodities (GLD, HG) get a wider tile — size reads as "markets paired". */
 const BIG_TILES = 2;
 
