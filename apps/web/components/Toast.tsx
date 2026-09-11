@@ -35,9 +35,9 @@ export const toast = {
 };
 
 const KIND_STYLE: Record<ToastKind, string> = {
-  success: "border-positive/40 text-positive",
-  error: "border-negative/40 text-negative",
-  info: "border-purple/40 text-text",
+  success: "text-positive",
+  error: "text-negative",
+  info: "text-text",
 };
 
 export function Toaster() {
@@ -51,14 +51,14 @@ export function Toaster() {
 
   return (
     <div
-      className="fixed bottom-4 right-4 z-[100] flex w-[calc(100vw-2rem)] max-w-sm flex-col gap-2"
+      className="fixed bottom-[100px] right-4 z-[100] flex w-[calc(100vw-2rem)] max-w-sm flex-col gap-2 md:bottom-4"
       aria-live="polite"
       role="status"
     >
       {list.map((t) => (
         <div
           key={t.id}
-          className={`icemarkets-card animate-toast-in border px-4 py-3 text-sm shadow-glow ${KIND_STYLE[t.kind]}`}
+          className={`glass-strong animate-toast-in px-4 py-3 text-sm ${KIND_STYLE[t.kind]}`}
         >
           {t.message}
         </div>

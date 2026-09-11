@@ -1,20 +1,24 @@
 import type { MarketStatus } from "@/lib/types";
 
 const STYLE: Record<MarketStatus, string> = {
-  open: "bg-positive/10 text-positive border-positive/30",
-  closed: "bg-muted/10 text-muted border-border",
-  halted: "bg-negative/10 text-negative border-negative/30",
+  open: "chip-positive",
+  closed: "",
+  halted: "chip-warn",
+};
+
+const DOT: Record<MarketStatus, string> = {
+  open: "bg-positive",
+  closed: "bg-muted",
+  halted: "bg-negative",
 };
 
 const LABEL: Record<MarketStatus, string> = { open: "Open", closed: "Closed", halted: "Halted" };
 
-export default function StatusPill({ status }: { status: MarketStatus }) {
+/** Commodity-coin trading status as a glass chip. */
+export default function StatusPill({ status, className = "" }: { status: MarketStatus; className?: string }) {
   return (
-    <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium ${STYLE[status]}`}>
-      <span
-        className={`h-1.5 w-1.5 rounded-full ${status === "open" ? "bg-positive" : status === "halted" ? "bg-negative" : "bg-muted"}`}
-        aria-hidden="true"
-      />
+    <span className={`chip ${STYLE[status]} ${className}`}>
+      <span className={`h-1.5 w-1.5 rounded-full ${DOT[status]}`} aria-hidden="true" />
       {LABEL[status]}
     </span>
   );

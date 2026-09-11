@@ -83,6 +83,19 @@ export interface LeaderboardRow {
   holderShareUsd: number;
 }
 
+/** One holder payout from the "Holder rewards" live feed (GET /rewards/payouts). */
+export interface Payout {
+  id: string;
+  wallet: string;
+  mint: string;
+  /** Market ticker the payout came from. */
+  ticker: string;
+  /** Commodity coin the reward is paid in. */
+  commoditySymbol: string;
+  amount: number;
+  ts: number; // unix seconds
+}
+
 export interface WalletRewards {
   wallet: string;
   totalEarnedUsd: number;

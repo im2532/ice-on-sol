@@ -2,106 +2,407 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================================================
+   Glacier — ICEmarkets design system
+   Ground #05060B, aurora of Solana purple/green, liquid-glass panels.
+   Type: Sora (display) · Manrope (body) · JetBrains Mono (every number).
+   ========================================================================== */
+
 :root {
-  --color-bg: #0a0a0f;
-  --color-surface: #12121a;
-  --color-surface-2: #171722;
-  --color-border: #23232f;
-  --color-text: #f5f5f7;
-  --color-muted: #8b8b9a;
-  --color-positive: #14f195;
-  --color-negative: #ff5c5c;
-  --color-purple: #9945ff;
-  --color-green: #14f195;
+  --ground: #05060b;
+  --text: #eef0f6;
+  --muted: #8b90a6;
+  --body: #b7bbcb;
+  --dim: #c9ccda;
+  --positive: #14f195;
+  --negative: #ff5c7a;
+  --purple: #9945ff;
+  --lavender: #c9b6ff;
+
+  --glass-bg: rgba(255, 255, 255, 0.045);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --glass-bg-strong: rgba(255, 255, 255, 0.07);
+  --glass-border-strong: rgba(255, 255, 255, 0.14);
+  --hairline: rgba(255, 255, 255, 0.08);
+  --hairline-soft: rgba(255, 255, 255, 0.06);
+  --well: rgba(0, 0, 0, 0.3);
+
   color-scheme: dark;
 }
 
 * {
-  border-color: var(--color-border);
+  border-color: var(--hairline);
 }
 
 html,
 body {
-  background: var(--color-bg);
-  color: var(--color-text);
+  background: var(--ground);
+  color: var(--text);
 }
 
 body {
-  font-family: var(--font-inter), Inter, system-ui, sans-serif;
-}
-
-.font-nums {
-  font-family: var(--font-jbmono), "JetBrains Mono", monospace;
-  font-variant-numeric: tabular-nums;
+  font-family: var(--font-body), Manrope, "Segoe UI", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
 
 ::selection {
   background: rgba(153, 69, 255, 0.35);
 }
 
-.icemarkets-card {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 0.875rem;
+@layer components {
+  /* ---- layout ----------------------------------------------------------- */
+  /* The single content measure. Nothing in the app is wider than 1280px. */
+  .container-x {
+    width: 100%;
+    max-width: 1280px;
+    margin-inline: auto;
+    padding-inline: 16px;
+  }
+  @media (min-width: 768px) {
+    .container-x {
+      padding-inline: 24px;
+    }
+  }
+
+  /* ---- type ------------------------------------------------------------- */
+  .display {
+    font-family: var(--font-display), Sora, Manrope, system-ui, sans-serif;
+    letter-spacing: -0.02em;
+  }
+
+  .mono,
+  .font-nums {
+    font-family: var(--font-mono), "JetBrains Mono", ui-monospace, Menlo, monospace;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+  }
+
+  /* Labels wrap rather than ellipsize — an eyebrow must always be readable in full. */
+  .eyebrow {
+    font-family: var(--font-mono), "JetBrains Mono", monospace;
+    font-size: 11px;
+    line-height: 1.3;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    white-space: normal;
+    overflow-wrap: break-word;
+  }
+
+  /* ---- aurora ----------------------------------------------------------- */
+  .aurora-layer {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+    pointer-events: none;
+  }
+  .aurora-purple {
+    position: absolute;
+    width: 1000px;
+    height: 1000px;
+    left: -300px;
+    top: -500px;
+    border-radius: 50%;
+    background: radial-gradient(closest-side, rgba(153, 69, 255, 0.26), rgba(153, 69, 255, 0));
+    filter: blur(40px);
+  }
+  .aurora-green {
+    position: absolute;
+    width: 800px;
+    height: 800px;
+    right: -200px;
+    top: 200px;
+    border-radius: 50%;
+    background: radial-gradient(closest-side, rgba(20, 241, 149, 0.14), rgba(20, 241, 149, 0));
+    filter: blur(40px);
+  }
+  .gridlines {
+    position: absolute;
+    inset: 0;
+    background-image: linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+    background-size: 48px 48px;
+    mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0) 60%);
+    -webkit-mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0) 60%);
+  }
+
+  /* ---- glass ------------------------------------------------------------ */
+  .glass {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    backdrop-filter: blur(24px) saturate(160%);
+    -webkit-backdrop-filter: blur(24px) saturate(160%);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), inset 0 -1px 0 rgba(0, 0, 0, 0.25),
+      0 24px 60px rgba(0, 0, 0, 0.45);
+    border-radius: 20px;
+  }
+
+  .glass-strong {
+    background: var(--glass-bg-strong);
+    border: 1px solid var(--glass-border-strong);
+    backdrop-filter: blur(28px) saturate(180%);
+    -webkit-backdrop-filter: blur(28px) saturate(180%);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 30px 80px rgba(0, 0, 0, 0.5);
+    border-radius: 20px;
+  }
+
+  /* ---- chip ------------------------------------------------------------- */
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 26px;
+    padding: 0 10px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid var(--glass-border);
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--dim);
+    white-space: nowrap;
+  }
+  .chip-on {
+    background: rgba(255, 255, 255, 0.12);
+    color: var(--text);
+  }
+  .chip-positive {
+    background: rgba(20, 241, 149, 0.12);
+    border-color: rgba(20, 241, 149, 0.35);
+    color: var(--positive);
+  }
+  .chip-warn {
+    background: rgba(255, 92, 122, 0.1);
+    border-color: rgba(255, 92, 122, 0.35);
+    color: var(--negative);
+  }
+
+  /* ---- tabs ------------------------------------------------------------- */
+  .tab {
+    height: 34px;
+    padding: 0 14px;
+    border-radius: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+    white-space: nowrap;
+    transition: color 0.15s ease, background 0.15s ease;
+  }
+  .tab:hover {
+    color: var(--text);
+  }
+  .tab-on {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  }
+  .tabset {
+    display: inline-flex;
+    gap: 2px;
+    padding: 3px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  /* ---- buttons ---------------------------------------------------------- */
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: 44px;
+    padding: 0 20px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #9945ff, #14f195);
+    color: #05060b;
+    font-weight: 700;
+    font-size: 14px;
+    box-shadow: 0 10px 30px rgba(153, 69, 255, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+    transition: filter 0.15s ease, transform 0.1s ease;
+  }
+  .btn-primary:hover {
+    filter: brightness(1.06);
+  }
+  .btn-primary:active {
+    transform: scale(0.99);
+  }
+  .btn-primary:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    filter: none;
+    transform: none;
+  }
+
+  .btn-ghost {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: 44px;
+    padding: 0 18px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: var(--text);
+    font-weight: 600;
+    font-size: 14px;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14);
+    transition: background 0.15s ease;
+  }
+  .btn-ghost:hover {
+    background: rgba(255, 255, 255, 0.1);
+  }
+  .btn-ghost:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  /* ---- fields ----------------------------------------------------------- */
+  .field {
+    border-radius: 12px;
+    background: var(--well);
+    border: 1px solid var(--hairline);
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding: 0 14px;
+    font-size: 14px;
+    color: var(--text);
+    width: 100%;
+  }
+  /* Applied directly to a control rather than to a wrapper: flex would break its text box. */
+  input.field,
+  textarea.field,
+  select.field {
+    display: block;
+    padding: 11px 14px;
+  }
+  textarea.field {
+    min-height: 84px;
+  }
+  .field::placeholder,
+  .field input::placeholder,
+  .field textarea::placeholder {
+    color: #5d6178;
+  }
+  .well {
+    border-radius: 14px;
+    background: var(--well);
+    border: 1px solid var(--hairline);
+  }
+
+  /* ---- table ------------------------------------------------------------ */
+  .th {
+    font-family: var(--font-mono), "JetBrains Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 500;
+    padding: 12px 16px;
+    text-align: left;
+    border-bottom: 1px solid var(--hairline);
+    white-space: nowrap;
+  }
+  .td {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--hairline-soft);
+    font-size: 14px;
+    vertical-align: middle;
+  }
+  tbody tr:last-child .td {
+    border-bottom: 0;
+  }
+
+  /* ---- misc ------------------------------------------------------------- */
+  .tile {
+    box-sizing: border-box;
+    border-radius: 12px;
+    padding: 12px 12px 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    border: 1px solid var(--hairline);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    min-height: 0;
+    overflow: hidden;
+    text-align: left;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+  }
+
+  /* Interactive surfaces lift by one step on hover. */
+  a.tile:hover,
+  button.tile:hover {
+    border-color: var(--glass-border-strong);
+    filter: brightness(1.18);
+  }
+
+  .glass-hover {
+    transition: background 0.15s ease, border-color 0.15s ease;
+  }
+  .glass-hover:hover {
+    background: var(--glass-bg-strong);
+    border-color: var(--glass-border-strong);
+  }
+
+  /* Table rows share the same hover step as glass panels. */
+  .row-hover {
+    transition: background 0.15s ease;
+  }
+  .row-hover:hover {
+    background: var(--glass-bg-strong);
+  }
+
+  .step-badge {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-mono), "JetBrains Mono", monospace;
+    font-size: 12px;
+    font-weight: 600;
+    flex-shrink: 0;
+  }
 }
 
-.icemarkets-gradient-text {
-  background-image: linear-gradient(90deg, #9945ff, #14f195);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+/* ---- focus ------------------------------------------------------------- */
+:focus-visible {
+  outline: 2px solid var(--positive);
+  outline-offset: 2px;
 }
-
-.icemarkets-btn-primary {
-  background: var(--color-positive);
-  color: #06120c;
-  font-weight: 600;
-  border-radius: 0.6rem;
-  transition: filter 0.15s ease, transform 0.1s ease;
-}
-.icemarkets-btn-primary:hover {
-  filter: brightness(1.08);
-}
-.icemarkets-btn-primary:active {
-  transform: scale(0.98);
-}
-.icemarkets-btn-primary:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  filter: none;
-}
-
-.icemarkets-btn-secondary {
-  background: var(--color-surface-2);
-  border: 1px solid var(--color-border);
-  color: var(--color-text);
-  border-radius: 0.6rem;
-  transition: background 0.15s ease;
-}
-.icemarkets-btn-secondary:hover {
-  background: #1d1d2b;
-}
-
-.icemarkets-focus:focus-visible {
-  outline: 2px solid var(--color-green);
+.focus-ice:focus-visible {
+  outline: 2px solid var(--positive);
   outline-offset: 2px;
 }
 
-a,
-button {
-  outline-color: var(--color-green);
+a {
+  color: inherit;
+  text-decoration: none;
+}
+.link {
+  color: var(--lavender);
+}
+.link:hover {
+  color: #e7ddff;
 }
 
+/* ---- scrollbars --------------------------------------------------------- */
 .scrollbar-thin::-webkit-scrollbar {
   height: 6px;
   width: 6px;
 }
 .scrollbar-thin::-webkit-scrollbar-thumb {
-  background: var(--color-border);
+  background: rgba(255, 255, 255, 0.14);
   border-radius: 4px;
 }
 
-@keyframes icemarkets-toast-in {
+/* ---- animation ---------------------------------------------------------- */
+@keyframes glacier-toast-in {
   from {
     opacity: 0;
     transform: translateY(8px);
@@ -112,5 +413,89 @@ button {
   }
 }
 .animate-toast-in {
-  animation: icemarkets-toast-in 0.18s ease-out;
+  animation: glacier-toast-in 0.18s ease-out;
+}
+
+@keyframes glacier-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+.live-dot {
+  animation: glacier-pulse 2.4s ease-in-out infinite;
+}
+
+/* ---- fallbacks: no backdrop-filter, or the viewer asked for less glass --- */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass {
+    background: rgba(19, 21, 32, 0.94);
+  }
+  .glass-strong {
+    background: rgba(25, 27, 40, 0.96);
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .glass {
+    background: rgba(19, 21, 32, 0.96);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  .glass-strong {
+    background: rgba(25, 27, 40, 0.98);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  .aurora-purple,
+  .aurora-green,
+  .gridlines {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ---- wallet-adapter modal, dressed as glass ----------------------------- */
+.wallet-adapter-modal-wrapper {
+  background: rgba(19, 21, 32, 0.96) !important;
+  border: 1px solid var(--glass-border-strong);
+  border-radius: 20px !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 30px 80px rgba(0, 0, 0, 0.5) !important;
+  font-family: var(--font-body), Manrope, system-ui, sans-serif;
+}
+.wallet-adapter-modal-title {
+  font-family: var(--font-display), Sora, system-ui, sans-serif;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+.wallet-adapter-modal-list li button,
+.wallet-adapter-button {
+  font-family: var(--font-body), Manrope, system-ui, sans-serif;
+  border-radius: 12px !important;
+}
+
+/* ---- mobile ------------------------------------------------------------- */
+@media (max-width: 768px) {
+  /* 44px minimum touch targets. */
+  .tap {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  /* Clearance for the fixed bottom nav bar (64px tall, 22px from the edge). */
+  body {
+    padding-bottom: 96px;
+  }
 }

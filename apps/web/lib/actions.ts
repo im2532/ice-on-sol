@@ -141,6 +141,19 @@ async function toTx(connection: Connection, payer: PublicKey, built: Pick<BuiltT
   return new VersionedTransaction(msg);
 }
 
+/** Metaplex caps metadata URIs at 200 bytes and Anchor's instruction encoder at 1000 bytes total, so a
+ *  base64 `data:` URI from the stub upload route (apps/web/app/api/upload) can never go on chain. Until
+ *  Irys uploads are wired up, launch with an empty URI rather than failing with "encoding overruns Buffer". */
+const MAX_METADATA_URI_BYTES = 200;
+function metadataUri(uri: string | undefined): string {
+  if (!uri) return "";
+  if (uri.startsWith("data:") || new TextEncoder().encode(uri).length > MAX_METADATA_URI_BYTES) {
+    console.warn(`launch: dropping metadata uri (${uri.slice(0, 30)}…, ${uri.length} chars) — needs a hosted URL ≤ ${MAX_METADATA_URI_BYTES} bytes`);
+    return "";
+  }
+  return uri;
+}
+
 async function sendAndToast(
   txs: { tx: Transaction | VersionedTransaction; signers?: Signer[] }[],
   deps: SendTxDeps,
@@ -148,8 +161,16 @@ async function sendAndToast(
 ): Promise<string[]> {
   const sigs: string[] = [];
   try {
-    for (const { tx, signers } of txs) {
-      sigs.push(await deps.sendTransaction(tx, deps.connection, signers?.length ? { signers } : undefined));
+    for (const [i, { tx, signers }] of txs.entries()) {
+      const sig = await deps.sendTransaction(tx, deps.connection, signers?.length ? { signers } : undefined);
+      sigs.push(sig);
+      // Later txs depend on earlier ones (e.g. the DBC pool init reads the config created just before),
+      // so wait for confirmation before sending the next.
+      if (i < txs.length - 1) {
+        const bh = await deps.connection.getLatestBlockhash("confirmed");
+        const res = await deps.connection.confirmTransaction({ signature: sig, ...bh }, "confirmed");
+        if (res.value.err) throw new Error(`transaction ${i + 1}/${txs.length} failed: ${JSON.stringify(res.value.err)} (${sig})`);
+      }
     }
     toast.success(successMessage);
     return sigs;
@@ -173,7 +194,7 @@ async function guard<T>(what: string, fn: () => Promise<T>): Promise<T | null> {
 // ---------------------------------------------------------------------------
 
 /**
- * Launch: SDK `buildLaunchTransactions` (CONTRACTS §5) — 1 v0 tx (USDC) or 2 (SOL → USDC, then launch),
+ * Launch: SDK `buildLaunchTransactions` (CONTRACTS §5) — 2 v0 txs (DBC config, then launch) or 3 with a SOL → USDC swap first,
  * compiled against the launch lookup table from `/deployments/<cluster>.json` when present.
  * Index coins (Composite) are paired like any other commodity; the SDK prices them from their legs.
  */
@@ -188,7 +209,7 @@ export async function launchMarket(params: LaunchParams, deps: SendTxDeps): Prom
       commoditySymbol: params.commoditySymbol,
       name: params.name,
       symbol: params.ticker,
-      uri: params.imageUri,
+      uri: metadataUri(params.imageUri),
       feeTierBps: params.feeBps,
       firstBuyUsdc: params.firstBuyUsd,
       payWith: params.payWith,
@@ -200,18 +221,15 @@ export async function launchMarket(params: LaunchParams, deps: SendTxDeps): Prom
       userUsdcAta: sdk.ata(USDC_MINT, params.ownerWallet),
       userCoinAta: sdk.ata(commodity.coinMint, params.ownerWallet),
       // DBC leftoverReceiver (leftover = 0 in the launch config, so this only matters as a sink).
-      treasury: new PublicKey(process.env.NEXT_PUBLIC_TREASURY ?? routerPda.toBase58()),
+      treasury: new PublicKey(process.env.NEXT_PUBLIC_TREASURY || routerPda.toBase58()), // `||`: an empty env var means "unset"
       pegDesk,
       slippageBps: DEFAULT_SLIPPAGE_BPS,
       addressLookupTable,
     };
     const res = await sdk.buildLaunchTransactions(launch);
-    // v0 txs are compiled (fee payer + blockhash) by the SDK. The launch tx (last one) also needs the
-    // fresh DBC config + base mint keypairs; wallet-adapter applies `signers` before the wallet signs.
-    return res.transactions.map((tx, i) => {
-      const isLaunchTx = i === res.transactions.length - 1;
-      return { tx, signers: isLaunchTx ? [res.configKeypair, res.baseMintKeypair] : [] };
-    });
+    // v0 txs are compiled (fee payer + blockhash) by the SDK; `res.signers[i]` carries the fresh DBC
+    // config / base mint keypair each tx needs. wallet-adapter applies them before the wallet signs.
+    return res.transactions.map((tx, i) => ({ tx, signers: res.signers[i] ?? [] }));
   });
   if (!built) return null;
   return sendAndToast(built, deps, `Launched $${params.ticker}`);

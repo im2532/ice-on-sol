@@ -5,14 +5,31 @@ import { notFound, useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { fetchCommodity, fetchCommodityPriceHistory, fetchMarkets } from "@/lib/api";
-import { compact, pct, pctClass, shortenAddress, timeAgo, usd } from "@/lib/format";
+import { compact, fmtPriceUsd, pct, shortenAddress, timeAgo } from "@/lib/format";
+import { signed, swatch } from "@/lib/visual";
+import { formatDuration } from "@/lib/session";
 import Chart from "@/components/Chart";
 import TradePanel from "@/components/TradePanel";
 import StatusPill from "@/components/StatusPill";
 import MarketCard from "@/components/MarketCard";
-import { INDEX_COINS, bySymbol } from "@icemarkets/registry";
+import { INDEX_COINS, OracleKind, SessionKind, bySymbol } from "@icemarkets/registry";
 
 type Range = "24h" | "7d" | "30d";
+
+const ORACLE_LABEL: Record<number, string> = {
+  [OracleKind.PythPull]: "Pyth",
+  [OracleKind.Switchboard]: "Switchboard",
+  [OracleKind.KeeperSigned]: "Keeper-signed",
+  [OracleKind.Composite]: "Composite",
+};
+
+const SESSION_LABEL: Record<number, string> = {
+  [SessionKind.Continuous]: "24/7",
+  [SessionKind.CmeGlobex]: "CME Globex",
+  [SessionKind.IceUs]: "ICE US",
+  [SessionKind.Lme]: "LME",
+  [SessionKind.Slow]: "Slow feed",
+};
 
 export default function CommodityPage() {
   const params = useParams<{ symbol: string }>();
@@ -28,7 +45,7 @@ export default function CommodityPage() {
     queryFn: () => fetchCommodityPriceHistory(symbol, range),
     enabled: !!commodity,
   });
-  const { data: pairedMarkets } = useQuery({
+  const { data: paired } = useQuery({
     queryKey: ["commodity-markets", symbol],
     queryFn: () => fetchMarkets({ q: symbol, pageSize: 6 }),
     enabled: !!commodity,
@@ -37,138 +54,195 @@ export default function CommodityPage() {
   if (!isLoading && commodity === null) notFound();
   if (!commodity) {
     return (
-      <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6">
-        <div className="icemarkets-card h-64 animate-pulse" />
+      <div className="container-x py-10">
+        <div className="glass h-72 animate-pulse" />
       </div>
     );
   }
 
-  const status = commodity.status;
+  // Risk parameters live in the registry, not the indexer quote.
+  const spec = bySymbol(commodity.symbol);
   const displayName = commodity.displayName ?? commodity.name;
+  const isIndex = INDEX_COINS.some((c) => c.symbol === commodity.symbol);
+  const flat = Math.abs(commodity.change24h) < 0.005;
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="grid h-12 w-12 place-items-center rounded-full bg-surface2 text-2xl" aria-hidden="true">
-            {commodity.emoji}
-          </div>
-          <div>
-            <h1 className="text-xl font-bold sm:text-2xl">
-              {displayName} <span className="text-muted">${commodity.symbol}</span>
-              {INDEX_COINS.some((c) => c.symbol === commodity.symbol) && (
-                <span className="ml-2 rounded bg-surface2 px-1.5 py-0.5 align-middle text-[10px] font-medium uppercase tracking-wide text-muted">
-                  Index
-                </span>
-              )}
-            </h1>
-            <p className="mt-0.5 text-xs text-muted">
-              Tracks {displayName} · 1 {commodity.symbol} = {commodity.unit}
-            </p>
+    <div className="container-x pb-16 pt-7 md:pt-9">
+      <nav aria-label="Breadcrumb" className="mono text-xs text-muted">
+        <Link href="/" className="rounded hover:text-dim">
+          Markets
+        </Link>
+        <span className="mx-1.5">/</span>
+        <Link href="/commodities" className="rounded hover:text-dim">
+          Commodities
+        </Link>
+        <span className="mx-1.5">/</span>
+        <span className="text-dim">{commodity.symbol}</span>
+      </nav>
+
+      <header className="mt-4 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+        <div className="flex items-center gap-4 sm:gap-[18px]">
+          <span
+            className="h-14 w-14 shrink-0 rounded-[18px] sm:h-[72px] sm:w-[72px] sm:rounded-[22px]"
+            style={{ background: swatch(commodity.symbol), boxShadow: "inset 0 1px 0 rgba(255,255,255,0.5)" }}
+            aria-hidden="true"
+          />
+          <div className="flex min-w-0 flex-col gap-1.5">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+              <h1 className="display text-2xl font-bold sm:text-[32px]">{displayName}</h1>
+              <span className="mono text-sm text-muted sm:text-base">{commodity.symbol}</span>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <StatusPill status={commodity.status} />
+              {isIndex && <span className="chip mono">Index</span>}
+              <span className="chip mono">
+                1 {commodity.symbol} = {commodity.unit}
+              </span>
+              <span className="chip mono text-muted">
+                on chain {timeAgo(Date.now() - commodity.lastPublishedAgoSec * 1000)}
+              </span>
+            </div>
           </div>
         </div>
-        <div className="text-right">
-          <div className="font-nums text-2xl font-semibold">{usd(commodity.priceUsd, { decimals: commodity.priceUsd < 1 ? 4 : 2 })}</div>
-          <div className={`font-nums text-sm ${pctClass(commodity.change24h)}`}>{pct(commodity.change24h)}</div>
+
+        <div className="flex shrink-0 flex-col gap-0.5 sm:items-end">
+          <span className="eyebrow">Price</span>
+          <span className="mono text-[28px] font-semibold tracking-tight sm:text-[36px]">
+            {fmtPriceUsd(commodity.priceUsd)}
+          </span>
+          <span className={`mono text-[13px] ${flat ? "text-muted" : commodity.change24h > 0 ? "text-positive" : "text-negative"}`}>
+            {signed(commodity.change24h)}% · 24h
+          </span>
         </div>
-      </div>
+      </header>
 
-      <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted">
-        <StatusPill status={status} />
-        <span>on-chain {timeAgo(Date.now() - commodity.lastPublishedAgoSec * 1000)}</span>
-      </div>
-
-      {status === "halted" && (
-        <div role="alert" className="icemarkets-card mt-4 border-negative/30 bg-negative/5 px-4 py-3 text-sm text-negative">
+      {commodity.status === "halted" && (
+        <p role="alert" className="chip chip-warn mt-4 h-auto py-2" style={{ whiteSpace: "normal" }}>
           A current price is unavailable. Market value will return when the price feed recovers.
-        </div>
+        </p>
       )}
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_320px]">
-        <div>
-          <div className="icemarkets-card p-4">
-            <div role="tablist" aria-label="Chart range" className="mb-3 flex gap-1">
+      <div className="mt-6 grid gap-5 lg:grid-cols-[8fr_4fr] lg:items-start lg:gap-6">
+        <div className="flex flex-col gap-5">
+          <section className="glass flex flex-col gap-3 px-4 pb-3.5 pt-4 sm:px-5" aria-label="Price chart">
+            <div className="mono flex gap-0.5" role="tablist" aria-label="Chart range">
               {(["24h", "7d", "30d"] as Range[]).map((r) => (
                 <button
                   key={r}
+                  type="button"
                   role="tab"
                   aria-selected={range === r}
                   onClick={() => setRange(r)}
-                  className={`icemarkets-focus rounded-md px-3 py-1 text-xs font-medium ${
-                    range === r ? "bg-green/10 text-green" : "text-muted hover:text-text"
-                  }`}
+                  className={`tab tap text-xs ${range === r ? "tab-on" : ""}`}
+                  style={{ height: 28 }}
                 >
                   {r}
                 </button>
               ))}
             </div>
-            {history ? <Chart kind="line" data={history} height={300} /> : <div className="h-[300px] animate-pulse" />}
+            {history ? (
+              <Chart kind="line" data={history} height={300} />
+            ) : (
+              <div className="h-[300px] animate-pulse rounded-xl bg-white/[0.03]" />
+            )}
+          </section>
+
+          {/* Contract and Reserve sit side by side so neither leaves a half-empty row. */}
+          <div className="grid gap-5 md:grid-cols-2 md:items-stretch">
+            <section className="glass flex flex-col gap-4 p-4 sm:px-5" aria-labelledby="contract-heading">
+              <h2 id="contract-heading" className="eyebrow">
+                Contract
+              </h2>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => navigator.clipboard?.writeText(commodity.mint).catch(() => {})}
+                  aria-label={`Copy the ${commodity.symbol} mint address`}
+                  title={commodity.mint}
+                  className="chip mono tap"
+                >
+                  {shortenAddress(commodity.mint, 6)}
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                    <rect x="9" y="9" width="11" height="11" rx="2" />
+                    <path d="M5 15V5a2 2 0 0 1 2-2h10" />
+                  </svg>
+                </button>
+                <a
+                  href={`https://solscan.io/token/${commodity.mint}`}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="chip tap link"
+                >
+                  Explorer ↗
+                </a>
+              </div>
+              <dl className="mt-auto grid grid-cols-2 gap-4">
+                <Metric k="Oracle" v={ORACLE_LABEL[spec?.oracle.kind ?? OracleKind.PythPull]} />
+                <Metric k="Session" v={SESSION_LABEL[spec?.session ?? SessionKind.Continuous]} />
+              </dl>
+            </section>
+
+            <section className="glass flex flex-col gap-4 p-4 sm:px-5" aria-labelledby="reserve-heading">
+              <h2 id="reserve-heading" className="eyebrow">
+                Reserve
+              </h2>
+              <dl className="grid grid-cols-2 gap-4">
+                <Metric k="Reserve ratio" v={pct(commodity.reserveRatioBps / 100, { decimals: 1, showSign: false })} />
+                <Metric k="Spread" v={spec ? pct(spec.params.baseSpreadBps / 100, { decimals: 2, showSign: false }) : "—"} />
+                <Metric k="Supply outstanding" v={compact(commodity.supplyOutstanding, { prefix: "" })} />
+                <Metric k="Supply cap" v={compact(commodity.supplyCap, { prefix: "" })} />
+                <Metric
+                  k="Max age"
+                  v={spec ? formatDuration(spec.params.maxAgeOpenSec * 1000) : "—"}
+                />
+              </dl>
+            </section>
           </div>
 
-          <div className="icemarkets-card mt-4 p-4">
-            <h2 className="text-sm font-semibold">Contract</h2>
-            <div className="mt-2 flex flex-wrap items-center gap-3 text-sm">
-              <span className="font-nums text-muted">{shortenAddress(commodity.mint, 6)}</span>
-              <button
-                type="button"
-                onClick={() => navigator.clipboard?.writeText(commodity.mint).catch(() => {})}
-                className="icemarkets-btn-secondary icemarkets-focus rounded-md px-2.5 py-1 text-xs"
-              >
-                Copy
-              </button>
-              <a
-                href={`https://solscan.io/token/${commodity.mint}`}
-                target="_blank"
-                rel="noreferrer noopener"
-                className="icemarkets-focus rounded text-xs text-green hover:underline"
-              >
-                Explorer ↗
-              </a>
-            </div>
-            <div className="mt-4 grid grid-cols-2 gap-4 text-sm sm:grid-cols-3">
-              <div>
-                <div className="text-xs text-muted">Reserve ratio</div>
-                <div className="font-nums font-medium">{(commodity.reserveRatioBps / 100).toFixed(1)}%</div>
-              </div>
-              <div>
-                <div className="text-xs text-muted">Supply outstanding</div>
-                <div className="font-nums font-medium">{compact(commodity.supplyOutstanding, { prefix: "" })}</div>
-              </div>
-              <div>
-                <div className="text-xs text-muted">Supply cap</div>
-                <div className="font-nums font-medium">{compact(commodity.supplyCap, { prefix: "" })}</div>
-              </div>
-            </div>
-          </div>
-
-          {pairedMarkets && pairedMarkets.markets.length > 0 && (
-            <div className="mt-6">
-              <h2 className="mb-3 text-sm font-semibold">Markets paired with {commodity.symbol}</h2>
+          {paired && paired.markets.length > 0 && (
+            <section aria-labelledby="paired-heading">
+              <h2 id="paired-heading" className="eyebrow mb-3">
+                Markets paired with {commodity.symbol}
+              </h2>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                {pairedMarkets.markets.map((m) => (
+                {paired.markets.map((m) => (
                   <MarketCard key={m.mint} market={m} />
                 ))}
               </div>
-            </div>
+            </section>
           )}
         </div>
 
-        <div className="lg:sticky lg:top-20 lg:self-start">
+        <div className="flex flex-col gap-4 lg:sticky lg:top-6">
           <TradePanel
             mint={commodity.mint}
             coinSymbol={commodity.symbol}
             payOptions={["USDC"]}
-            status={status}
-            sessionKind={bySymbol(commodity.symbol)?.session}
+            status={commodity.status}
+            sessionKind={spec?.session}
+            ticker={commodity.symbol}
+            priceUsd={commodity.priceUsd}
+            commodityPriceUsd={commodity.priceUsd}
+            commodityUnitShort={commodity.unitShort}
+            commodityAgeSec={commodity.lastPublishedAgoSec}
           />
-          <p className="mt-3 text-center text-xs text-muted">
-            Redeemable only against the protocol&apos;s USDC reserve.{" "}
-            <Link href="/docs" className="text-green hover:underline">
+          <p className="text-center text-xs leading-relaxed text-muted">
+            Redeemable only against the protocol's USDC reserve.{" "}
+            <Link href="/docs" className="link">
               Learn more
             </Link>
           </p>
         </div>
       </div>
+    </div>
+  );
+}
+
+function Metric({ k, v }: { k: string; v: string }) {
+  return (
+    <div className="flex flex-col gap-1">
+      <dt className="text-xs text-muted">{k}</dt>
+      <dd className="mono text-sm font-semibold">{v}</dd>
     </div>
   );
 }

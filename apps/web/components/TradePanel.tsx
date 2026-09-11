@@ -5,17 +5,20 @@ import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { buyCoin, sellCoin, type PayWith } from "@/lib/actions";
 import { closedBuyTooltip, sessionOpensCopy } from "@/lib/session";
+import { fmtAmount, fmtPrice, pct } from "@/lib/format";
 import type { MarketStatus } from "@/lib/types";
 import { toast } from "./Toast";
 
+const SLIPPAGE_PCT = 0.5;
+
 interface TradePanelProps {
-  /** Mint being traded (memecoin on /token/[mint], or the commodity coin's own mint on /commodities/[symbol]). */
+  /** Mint being traded (a market on /token/[mint], or the commodity coin's own mint on /commodities/[symbol]). */
   mint: string;
-  /** Symbol shown as a pay-with option when it's "COIN" — e.g. the commodity ticker. */
+  /** Symbol shown as a pay-with option when it's "COIN" — the commodity coin's ticker. */
   coinSymbol: string;
   payOptions: PayWith[];
   /**
-   * On-chain status of the commodity behind this trade (the commodity itself, or the memecoin's paired coin).
+   * On-chain status of the commodity coin behind this trade.
    * Closed → the Peg Desk only sells (Buy disabled unless `buyWhileClosed` allows a pay option);
    * Halted → both sides disabled while the price feed recovers.
    */
@@ -24,11 +27,25 @@ interface TradePanelProps {
   sessionKind?: number;
   /**
    * Pay options that still work for BUYS while Closed because they never touch the Peg Desk (e.g. a memecoin
-   * bought with COIN directly on the DBC/DAMM pool). Empty (default) = the Buy tab is disabled while Closed.
+   * bought with its commodity coin directly on the DBC/DAMM pool). Empty (default) = Buy is disabled while Closed.
    */
   buyWhileClosed?: PayWith[];
   disabled?: boolean;
   disabledReason?: string;
+
+  /* ---- presentation (optional; the panel works without any of it) ---- */
+  /** Ticker of the thing being bought — the CTA reads "Buy TICKER". */
+  ticker?: string;
+  /** USD price of one unit of the traded asset, for the rough output estimate. */
+  priceUsd?: number;
+  /** USD price of one commodity-coin unit, shown on the "Commodity price" line. */
+  commodityPriceUsd?: number;
+  /** "lb", "t oz", … shown after the commodity price. */
+  commodityUnitShort?: string;
+  /** Seconds since the commodity price was last published on chain. */
+  commodityAgeSec?: number;
+  /** Trading fee in basis points; 40% of it is the holders' share. */
+  feeBps?: number;
 }
 
 /** Re-render once a minute so countdown copy stays fresh. */
@@ -50,10 +67,19 @@ export default function TradePanel({
   buyWhileClosed = [],
   disabled,
   disabledReason,
+  ticker,
+  priceUsd,
+  commodityPriceUsd,
+  commodityUnitShort,
+  commodityAgeSec,
+  feeBps,
 }: TradePanelProps) {
   const closed = status === "closed";
   const halted = status === "halted";
-  const closedBuyPays = useMemo(() => payOptions.filter((p) => buyWhileClosed.includes(p)), [payOptions, buyWhileClosed]);
+  const closedBuyPays = useMemo(
+    () => payOptions.filter((p) => buyWhileClosed.includes(p)),
+    [payOptions, buyWhileClosed]
+  );
   const buyTabDisabled = halted || (closed && closedBuyPays.length === 0);
 
   const [side, setSide] = useState<"buy" | "sell">(buyTabDisabled ? "sell" : "buy");
@@ -68,17 +94,35 @@ export default function TradePanel({
   const closedTooltip = closedBuyTooltip(sessionKind, now);
   const payDisabled = (p: PayWith) => side === "buy" && closed && !closedBuyPays.includes(p);
 
-  // Status arrives asynchronously (react-query): default to Sell once the market turns out Closed, and move
+  // Status arrives asynchronously (react-query): default to Sell once the commodity turns out Closed, and move
   // the pay option off one that cannot buy while Closed.
   useEffect(() => {
     if (buyTabDisabled && side === "buy") setSide("sell");
   }, [buyTabDisabled, side]);
   useEffect(() => {
-    if (side === "buy" && closed && !closedBuyPays.includes(payWith) && closedBuyPays.length > 0) setPayWith(closedBuyPays[0]);
+    if (side === "buy" && closed && !closedBuyPays.includes(payWith) && closedBuyPays.length > 0)
+      setPayWith(closedBuyPays[0]);
   }, [side, closed, closedBuyPays, payWith]);
 
   const payLabel = payWith === "COIN" ? coinSymbol : payWith;
+  const outLabel = ticker ?? coinSymbol;
   const tradingBlocked = disabled || halted || (side === "buy" && buyTabDisabled) || payDisabled(payWith);
+
+  // Rough client-side estimate only — the real quote comes from the pool at signing time.
+  const estimate = useMemo(() => {
+    const amt = Number.parseFloat(amount);
+    if (!Number.isFinite(amt) || amt <= 0 || !priceUsd || priceUsd <= 0) return null;
+    return side === "buy" ? amt / priceUsd : amt * priceUsd;
+  }, [amount, priceUsd, side]);
+
+  const holderShare = feeBps != null ? (feeBps / 100) * 0.4 : null;
+  // Buying a memecoin hops through its commodity coin (USDC → HG → COPPERINU); trading the coin itself is
+  // a single hop, so repeated legs collapse.
+  const route = (
+    side === "buy" ? [payLabel, coinSymbol, outLabel] : [outLabel, coinSymbol, payLabel]
+  )
+    .filter((leg, i, all) => leg && all.indexOf(leg) === i)
+    .join(" → ");
 
   async function submit() {
     if (tradingBlocked) return;
@@ -106,84 +150,108 @@ export default function TradePanel({
   }
 
   return (
-    <div className="icemarkets-card p-4">
+    <div className="glass-strong flex flex-col gap-3.5 p-4">
       {halted && (
-        <div role="alert" className="mb-4 rounded-lg border border-negative/30 bg-negative/5 px-3 py-2 text-xs text-negative">
-          The price feed is recovering — buying and selling resume automatically once a fresh price is posted.
-        </div>
-      )}
-
-      <div role="tablist" aria-label="Trade side" className="mb-4 grid grid-cols-2 gap-1 rounded-lg bg-surface2 p-1">
-        {(["buy", "sell"] as const).map((s) => {
-          const tabDisabled = halted || (s === "buy" && buyTabDisabled);
-          const tooltip = halted ? "Price feed recovering" : s === "buy" && buyTabDisabled ? closedTooltip : undefined;
-          const tooltipId = `trade-tab-${s}-tooltip`;
-          return (
-            // The wrapper carries hover for the tooltip: disabled buttons don't emit pointer events everywhere.
-            <span key={s} className="group relative">
-              <button
-                type="button"
-                role="tab"
-                aria-selected={side === s}
-                aria-disabled={tabDisabled}
-                aria-describedby={tooltip ? tooltipId : undefined}
-                disabled={tabDisabled}
-                title={tooltip}
-                onClick={() => setSide(s)}
-                className={`icemarkets-focus w-full rounded-md py-2 text-sm font-semibold capitalize transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
-                  side === s ? (s === "buy" ? "bg-positive text-[#06120c]" : "bg-negative text-[#1a0505]") : "text-muted"
-                }`}
-              >
-                {s}
-              </button>
-              {tooltip && (
-                <span
-                  id={tooltipId}
-                  role="tooltip"
-                  className="pointer-events-none absolute left-0 top-full z-10 mt-1.5 w-max max-w-[260px] rounded-md border border-border bg-surface2 px-2.5 py-1 text-xs text-muted opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
-                >
-                  {tooltip}
-                </span>
-              )}
-            </span>
-          );
-        })}
-      </div>
-
-      {closed && !halted && (
-        <p className="-mt-2 mb-3 text-xs text-muted">
-          {buyTabDisabled
-            ? closedTooltip
-            : `Market closed — buys only with ${closedBuyPays.map((p) => (p === "COIN" ? coinSymbol : p)).join("/")} until ${sessionOpensCopy(sessionKind, now)}`}
+        <p role="alert" className="chip chip-warn h-auto py-2 text-left leading-snug" style={{ whiteSpace: "normal" }}>
+          Feed recovering — trading resumes automatically once a fresh price is posted.
         </p>
       )}
 
-      <div className="mb-1.5 text-xs font-medium text-muted">Pay with</div>
-      <div className="mb-3 flex gap-1.5" role="group" aria-label="Pay with">
-        {payOptions.map((p) => {
-          const off = payDisabled(p) || halted;
+      {closed && !halted && (
+        <p
+          role="status"
+          className="flex items-start gap-2 rounded-xl px-3 py-2 text-left text-xs leading-snug"
+          style={{
+            background: "rgba(242,178,63,0.12)",
+            border: "1px solid rgba(242,178,63,0.35)",
+            color: "#F2B23F",
+          }}
+        >
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            className="mt-px shrink-0"
+            aria-hidden="true"
+          >
+            <circle cx="12" cy="12" r="9" />
+            <path d="M12 7v5l3 2" />
+          </svg>
+          <span>
+            {buyTabDisabled
+              ? closedTooltip
+              : `Market closed — buys only with ${closedBuyPays
+                  .map((p) => (p === "COIN" ? coinSymbol : p))
+                  .join("/")} until ${sessionOpensCopy(sessionKind, now)}`}
+          </span>
+        </p>
+      )}
+
+      {/* Buy / Sell segmented control */}
+      <div role="tablist" aria-label="Trade side" className="flex gap-1.5 rounded-[14px] bg-black/25 p-1">
+        {(["buy", "sell"] as const).map((s) => {
+          const tabDisabled = halted || (s === "buy" && buyTabDisabled);
+          const tooltip = halted ? "Price feed recovering" : s === "buy" && buyTabDisabled ? closedTooltip : undefined;
+          const on = side === s;
           return (
             <button
-              key={p}
+              key={s}
               type="button"
-              aria-pressed={payWith === p}
-              disabled={off}
-              title={payDisabled(p) ? closedTooltip : undefined}
-              onClick={() => setPayWith(p)}
-              className={`icemarkets-focus rounded-lg border px-3 py-1.5 text-xs font-medium disabled:cursor-not-allowed disabled:opacity-40 ${
-                payWith === p ? "border-green/50 bg-green/10 text-green" : "border-border text-muted hover:text-text"
-              }`}
+              role="tab"
+              aria-selected={on}
+              aria-disabled={tabDisabled}
+              disabled={tabDisabled}
+              title={tooltip}
+              onClick={() => setSide(s)}
+              className="tap h-10 flex-1 rounded-xl text-sm font-bold capitalize transition-colors disabled:cursor-not-allowed disabled:opacity-40"
+              style={
+                on
+                  ? s === "buy"
+                    ? { background: "rgba(20,241,149,0.14)", color: "#14F195", boxShadow: "inset 0 0 0 1px rgba(20,241,149,0.4)" }
+                    : { background: "rgba(255,92,122,0.14)", color: "#FF5C7A", boxShadow: "inset 0 0 0 1px rgba(255,92,122,0.4)" }
+                  : { color: "#8B90A6" }
+              }
             >
-              {p === "COIN" ? coinSymbol : p}
+              {s}
             </button>
           );
         })}
       </div>
 
-      <label htmlFor="trade-amount" className="sr-only">
-        Amount to {side}
-      </label>
-      <div className="mb-4 flex items-center rounded-lg border border-border bg-surface2 px-3 py-2.5">
+      {/* Pay with */}
+      <div className="flex flex-col gap-2">
+        <span className="eyebrow">{side === "buy" ? "Pay with" : "Receive in"}</span>
+        <div className="flex flex-wrap gap-1.5" role="group" aria-label={side === "buy" ? "Pay with" : "Receive in"}>
+          {payOptions.map((p) => {
+            const off = payDisabled(p) || halted;
+            const on = payWith === p;
+            return (
+              <button
+                key={p}
+                type="button"
+                aria-pressed={on}
+                disabled={off}
+                title={payDisabled(p) ? closedTooltip : undefined}
+                onClick={() => setPayWith(p)}
+                className={`chip tap ${on ? "chip-on" : ""} disabled:cursor-not-allowed disabled:opacity-40`}
+                style={{ height: 30 }}
+              >
+                {p === "COIN" ? coinSymbol : p}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Amount in */}
+      <div className="well flex items-center justify-between gap-3 px-4 py-3.5">
+        <label htmlFor="trade-amount" className="sr-only">
+          Amount to {side}
+        </label>
         <input
           id="trade-amount"
           inputMode="decimal"
@@ -191,13 +259,58 @@ export default function TradePanel({
           value={amount}
           disabled={halted}
           onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ""))}
-          className="icemarkets-focus w-full bg-transparent font-nums text-lg outline-none placeholder:text-muted/60 disabled:cursor-not-allowed"
+          className="mono w-full bg-transparent text-[26px] font-semibold outline-none placeholder:text-muted/50 disabled:cursor-not-allowed"
         />
-        <span className="ml-2 shrink-0 text-xs font-medium text-muted">{payLabel}</span>
+        <span className="mono shrink-0 text-[13px] text-muted">{side === "buy" ? payLabel : outLabel}</span>
       </div>
 
+      <div className="flex justify-center text-muted" aria-hidden="true">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+          <path d="M12 4v16M6 14l6 6 6-6" />
+        </svg>
+      </div>
+
+      {/* Estimated out */}
+      <div className="well flex items-center justify-between gap-3 px-4 py-3.5">
+        <span className="mono text-[26px] font-semibold">
+          {estimate != null ? fmtAmount(estimate) : "—"}
+        </span>
+        <span className="mono shrink-0 text-[13px] text-muted">{side === "buy" ? outLabel : payLabel}</span>
+      </div>
+
+      {/* Route + terms */}
+      <dl className="mono flex flex-col gap-1.5 text-xs">
+        <Line k="Route" v={route} />
+        {commodityPriceUsd != null && (
+          <Line
+            k="Commodity price"
+            v={
+              <>
+                {fmtPrice(commodityPriceUsd)}
+                {commodityUnitShort ? ` / ${commodityUnitShort}` : ""}
+                {commodityAgeSec != null && <span className="text-muted"> · {Math.round(commodityAgeSec)}s</span>}
+              </>
+            }
+          />
+        )}
+        {feeBps != null && (
+          <Line
+            k="Fee"
+            v={
+              <>
+                {pct(feeBps / 100, { decimals: 2, showSign: false })}{" "}
+                <span className="text-positive">
+                  → {pct(holderShare!, { decimals: 2, showSign: false })} to holders
+                </span>
+              </>
+            }
+          />
+        )}
+        <Line k="Slippage" v={`${SLIPPAGE_PCT}%`} />
+      </dl>
+
       {tradingBlocked ? (
-        <button type="button" disabled className="icemarkets-btn-primary icemarkets-focus w-full py-2.5 text-sm">
+        <button type="button" disabled className="btn-primary tap h-12 w-full text-[15px]">
           {halted ? "Feed recovering" : disabled ? disabledReason ?? "Trading unavailable" : "Market closed"}
         </button>
       ) : (
@@ -205,11 +318,24 @@ export default function TradePanel({
           type="button"
           onClick={submit}
           disabled={submitting}
-          className="icemarkets-btn-primary icemarkets-focus w-full py-2.5 text-sm"
+          className="btn-primary tap h-12 w-full text-[15px]"
         >
-          {submitting ? "Confirm in wallet…" : publicKey ? `${side === "buy" ? "Buy" : "Sell"}` : "Connect wallet"}
+          {submitting
+            ? "Confirm in wallet…"
+            : publicKey
+              ? `${side === "buy" ? "Buy" : "Sell"} ${outLabel}`
+              : "Connect"}
         </button>
       )}
+    </div>
+  );
+}
+
+function Line({ k, v }: { k: string; v: React.ReactNode }) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <dt className="shrink-0 text-muted">{k}</dt>
+      <dd className="text-right">{v}</dd>
     </div>
   );
 }

@@ -5,10 +5,23 @@ import { useQuery } from "@tanstack/react-query";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { fetchLeaderboard, fetchWalletRewards } from "@/lib/api";
-import { compactNum, usd } from "@/lib/format";
+import { fmtAmount, usd } from "@/lib/format";
+import { swatch } from "@/lib/visual";
 import Leaderboard from "@/components/Leaderboard";
+import FeeDonut from "@/components/FeeDonut";
 import { claim } from "@/lib/actions";
-import { toast } from "@/components/Toast";
+
+const STEPS: [string, string][] = [
+  ["Hold a market's token", "Every trade on that market charges its fee. 40% of it is set aside for holders."],
+  [
+    "Get paid automatically",
+    "Each cycle pays holders in the commodity coin, weighted by balance, straight to the wallet.",
+  ],
+  [
+    "Keep or sell",
+    "Commodity coins track a real commodity. Hold them, or sell them for USDC right here at the feed price.",
+  ],
+];
 
 export default function RewardsPage() {
   const { publicKey, sendTransaction } = useWallet();
@@ -38,11 +51,15 @@ export default function RewardsPage() {
       .slice(0, 6);
   }, [leaderboard]);
 
-  const filteredRows = useMemo(() => {
+  const rows = useMemo(() => {
     if (!leaderboard) return [];
-    const rows = coinFilter ? leaderboard.filter((r) => r.pairedWith === coinFilter) : leaderboard;
-    return rows.slice(0, visibleRows);
+    const filtered = coinFilter ? leaderboard.filter((r) => r.pairedWith === coinFilter) : leaderboard;
+    return filtered.slice(0, visibleRows);
   }, [leaderboard, coinFilter, visibleRows]);
+
+  const totalRows = leaderboard
+    ? (coinFilter ? leaderboard.filter((r) => r.pairedWith === coinFilter) : leaderboard).length
+    : 0;
 
   async function handleClaim(symbol: string) {
     if (!publicKey) {
@@ -57,122 +74,151 @@ export default function RewardsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
-      <h1 className="text-2xl font-bold sm:text-3xl">Rewards</h1>
-      <p className="mt-2 max-w-2xl text-sm text-muted">
-        Holders of every market earn 40% of its trading fees, paid automatically in the commodity coin it
-        is paired with. Track what you have earned and claim your coins here.
-      </p>
+    <div className="container-x pb-16 pt-8 md:pt-12">
+      <header className="flex flex-col gap-3">
+        <span className="eyebrow">Rewards</span>
+        <h1 className="display text-[32px] font-bold leading-tight text-white md:text-[44px]">
+          Hold a market, get paid in commodities.
+        </h1>
+        <p className="max-w-2xl text-[15px] leading-relaxed text-body">
+          Holders of every market earn 40% of its trading fees, paid automatically in the commodity coin it
+          is paired with — every fifteen minutes, with nothing to claim. Track what you have earned here.
+        </p>
+      </header>
 
-      <section className="icemarkets-card mt-6 flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="text-lg font-semibold">Hold a market, get paid in commodities.</h2>
-          <p className="mt-1 max-w-xl text-sm text-muted">
-            40% of every trading fee is paid to holders of that market, in the commodity coin it is paired
-            with, every 15 minutes. Wallets without a token account accrue a Merkle claim instead.
-          </p>
-        </div>
-        {!publicKey && (
-          <button type="button" onClick={() => setVisible(true)} className="icemarkets-btn-primary icemarkets-focus shrink-0 px-5 py-2.5 text-sm">
-            Connect wallet
-          </button>
-        )}
-      </section>
+      <div className="mt-7 grid gap-5 lg:grid-cols-[8fr_4fr] lg:items-start lg:gap-6">
+        <div className="flex flex-col gap-5">
+          {/* ---- wallet earnings ---- */}
+          <section className="glass flex flex-col gap-4 p-5" aria-labelledby="earnings-heading">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h2 id="earnings-heading" className="display text-base font-semibold">
+                Your earnings
+              </h2>
+              {publicKey && rewards ? (
+                <span className="mono text-lg font-semibold text-positive">{usd(rewards.totalEarnedUsd)}</span>
+              ) : (
+                <button type="button" onClick={() => setVisible(true)} className="btn-ghost tap">
+                  Connect wallet
+                </button>
+              )}
+            </div>
 
-      {publicKey && rewards && (
-        <section className="icemarkets-card mt-4 p-5">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold">Your earnings</h2>
-            <span className="font-nums text-lg font-semibold">{usd(rewards.totalEarnedUsd)}</span>
-          </div>
-          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {rewards.byCoin.map((c) => (
-              <div key={c.symbol} className="flex items-center justify-between rounded-lg border border-border bg-surface2 px-3 py-2">
-                <span className="flex items-center gap-1.5 text-sm">
-                  <span aria-hidden="true">{c.emoji}</span>
-                  {c.symbol}
-                </span>
-                <span className="flex items-center gap-2">
-                  <span className="font-nums text-sm">{compactNum(c.amount, 3)}</span>
-                  {c.claimable > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => handleClaim(c.symbol)}
-                      className="icemarkets-focus rounded-md bg-green/10 px-2 py-1 text-[11px] font-medium text-green hover:bg-green/20"
-                    >
-                      Claim
-                    </button>
-                  )}
+            {publicKey && rewards ? (
+              <ul className="grid gap-2 sm:grid-cols-2">
+                {rewards.byCoin.map((c) => (
+                  <li
+                    key={c.symbol}
+                    className="flex items-center justify-between gap-3 rounded-[14px] border border-white/[0.08] bg-white/[0.03] px-3.5 py-2.5"
+                  >
+                    <span className="flex min-w-0 items-center gap-2.5">
+                      <span
+                        className="h-7 w-7 shrink-0 rounded-[9px]"
+                        style={{ background: swatch(c.symbol) }}
+                        aria-hidden="true"
+                      />
+                      <span className="mono text-sm">{c.symbol}</span>
+                    </span>
+                    <span className="flex shrink-0 items-center gap-2.5">
+                      <span className="mono text-sm">{fmtAmount(c.amount)}</span>
+                      {c.claimable > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => handleClaim(c.symbol)}
+                          className="chip chip-positive tap"
+                          title={`Claim ${fmtAmount(c.claimable)} ${c.symbol} held in a Merkle epoch`}
+                        >
+                          Claim
+                        </button>
+                      )}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm leading-relaxed text-muted">
+                Connect a wallet to see what each commodity coin has paid you. Payouts land automatically —
+                the Claim buttons here only cover remainders held in a Merkle epoch, for wallets that had no
+                token account at payout time.
+              </p>
+            )}
+          </section>
+
+          {/* ---- leaderboard ---- */}
+          <section className="glass overflow-hidden" aria-labelledby="leaderboard-heading">
+            <div className="flex flex-col gap-3 border-b border-white/[0.08] p-4 sm:px-5">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <h2 id="leaderboard-heading" className="display text-lg font-semibold">
+                  Leaderboard
+                </h2>
+                <span className="mono text-xs text-muted">
+                  {usd(totalHolderShare)} paid to holders by all markets
                 </span>
               </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      <section className="mt-10 grid gap-4 sm:grid-cols-3">
-        <StepCard n={1} title="Hold any market's token" body="Every trade on that market charges its fee. 40% of it is set aside for holders." />
-        <StepCard n={2} title="Get paid automatically" body="Each cycle pays holders in the commodity coin, weighted by balance, straight to the wallet." />
-        <StepCard n={3} title="Keep or sell" body="Coins track a real commodity. Hold them, or sell them for USDC right here at the feed price." />
-      </section>
-
-      <section className="mt-10">
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold">Leaderboard</h2>
-          <span className="font-nums text-sm text-muted">Holder share earned by all markets: {usd(totalHolderShare)}</span>
-        </div>
-
-        <div className="mb-4 flex flex-wrap gap-1.5" role="group" aria-label="Filter leaderboard by coin">
-          <button
-            type="button"
-            aria-pressed={coinFilter === null}
-            onClick={() => setCoinFilter(null)}
-            className={`icemarkets-focus rounded-full px-3 py-1.5 text-xs font-medium ${
-              coinFilter === null ? "bg-green/10 text-green" : "icemarkets-btn-secondary"
-            }`}
-          >
-            All
-          </button>
-          {coinChips.map(([symbol, amount]) => (
-            <button
-              key={symbol}
-              type="button"
-              aria-pressed={coinFilter === symbol}
-              onClick={() => setCoinFilter(symbol)}
-              className={`icemarkets-focus rounded-full px-3 py-1.5 text-xs font-medium ${
-                coinFilter === symbol ? "bg-green/10 text-green" : "icemarkets-btn-secondary"
-              }`}
-            >
-              {symbol} {usd(amount, { decimals: 0 })}
-            </button>
-          ))}
-        </div>
-
-        <div className="icemarkets-card p-4">
-          <Leaderboard rows={filteredRows} />
-          {leaderboard && filteredRows.length < (coinFilter ? leaderboard.filter((r) => r.pairedWith === coinFilter).length : leaderboard.length) && (
-            <div className="mt-4 text-center">
-              <button
-                type="button"
-                onClick={() => setVisibleRows((v) => v + 15)}
-                className="icemarkets-btn-secondary icemarkets-focus px-5 py-2 text-sm"
-              >
-                Show more
-              </button>
+              <div className="flex flex-wrap gap-1.5" role="group" aria-label="Filter by commodity coin">
+                <button
+                  type="button"
+                  aria-pressed={coinFilter === null}
+                  onClick={() => setCoinFilter(null)}
+                  className={`chip tap ${coinFilter === null ? "chip-on" : ""}`}
+                >
+                  All
+                </button>
+                {coinChips.map(([symbol, amount]) => (
+                  <button
+                    key={symbol}
+                    type="button"
+                    aria-pressed={coinFilter === symbol}
+                    onClick={() => setCoinFilter(symbol)}
+                    className={`chip mono tap ${coinFilter === symbol ? "chip-on" : ""}`}
+                  >
+                    {symbol} {usd(amount, { decimals: 0 })}
+                  </button>
+                ))}
+              </div>
             </div>
-          )}
-        </div>
-      </section>
-    </div>
-  );
-}
 
-function StepCard({ n, title, body }: { n: number; title: string; body: string }) {
-  return (
-    <div className="icemarkets-card p-5">
-      <span className="grid h-6 w-6 place-items-center rounded-full bg-green/10 text-xs font-semibold text-green">{n}</span>
-      <h3 className="mt-3 text-sm font-semibold">{title}</h3>
-      <p className="mt-1.5 text-sm leading-relaxed text-muted">{body}</p>
+            <Leaderboard rows={rows} />
+
+            {rows.length < totalRows && (
+              <div className="mono flex justify-between border-t border-white/[0.08] px-4 py-3.5 sm:px-5">
+                <span className="text-xs text-muted">
+                  Showing {rows.length} of {totalRows}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setVisibleRows((v) => v + 15)}
+                  className="tap rounded text-xs text-dim hover:text-text"
+                >
+                  Show 15 more
+                </button>
+              </div>
+            )}
+          </section>
+        </div>
+
+        {/* ---- rail ---- */}
+        <div className="flex flex-col gap-5">
+          <FeeDonut />
+          <section className="glass flex flex-col gap-4 p-5" aria-labelledby="how-heading">
+            <h2 id="how-heading" className="eyebrow">
+              How it reaches you
+            </h2>
+            <ol className="flex flex-col gap-4">
+              {STEPS.map(([title, body], i) => (
+                <li key={title} className="flex gap-3">
+                  <span className="step-badge" style={{ background: "rgba(20,241,149,0.14)", color: "#14F195" }}>
+                    {i + 1}
+                  </span>
+                  <span className="flex flex-col gap-1">
+                    <span className="text-sm font-semibold">{title}</span>
+                    <span className="text-[13px] leading-relaxed text-muted">{body}</span>
+                  </span>
+                </li>
+              ))}
+            </ol>
+          </section>
+        </div>
+      </div>
     </div>
   );
 }

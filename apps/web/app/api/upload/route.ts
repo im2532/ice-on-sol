@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 /**
  * Irys stub. Real implementation uploads the launch image + metadata JSON to Irys (bundlr) using
  * IRYS_PRIVATE_KEY_PATH (see .env.example) and returns the permanent arweave.net URI. For now this
- * validates the upload client-side contract (≤5MB, png/jpg/webp) and echoes a data URL so /launch works
+ * validates the upload client-side contract (≤5MB, png/jpg/webp) and echoes a data URL so /mint works
  * end to end without network access.
  */
 const MAX_BYTES = 5 * 1024 * 1024;

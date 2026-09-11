@@ -1,48 +1,41 @@
 import Link from "next/link";
 import type { Market } from "@/lib/types";
-import { compact, pct, pctClass } from "@/lib/format";
-import CurveProgress from "./CurveProgress";
+import { compact } from "@/lib/format";
+import { signed, swatch } from "@/lib/visual";
+import Bonding from "./Bonding";
 
+/** A market as a glass card — used wherever a table would be too heavy. */
 export default function MarketCard({ market }: { market: Market }) {
+  const up = market.change24h >= 0;
   return (
-    <Link
-      href={`/token/${market.mint}`}
-      className="icemarkets-card icemarkets-focus block p-4 transition-colors hover:border-purple/40"
-    >
+    <Link href={`/token/${market.mint}`} className="glass glass-hover tap block p-4">
       <div className="flex items-start justify-between gap-2">
-        <div className="flex items-center gap-2.5">
-          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-surface2 text-lg" aria-hidden="true">
-            {market.image}
-          </div>
-          <div className="min-w-0">
-            <div className="truncate text-sm font-semibold text-green">${market.ticker}</div>
-            <div className="truncate text-xs text-muted">{market.name}</div>
+        <div className="flex min-w-0 items-center gap-2.5">
+          <span
+            className="h-9 w-9 shrink-0 rounded-[12px]"
+            style={{ background: swatch(market.ticker) }}
+            aria-hidden="true"
+          />
+          <div className="flex min-w-0 flex-col leading-tight">
+            <span className="mono truncate text-sm font-semibold">{market.ticker}</span>
+            <span className="truncate text-xs text-muted">{market.name}</span>
           </div>
         </div>
-        <span
-          className="inline-flex shrink-0 items-center gap-1 rounded-full border border-border bg-surface2 px-2 py-1 text-[11px] text-muted"
-          title={`Paired with ${market.commodityName}`}
-        >
-          <span aria-hidden="true">{market.commodityEmoji}</span>
-          {market.commoditySymbol}
-        </span>
+        <span className="chip mono shrink-0">{market.commoditySymbol}</span>
       </div>
 
-      <div className="mt-3.5 font-nums text-xl font-semibold">{compact(market.fdvUsd)}</div>
-      <div className="text-[11px] uppercase tracking-wider text-muted">FDV</div>
+      <div className="mt-3.5 flex items-end justify-between gap-2">
+        <div className="flex flex-col">
+          <span className="eyebrow">Market cap</span>
+          <span className="mono text-xl font-semibold">{compact(market.fdvUsd)}</span>
+        </div>
+        <span className={`mono text-[13px] ${up ? "text-positive" : "text-negative"}`}>
+          {signed(market.change24h, 1)}%
+        </span>
+      </div>
 
       <div className="mt-3">
-        <CurveProgress pct={market.curveProgressPct} migrated={market.migrated} />
-      </div>
-
-      <div className="mt-2.5 flex items-center justify-between text-xs">
-        <span className="flex items-center gap-2">
-          {market.migrated && (
-            <span className="rounded-full bg-purple/15 px-2 py-0.5 font-medium text-purple">Migrated</span>
-          )}
-          <span className={`font-nums ${pctClass(market.change24h)}`}>{pct(market.change24h)}</span>
-        </span>
-        <span className="font-nums text-muted">24h vol {compact(market.volume24hUsd)}</span>
+        <Bonding pct={market.curveProgressPct} migrated={market.migrated} width={120} />
       </div>
     </Link>
   );

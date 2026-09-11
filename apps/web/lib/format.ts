@@ -1,4 +1,4 @@
-/** Formatting helpers shared across the app. Numerals render in JetBrains Mono via the `font-nums` class. */
+/** Formatting helpers shared across the app. Numerals render in JetBrains Mono via the `mono` class (see docs/DESIGN.md). */
 
 export function usd(value: number, opts: { decimals?: number } = {}): string {
   const { decimals } = opts;
@@ -14,7 +14,51 @@ export function usd(value: number, opts: { decimals?: number } = {}): string {
   );
 }
 
-/** Compact form: $5.2K, $1.4M, $79.2K, etc. Matches the original's stat-tile style. */
+function fixed(value: number, decimals: number): string {
+  return value.toLocaleString("en-US", {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  });
+}
+
+/**
+ * A price, never abbreviated. Precision follows magnitude: <1 → 4 decimals, <10 → 3,
+ * otherwise 2 with grouping — except a whole number, which stays a whole number ($28,500,
+ * not $28,500.00). Use this for prices; `compact()` is only for market caps and volumes.
+ */
+export function fmtPrice(value: number): string {
+  if (!Number.isFinite(value) || value <= 0) return "—";
+  const abs = Math.abs(value);
+  // Sub-tick prices (a token quoted in its commodity coin) would round to 0.0000 on fixed
+  // decimals, so they fall back to three significant digits — still exact, never abbreviated.
+  if (abs < 0.0001) return value.toLocaleString("en-US", { maximumSignificantDigits: 3 });
+  if (Number.isInteger(value)) return value.toLocaleString("en-US", { maximumFractionDigits: 0 });
+  if (abs < 1) return fixed(value, 4);
+  if (abs < 10) return fixed(value, 3);
+  return fixed(value, 2);
+}
+
+/** `fmtPrice` with a leading dollar sign. */
+export function fmtPriceUsd(value: number): string {
+  const body = fmtPrice(value);
+  return body === "—" ? body : `$${body}`;
+}
+
+/**
+ * A quantity of a coin — a holder payout, a balance, a trade size. Shows at least four
+ * significant figures (so a fraction of an expensive coin never reads "0.00"), caps at six
+ * decimals, and trims trailing zeros. Never abbreviates.
+ */
+export function fmtAmount(value: number): string {
+  if (!Number.isFinite(value)) return "—";
+  if (value === 0) return "0";
+  const abs = Math.abs(value);
+  const magnitude = Math.floor(Math.log10(abs));
+  const decimals = Math.min(6, Math.max(0, 3 - magnitude));
+  return value.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: decimals });
+}
+
+/** Compact form: $5.2K, $1.4M, $79.2K, etc. For market caps and volumes only — never prices. */
 export function compact(value: number, opts: { prefix?: string; decimals?: number } = {}): string {
   if (!Number.isFinite(value)) return "—";
   const { prefix = "$", decimals = 1 } = opts;

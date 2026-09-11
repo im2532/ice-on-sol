@@ -1,49 +1,51 @@
 import Link from "next/link";
 import type { LeaderboardRow } from "@/lib/types";
-import { compactNum, usd } from "@/lib/format";
+import { fmtAmount, usd } from "@/lib/format";
+import { swatch } from "@/lib/visual";
 
+/** Markets ranked by what they have paid holders, styled like the home page's Markets table. */
 export default function Leaderboard({ rows }: { rows: LeaderboardRow[] }) {
-  if (rows.length === 0) return <p className="py-8 text-center text-sm text-muted">No payouts yet.</p>;
+  if (rows.length === 0) {
+    return <p className="px-5 py-10 text-center text-sm text-muted">No rewards have been paid yet.</p>;
+  }
   return (
     <div className="overflow-x-auto scrollbar-thin">
-      <table className="w-full min-w-[640px] text-left text-sm">
+      <table className="w-full min-w-[640px] border-collapse">
         <thead>
-          <tr className="border-b border-border text-[11px] uppercase tracking-wider text-muted">
-            <th scope="col" className="py-2 pr-3 font-medium">
-              #
-            </th>
-            <th scope="col" className="py-2 pr-3 font-medium">
-              Market
-            </th>
-            <th scope="col" className="py-2 pr-3 font-medium">
-              Paired with
-            </th>
-            <th scope="col" className="py-2 pr-3 text-right font-medium">
-              Fee amounts
-            </th>
-            <th scope="col" className="py-2 pr-3 text-right font-medium">
-              Holder share
-            </th>
+          <tr>
+            <th className="th">#</th>
+            <th className="th">Market</th>
+            <th className="th">Paired with</th>
+            <th className="th text-right">Fees collected</th>
+            <th className="th text-right">Paid to holders</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((r) => (
-            <tr key={r.mint} className="border-b border-border/60 last:border-0 hover:bg-surface2/60">
-              <td className="py-2.5 pr-3 font-nums text-muted">{r.rank}</td>
-              <td className="py-2.5 pr-3">
-                <Link href={`/token/${r.mint}`} className="icemarkets-focus flex items-center gap-2 rounded">
-                  <span aria-hidden="true">{r.image}</span>
-                  <span className="font-medium text-green">${r.ticker}</span>
-                  <span className="hidden text-muted sm:inline">{r.name}</span>
+            <tr key={r.mint} className="row-hover">
+              <td className="td mono text-muted">{r.rank}</td>
+              <td className="td">
+                <Link href={`/token/${r.mint}`} className="flex items-center gap-2.5 rounded">
+                  <span
+                    className="h-8 w-8 shrink-0 rounded-[10px]"
+                    style={{ background: swatch(r.ticker) }}
+                    aria-hidden="true"
+                  />
+                  <span className="flex min-w-0 flex-col leading-tight">
+                    <span className="mono truncate text-sm font-semibold">{r.ticker}</span>
+                    <span className="truncate text-xs text-muted">{r.name}</span>
+                  </span>
                 </Link>
               </td>
-              <td className="py-2.5 pr-3 text-muted">
-                <span aria-hidden="true">{r.pairedEmoji}</span> {r.pairedWith}
+              <td className="td">
+                <Link href={`/commodities/${r.pairedWith}`} className="chip mono">
+                  {r.pairedWith}
+                </Link>
               </td>
-              <td className="py-2.5 pr-3 text-right font-nums">
-                {compactNum(r.feeAmountCoin, 2)} {r.feeCoinSymbol}
+              <td className="td mono whitespace-nowrap text-right">
+                {fmtAmount(r.feeAmountCoin)} {r.feeCoinSymbol}
               </td>
-              <td className="py-2.5 pr-3 text-right font-nums">{usd(r.holderShareUsd)}</td>
+              <td className="td mono whitespace-nowrap text-right text-positive">{usd(r.holderShareUsd)}</td>
             </tr>
           ))}
         </tbody>

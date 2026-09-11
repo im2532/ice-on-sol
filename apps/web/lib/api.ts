@@ -11,6 +11,7 @@ import {
   mockCandles,
   mockLeaderboard,
   mockPriceHistory,
+  mockRecentPayouts,
   mockTrades,
   mockWalletRewards,
 } from "./mock";
@@ -21,6 +22,7 @@ import type {
   GlobalStats,
   LeaderboardRow,
   Market,
+  Payout,
   PricePoint,
   Trade,
   WalletRewards,
@@ -151,6 +153,12 @@ export async function fetchCandles(mint: string): Promise<Candle[]> {
 export async function fetchLeaderboard(): Promise<LeaderboardRow[]> {
   if (USE_MOCK) return delay(mockLeaderboard());
   return getJson(`/rewards/leaderboard`);
+}
+
+/** Recent holder payouts, newest first — the home page's "Holder rewards" feed. */
+export async function fetchRecentPayouts(limit = 12): Promise<Payout[]> {
+  if (USE_MOCK) return delay(mockRecentPayouts(limit));
+  return getJson(`/rewards/payouts?limit=${limit}`);
 }
 
 export async function fetchWalletRewards(wallet: string): Promise<WalletRewards> {

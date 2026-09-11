@@ -12,6 +12,7 @@ import type {
   LeaderboardRow,
   Market,
   MarketStatus,
+  Payout,
   PricePoint,
   Trade,
   WalletRewards,
@@ -58,6 +59,9 @@ function priceFor(c: Commodity): number {
 
 const CHANGE_RANGE: [number, number] = [-4, 4];
 
+/** Pinned so the heat grid's two span-2 tiles are always GLD then HG, never a random skin. */
+const LEAD_MARKETS_COUNT: Record<string, number> = { GLD: 114, HG: 63, SLV: 41, CL: 38 };
+
 export const MOCK_COMMODITY_QUOTES: CommodityQuote[] = COMMODITIES.map((c) => {
   const priceUsd = priceFor(c);
   const status: MarketStatus = rng() > 0.94 ? "halted" : rng() > 0.9 ? "closed" : "open";
@@ -73,7 +77,8 @@ export const MOCK_COMMODITY_QUOTES: CommodityQuote[] = COMMODITIES.map((c) => {
     unitShort: c.unitShort,
     priceUsd,
     change24h: rand(...CHANGE_RANGE),
-    marketsCount: Math.floor(rand(1, 40)),
+    // GLD and HG are the flagship pairs, so they deterministically hold the two widest heat tiles.
+    marketsCount: LEAD_MARKETS_COUNT[c.symbol] ?? Math.floor(rand(1, 40)),
     status,
     lastPublishedAgoSec: status === "halted" ? Math.floor(rand(3600 * 6, 3600 * 80)) : Math.floor(rand(2, 90)),
     supplyCap,
@@ -184,36 +189,53 @@ export const MOCK_STATS: GlobalStats = {
   icePriceGld: 0.0001527,
 };
 
+/**
+ * Like `mockCandles`, walked backwards from `basePrice` so the series ends exactly at the
+ * current price instead of jumping to it on the last point.
+ */
 export function mockPriceHistory(basePrice: number, points: number, volPct = 1.5): PricePoint[] {
   const now = Math.floor(Date.now() / 1000);
   const stepSec = 3600;
-  let p = basePrice * rand(0.9, 1.1);
-  const out: PricePoint[] = [];
   const local = mulberry32(Math.floor(basePrice * 1000) || 7);
-  for (let i = points; i >= 0; i--) {
-    const drift = (local() - 0.5) * (volPct / 100) * p;
-    p = Math.max(0.0001, p + drift);
-    out.push({ ts: now - i * stepSec, price: p });
+
+  const prices: number[] = new Array(points + 1);
+  prices[points] = basePrice;
+  for (let i = points - 1; i >= 0; i--) {
+    prices[i] = Math.max(0.0001, prices[i + 1] * (1 + (local() - 0.5) * (volPct / 100)));
   }
-  // anchor last point to the true current price
-  out[out.length - 1] = { ts: now, price: basePrice };
-  return out;
+  return prices.map((price, i) => ({ ts: now - (points - i) * stepSec, price }));
 }
 
+/**
+ * A bounded random walk generated BACKWARDS from `basePrice`, so the final close is exactly the
+ * current price — a chart must never end somewhere the header does not.
+ */
 export function mockCandles(basePrice: number, points = 180): Candle[] {
   const now = Math.floor(Date.now() / 1000);
   const stepSec = 300;
   const local = mulberry32(Math.floor(basePrice * 777) || 11);
-  let last = basePrice * rand(0.7, 1.3);
+
+  // Walk back from the present, collecting each step's opening price.
+  const closes: number[] = new Array(points + 1);
+  closes[points] = basePrice;
+  for (let i = points - 1; i >= 0; i--) {
+    const next = closes[i + 1];
+    closes[i] = Math.max(0.0000001, next * (1 + (local() - 0.5) * 0.02));
+  }
+
   const out: Candle[] = [];
-  for (let i = points; i >= 0; i--) {
-    const o = last;
-    const vol = o * 0.02;
-    const c = Math.max(0.0000001, o + (local() - 0.5) * vol);
-    const h = Math.max(o, c) + local() * vol * 0.5;
-    const l = Math.min(o, c) - local() * vol * 0.5;
-    out.push({ ts: now - i * stepSec, o, h, l: Math.max(0.0000001, l), c, v: local() * 50000 });
-    last = c;
+  for (let i = 0; i <= points; i++) {
+    const o = i === 0 ? closes[0] : closes[i - 1];
+    const c = closes[i];
+    const wick = Math.max(o, c) * 0.004;
+    out.push({
+      ts: now - (points - i) * stepSec,
+      o,
+      h: Math.max(o, c) + local() * wick,
+      l: Math.max(0.0000001, Math.min(o, c) - local() * wick),
+      c,
+      v: local() * 50000,
+    });
   }
   return out;
 }
@@ -238,11 +260,25 @@ export function mockTrades(market: Market, n = 40): Trade[] {
   });
 }
 
+const LEADERBOARD_ROWS = 60;
+
+/**
+ * Holder payouts per market, shaped like a real launchpad: a long tail from ~$200 up to ~$9,000
+ * for the top market, summing to roughly $45–80K across the board (matching MOCK_STATS).
+ * Decays geometrically by rank so the table reads plausibly rather than uniformly.
+ */
 export function mockLeaderboard(): LeaderboardRow[] {
-  return MOCK_MARKETS.slice()
-    .sort((a, b) => b.holderEarningsCoin - a.holderEarningsCoin)
-    .slice(0, 60)
-    .map((m, i) => ({
+  const ranked = MOCK_MARKETS.slice()
+    .sort((a, b) => b.fdvUsd - a.fdvUsd)
+    .slice(0, LEADERBOARD_ROWS);
+  return ranked.map((m, i) => {
+    const local = mulberry32(hashStr(`payout-rank-${m.mint}`));
+    // ~$9,000 at rank 0 decaying 15% a rank onto a $200 floor, jittered ±15%. Summed over the
+    // 60 rows that lands near $66K, consistent with MOCK_STATS.paidToHoldersUsd.
+    const base = Math.max(200, 9_000 * Math.pow(0.85, i));
+    const holderShareUsd = Math.min(9_000, Math.max(200, base * (0.85 + local() * 0.3)));
+    const coinPrice = MOCK_COMMODITY_QUOTES.find((q) => q.symbol === m.commoditySymbol)?.priceUsd ?? 1;
+    return {
       rank: i + 1,
       mint: m.mint,
       ticker: m.ticker,
@@ -250,25 +286,58 @@ export function mockLeaderboard(): LeaderboardRow[] {
       image: m.image,
       pairedWith: m.commoditySymbol,
       pairedEmoji: m.commodityEmoji,
-      feeAmountCoin: m.holderEarningsCoin * rand(5, 20),
+      // Holders take 40% of the fee, so gross fees are 2.5x the holder share.
+      feeAmountCoin: (holderShareUsd * 2.5) / coinPrice,
       feeCoinSymbol: m.commoditySymbol,
-      holderShareUsd:
-        m.holderEarningsCoin *
-        (MOCK_COMMODITY_QUOTES.find((q) => q.symbol === m.commoditySymbol)?.priceUsd ?? 1) *
-        rand(1, 3),
-    }));
+      holderShareUsd,
+    };
+  });
+}
+
+/**
+ * The "Holder rewards" feed on the home page: recent per-wallet payouts, newest first.
+ * Deterministic (seeded off each market's mint) so SSR and CSR agree.
+ */
+export function mockRecentPayouts(n = 12): Payout[] {
+  const now = Math.floor(Date.now() / 1000);
+  const source = MOCK_MARKETS.slice()
+    .sort((a, b) => b.holderEarningsCoin - a.holderEarningsCoin)
+    .slice(0, n);
+  return source.map((m, i) => {
+    const local = mulberry32(hashStr(`payout-${m.mint}`));
+    return {
+      id: `${m.mint}-${i}`,
+      wallet: fakeMint(`holder-${i}-${m.mint}`),
+      mint: m.mint,
+      ticker: m.ticker,
+      commoditySymbol: m.commoditySymbol,
+      // A single holder's cut of one 15-minute cycle: cents to a few dollars, converted to coin units.
+      amount: (0.4 + local() * 6) / (MOCK_COMMODITY_QUOTES.find((q) => q.symbol === m.commoditySymbol)?.priceUsd ?? 1),
+      ts: now - (12 + i * 37),
+    };
+  });
 }
 
 export function mockWalletRewards(wallet: string): WalletRewards {
   const local = mulberry32(hashStr(wallet));
   const coins = COMMODITIES.filter((c) => c.phase === "mvp").slice(0, 6);
-  const byCoin = coins.map((c) => ({
-    symbol: c.symbol,
-    emoji: c.emoji,
-    amount: local() * 50,
-    claimable: local() * 5,
-  }));
   const quotes = MOCK_COMMODITY_QUOTES;
+  // Budget one wallet's lifetime earnings at $40–$460, split across its coins, then convert each
+  // slice into coin units — so the headline total always reads under $500.
+  const budgetUsd = 40 + local() * 420;
+  const weights = coins.map(() => 0.2 + local());
+  const weightSum = weights.reduce((a, b) => a + b, 0);
+  const byCoin = coins.map((c, i) => {
+    const price = quotes.find((q) => q.symbol === c.symbol)?.priceUsd ?? 1;
+    const usdSlice = (budgetUsd * weights[i]) / weightSum;
+    return {
+      symbol: c.symbol,
+      emoji: c.emoji,
+      amount: usdSlice / price,
+      // Most payouts land directly; only the odd coin leaves a small Merkle remainder.
+      claimable: local() > 0.7 ? (usdSlice * 0.15) / price : 0,
+    };
+  });
   const totalEarnedUsd = byCoin.reduce((sum, b) => {
     const q = quotes.find((x) => x.symbol === b.symbol);
     return sum + b.amount * (q?.priceUsd ?? 1);
