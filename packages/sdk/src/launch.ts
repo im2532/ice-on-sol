@@ -7,13 +7,21 @@
  *
  * SOL path (two txs): tx1 = Jupiter SOL->USDC; tx2 = the USDC-path instructions above,
  * fed by tx1's USDC output.
+ *
+ * v0.2: every transaction is a v0 `VersionedTransaction`. The launch tx touches ~40 accounts (peg_desk
+ * trade accounts, DBC config/pool/vaults/metadata, fee_router's 17) and does not fit the 1232-byte limit
+ * as a legacy tx; pass `addressLookupTable` (the static-account ALT written by `scripts/create-alt.ts`
+ * into `deployments/<cluster>.json`, see `launchAltAddress`) to compress them. The built tx is checked
+ * against the size limit and a clear error is thrown if it still does not fit.
  */
 import {
+  AddressLookupTableAccount,
   Connection,
   Keypair,
   PublicKey,
-  Transaction,
   TransactionInstruction,
+  TransactionMessage,
+  VersionedTransaction,
   ComputeBudgetProgram,
 } from "@solana/web3.js";
 import BN from "bn.js";
@@ -22,7 +30,7 @@ import { feeRouter as feeRouterPda } from "./pda";
 import { PegDeskClient, type CommodityAccountView, type OracleReading } from "./pegDesk";
 import { FEE_ROUTER_PROGRAM_ID, registerPoolIx } from "./feeRouter";
 import { buildLaunchConfigParams, createConfigIx, createPoolWithFirstBuyIxs, deriveDbcPoolAddress, makeDbcClient } from "./dbc";
-import { getQuote, getSwapIxs, type JupiterSwapIxsResult } from "./jupiter";
+import { getQuote, getSwapIxs, resolveAddressLookupTables, type JupiterSwapIxsResult } from "./jupiter";
 import { applySlippageDown, applySlippageUp } from "./pricing";
 
 export type PayWith = "USDC" | "COIN" | "SOL";
@@ -52,11 +60,24 @@ export interface BuildLaunchTransactionsParams {
   treasury: PublicKey;
   pegDesk: PegDeskClient;
   slippageBps?: number;
+  /**
+   * Launch address lookup table (static program/commodity accounts; `scripts/create-alt.ts`). Optional,
+   * but without it the one-tx launch usually exceeds the 1232-byte packet limit.
+   */
+  addressLookupTable?: AddressLookupTableAccount | null;
+  /** Blockhash to compile against; fetched from `connection` ("confirmed") when omitted. */
+  recentBlockhash?: { blockhash: string; lastValidBlockHeight: number };
 }
 
 export interface BuildLaunchTransactionsResult {
-  /** One tx for USDC/COIN pay-in; two txs ([jupiterSolToUsdc, rest]) for SOL pay-in. */
-  transactions: Transaction[];
+  /**
+   * One v0 tx for USDC/COIN pay-in; two ([jupiterSolToUsdc, launch]) for SOL pay-in. Unsigned: the
+   * LAST tx additionally needs `configKeypair` + `baseMintKeypair` (e.g. wallet-adapter
+   * `sendTransaction(tx, conn, { signers })`, or `tx.sign([...])` before the wallet signs).
+   */
+  transactions: VersionedTransaction[];
+  blockhash: string;
+  lastValidBlockHeight: number;
   configKeypair: Keypair;
   baseMintKeypair: Keypair;
   /** Exact COIN base units used for the first buy (post buy_exact_out / already-held COIN). */
@@ -163,7 +184,15 @@ export async function buildLaunchTransactions(params: BuildLaunchTransactionsPar
     return ixs;
   };
 
-  const transactions: Transaction[] = [];
+  const transactions: VersionedTransaction[] = [];
+  const bh = params.recentBlockhash ?? (await params.connection.getLatestBlockhash("confirmed"));
+  const launchAlts = params.addressLookupTable ? [params.addressLookupTable] : [];
+  const compile = (instructions: TransactionInstruction[], alts: AddressLookupTableAccount[], what: string): VersionedTransaction => {
+    const msg = new TransactionMessage({ payerKey: params.creator, recentBlockhash: bh.blockhash, instructions }).compileToV0Message(alts);
+    const tx = new VersionedTransaction(msg);
+    assertTxSize(tx, what, alts.length > 0);
+    return tx;
+  };
 
   if (params.payWith === "SOL") {
     // tx1: Jupiter SOL -> USDC for the peg_desk buy_exact_out leg.
@@ -189,31 +218,73 @@ export async function buildLaunchTransactions(params: BuildLaunchTransactionsPar
     }
     const swap: JupiterSwapIxsResult = await getSwapIxs({ quote, userPublicKey: params.creator, maxAccounts: 20 });
 
-    const tx1 = new Transaction().add(
-      ComputeBudgetProgram.setComputeUnitLimit({ units: 300_000 }),
-      ...swap.computeBudgetInstructions,
+    // Jupiter's computeBudgetInstructions already set the CU limit/price (a second SetComputeUnitLimit
+    // would fail the tx with DuplicateInstruction).
+    const jupAlts = await resolveAddressLookupTables(params.connection, swap.addressLookupTableAddresses);
+    const tx1Ixs = [
+      ...(swap.computeBudgetInstructions.length > 0 ? swap.computeBudgetInstructions : [ComputeBudgetProgram.setComputeUnitLimit({ units: 300_000 })]),
       ...swap.setupInstructions,
       swap.swapInstruction,
       ...(swap.cleanupInstruction ? [swap.cleanupInstruction] : []),
-    );
-    transactions.push(tx1);
-
-    const tx2 = new Transaction().add(...(await restIxsBuilder(params.userUsdcAta)));
-    transactions.push(tx2);
+    ];
+    transactions.push(compile(tx1Ixs, jupAlts, "SOL→USDC swap"));
+    transactions.push(compile(await restIxsBuilder(params.userUsdcAta), launchAlts, "launch"));
   } else {
-    // USDC or COIN pay-in: everything fits in one transaction.
+    // USDC or COIN pay-in: everything in one transaction.
     const usdcSourceAta = params.payWith === "USDC" ? params.userUsdcAta : params.userCoinAta;
-    const tx = new Transaction().add(...(await restIxsBuilder(usdcSourceAta)));
-    transactions.push(tx);
+    transactions.push(compile(await restIxsBuilder(usdcSourceAta), launchAlts, "launch"));
   }
 
   return {
     transactions,
+    blockhash: bh.blockhash,
+    lastValidBlockHeight: bh.lastValidBlockHeight,
     configKeypair,
     baseMintKeypair,
     coinForFirstBuy,
     firstBuyUsd: params.firstBuyUsdc,
   };
+}
+
+/** Solana packet limit for a serialized transaction (signatures included). */
+export const MAX_TX_BYTES = 1232;
+
+function assertTxSize(tx: VersionedTransaction, what: string, hasAlt: boolean): void {
+  let size: number;
+  try {
+    size = tx.serialize().length; // unsigned: signature slots are zero-filled but counted
+  } catch (err) {
+    throw new Error(`buildLaunchTransactions: ${what} tx does not serialize (${String(err)})${hasAlt ? "" : " — pass addressLookupTable (scripts/create-alt.ts)"}`);
+  }
+  if (size > MAX_TX_BYTES) {
+    throw new Error(
+      `buildLaunchTransactions: ${what} tx is ${size} bytes (> ${MAX_TX_BYTES})${hasAlt ? " even with the lookup table — extend it (scripts/create-alt.ts)" : " — pass addressLookupTable (scripts/create-alt.ts)"}`,
+    );
+  }
+}
+
+/** `deployments/<cluster>.json` fields the launch builder reads (written by scripts/seed-commodities.ts + create-alt.ts). */
+export interface LaunchDeployment {
+  cluster?: string;
+  addressLookupTable?: string;
+}
+
+/** The launch ALT address from a parsed deployments file, or null. */
+export function launchAltAddress(deployment: LaunchDeployment | null | undefined): PublicKey | null {
+  const a = deployment?.addressLookupTable;
+  if (!a) return null;
+  try {
+    return new PublicKey(a);
+  } catch {
+    return null;
+  }
+}
+
+/** Fetches the launch ALT account (null when the address is null or the table does not exist). */
+export async function loadLaunchAlt(connection: Connection, address: PublicKey | null): Promise<AddressLookupTableAccount | null> {
+  if (!address) return null;
+  const res = await connection.getAddressLookupTable(address);
+  return res.value ?? null;
 }
 
 function usdToCoinBaseUnits(usd: number, coinUsdPrice: number, coinDecimals: number): bigint {

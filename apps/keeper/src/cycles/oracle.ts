@@ -1,7 +1,8 @@
 /**
  * Oracle cycle: pushes Pyth Hermes updates for PythPull commodities into per-commodity
- * persistent update accounts, and posts KeeperSigned prices (from `src/sources/*`) for
- * manual/slow coins. Per docs/CONTRACTS.md §5 and docs/research/03 §3.3.
+ * persistent update accounts, posts KeeperSigned prices (from `src/sources/*`) for
+ * manual/slow coins, and RELAYS Switchboard-kind commodities (see `relaySwitchboardPrices`).
+ * Per docs/CONTRACTS.md §5 and docs/research/03 §3.3.
  *
  * // CHECK vs SDK @pythnetwork/hermes-client ^2.0.0, @pythnetwork/pyth-solana-receiver ^0.10.0
  * The exact method names (`getLatestPriceUpdates`, `buildPostPriceUpdateInstructions`,
@@ -33,6 +34,12 @@ import { getConnection, getKeeperKeypair, sendWithPriority } from "../rpc";
 import { childLogger } from "../logger";
 import { insertPrice, getLatestPrice, listCommodities, updateCommodityFeedAccount, type CommodityRow } from "../db";
 import { readManualPrices } from "../sources/manualPrices";
+import { fetchCs2Price } from "../sources/cs2";
+import { fetchTcgPrice } from "../sources/tcg";
+import { fetchOsrsGoldPrice } from "../sources/osrs";
+import { fetchWatchChartsPrice, fetchChrono24Price } from "../sources/watches";
+import { fetchCollectorCryptPrice } from "../sources/collectorcrypt";
+import { median3, type SourceReading } from "../sources/median";
 
 const log = childLogger("oracle");
 
@@ -56,22 +63,157 @@ export async function runOracleCycle(pegDesk: PegDeskClient): Promise<void> {
   if (byOracleKind.keeperSigned.length > 0) {
     await runKeeperSignedBatch(pegDesk, byOracleKind.keeperSigned);
   }
-  // Switchboard commodities are posted by the same keeper via the Switchboard on-demand
-  // SDK's own "crank" pattern (pull + verify in the consuming transaction) rather than a
-  // separate push step here — CONTRACTS §1 has the program read the quote account
-  // directly, same shape as PythPull's feed_account but Switchboard-owned. Left as a TODO:
-  // wire up @switchboard-xyz/on-demand once it's added to package.json (out of the pinned
-  // dependency list for this task).
+  if (byOracleKind.switchboard.length > 0) {
+    await relaySwitchboardPrices(pegDesk, byOracleKind.switchboard);
+  }
 }
 
 function groupByOracleKind(rows: CommodityRow[]) {
   const pythPull: CommodityRow[] = [];
   const keeperSigned: CommodityRow[] = [];
+  const switchboard: CommodityRow[] = [];
   for (const r of rows) {
     if (r.oracle_kind === OracleKind.PythPull) pythPull.push(r);
     else if (r.oracle_kind === OracleKind.KeeperSigned) keeperSigned.push(r);
+    else if (r.oracle_kind === OracleKind.Switchboard) switchboard.push(r);
   }
-  return { pythPull, keeperSigned };
+  return { pythPull, keeperSigned, switchboard };
+}
+
+/** Relay cadence per commodity (seconds); the program's `KeeperPrice.min_interval` still applies on-chain. */
+const SWITCHBOARD_RELAY_MIN_INTERVAL_SEC = 300;
+/** Confidence posted with a relayed median: 1% of price for ≥ 2 sources, 2% for a single source. */
+const relayConfBps = (sourcesUsed: number): bigint => (sourcesUsed >= 2 ? 100n : 200n);
+/** Confidence posted when bootstrapping from the manual-prices.json seed (wider than any live-source case). */
+const MANUAL_FALLBACK_CONF_BPS = 500n; // 5%
+
+/**
+ * Switchboard relay (stand-in). For `OracleKind.Switchboard` commodities the program currently reads a
+ * KeeperPrice-shaped account at `commodity.feed_account` = PDA["kp", commodity] (peg_desk oracle.rs
+ * `read_switchboard` TODO), and `keeper_update_price` accepts Switchboard kind. So the keeper fetches the
+ * SAME sources the Switchboard job would (src/switchboard/jobs/*.json → src/sources/*) and posts the
+ * result with `keeper_update_price` — bounded on-chain by `max_move_bps` / `min_interval`.
+ *
+ * Source by category: cs2_skins → median(Pricempire, CSFloat, Skinport); trading_cards →
+ * median3(pokemontcg.io market, Collector Crypt sales); watches → median3(WatchCharts,
+ * Chrono24 [scrape-disabled stub], Collector Crypt sales), falling back to the
+ * data/manual-prices.json seed (wide conf) when fewer than 2 live sources respond;
+ * game_gold → sources/osrs.ts (stub, returns null). Futures that need a licensed vendor feed
+ * (RB/HO/LBR/… — jobs/futures-vendor.json) have no keeper source yet and are skipped with a warning.
+ *
+ * TODO switchboard-on-demand: once `switchboard-on-demand` replaces the stand-in in oracle.rs, delete
+ * this relay and instead crank the on-demand pull feed (`@switchboard-xyz/on-demand` PullFeed
+ * `fetchUpdateIx`) in the consuming transaction, pointing `feed_account` at the PullFeed account.
+ */
+async function relaySwitchboardPrices(pegDesk: PegDeskClient, rows: CommodityRow[]): Promise<void> {
+  const keeper = getKeeperKeypair();
+  const nowSec = Math.floor(Date.now() / 1000);
+  for (const row of rows) {
+    const entry = bySymbol(row.symbol);
+    if (!entry) continue;
+    const last = await getLatestPrice(row.symbol);
+    if (last && nowSec - last.ts < SWITCHBOARD_RELAY_MIN_INTERVAL_SEC) continue;
+
+    let reading: { price: number; sourcesUsed: number; source: string } | null = null;
+    let usedManualFallback = false;
+    try {
+      switch (entry.category) {
+        case "cs2_skins": {
+          const r = await fetchCs2Price(row.symbol);
+          reading = r ? { ...r, source: `cs2-median3:${entry.oracle.switchboardJob ?? row.symbol}` } : null;
+          break;
+        }
+        case "trading_cards": {
+          // tcg_* jobs: pokemontcg.io market price + Collector Crypt recent-sales median as a third leg.
+          const [pokemontcg, collectorcrypt] = await Promise.all([fetchTcgPrice(row.symbol), fetchCollectorCryptPrice(row.symbol)]);
+          const readings: (SourceReading | null)[] = [
+            pokemontcg ? { price: pokemontcg, source: "pokemontcg" } : null,
+            collectorcrypt ? { price: collectorcrypt, source: "collectorcrypt" } : null,
+          ];
+          const m = median3(readings);
+          // A single responding source (pokemontcg alone, the pre-Collector-Crypt behavior) is
+          // still usable for cards — unlike watches there's no manual-price fallback for this
+          // category, so fall back to the lone reading rather than dropping the update entirely.
+          reading = m
+            ? { price: m.price, sourcesUsed: m.sourcesUsed, source: `median3:${m.sources.join("+")}` }
+            : pokemontcg
+              ? { price: pokemontcg, sourcesUsed: 1, source: "pokemontcg" }
+              : null;
+          break;
+        }
+        case "watches": {
+          // watch_* jobs: WatchCharts + Chrono24 (scrape-disabled stub, always null today) +
+          // Collector Crypt recent-sales median.
+          const [watchcharts, chrono24, collectorcrypt] = await Promise.all([
+            fetchWatchChartsPrice(row.symbol),
+            fetchChrono24Price(row.symbol),
+            fetchCollectorCryptPrice(row.symbol),
+          ]);
+          const readings: (SourceReading | null)[] = [
+            watchcharts ? { price: watchcharts, source: "watchcharts" } : null,
+            chrono24 ? { price: chrono24, source: "chrono24" } : null,
+            collectorcrypt ? { price: collectorcrypt, source: "collectorcrypt" } : null,
+          ];
+          const m = median3(readings);
+          reading = m ? { price: m.price, sourcesUsed: m.sourcesUsed, source: `median3:${m.sources.join("+")}` } : null;
+          break;
+        }
+        case "game_gold": {
+          const p = await fetchOsrsGoldPrice();
+          reading = p ? { price: p, sourcesUsed: 1, source: "osrs" } : null;
+          break;
+        }
+        default:
+          log.warn({ symbol: row.symbol, job: entry.oracle.switchboardJob }, "no keeper relay source for this Switchboard job (licensed vendor feed); skipped");
+          continue;
+      }
+    } catch (err) {
+      log.warn({ symbol: row.symbol, err: String(err) }, "switchboard relay source fetch failed");
+      continue;
+    }
+
+    // Live sources returned fewer than 2 values: bootstrap from the manual-prices.json seed
+    // (fallback only — data/manual-prices.json's "seed-estimate" entries), marked with a wide
+    // confidence band so downstream consumers can tell it's not a real median. Per task spec,
+    // this only applies where a seed exists today (the watches category).
+    if ((!reading || reading.sourcesUsed < 2) && entry.category === "watches") {
+      try {
+        const manualEntries = await readManualPrices();
+        const seed = manualEntries.find((e) => e.symbol === row.symbol);
+        if (seed) {
+          reading = { price: seed.price, sourcesUsed: 1, source: `manual-seed:${seed.source}` };
+          usedManualFallback = true;
+        }
+      } catch (err) {
+        log.warn({ symbol: row.symbol, err: String(err) }, "manual-prices.json fallback read failed");
+      }
+    }
+
+    if (!reading || !(reading.price > 0)) {
+      log.warn({ symbol: row.symbol }, "switchboard relay: no source responded");
+      continue;
+    }
+
+    const price1e8 = BigInt(Math.round(reading.price * 1e8));
+    const conf = usedManualFallback ? (price1e8 * MANUAL_FALLBACK_CONF_BPS) / 10_000n : (price1e8 * relayConfBps(reading.sourcesUsed)) / 10_000n;
+    try {
+      const ix = await pegDesk.keeperUpdatePriceIx({
+        keeper: keeper.publicKey,
+        symbol: row.symbol,
+        commodity: new PublicKey(row.commodity_pubkey),
+        price: price1e8,
+        conf,
+        publishTime: BigInt(nowSec),
+        sourceHash: hashSource(reading.source),
+      });
+      await sendWithPriority([ix]);
+      await insertPrice({ commodity: row.symbol, ts: nowSec, price: price1e8.toString(), conf: conf.toString(), source: "switchboard" });
+      log.info({ symbol: row.symbol, price: reading.price, sources: reading.sourcesUsed }, "relayed Switchboard-kind price");
+    } catch (err) {
+      // MoveTooLarge / TooSoon are expected occasionally (bounded feed); the next cycle retries.
+      log.error({ symbol: row.symbol, err: String(err) }, "switchboard relay keeper_update_price failed");
+    }
+  }
 }
 
 async function runPythPullBatch(

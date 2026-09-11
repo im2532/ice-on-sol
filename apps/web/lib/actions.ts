@@ -20,7 +20,6 @@ import {
   type Signer,
   type TransactionInstruction,
 } from "@solana/web3.js";
-import { USDC } from "@icemarkets/registry";
 import type {
   BuildLaunchTransactionsParams,
   BuiltTrade,
@@ -30,6 +29,7 @@ import type {
 } from "@icemarkets/sdk";
 import { toast } from "@/components/Toast";
 import { fetchClaimableLeaves, fetchCommodities, fetchMarket } from "./api";
+import { USDC_MINT, WSOL_MINT, fetchLaunchAltAddress } from "./cluster";
 
 // ---------------------------------------------------------------------------
 // UI-level params (what the pages collect). Mapped onto SDK params below.
@@ -40,7 +40,7 @@ export type PayWith = "SOL" | "USDC" | "COIN";
 
 export interface LaunchParams {
   ownerWallet: PublicKey;
-  commoditySymbol: string; // paired-with coin, e.g. "GLD"; basket support is v1.1
+  commoditySymbol: string; // paired-with coin, e.g. "GLD"; a ready-made index coin (e.g. "WATCHX") works the same way
   name: string;
   ticker: string;
   /** Metadata URI for the memecoin (currently the uploaded image URI; see app/api/upload). */
@@ -91,9 +91,6 @@ type Sdk = typeof import("@icemarkets/sdk");
 // The SDK (and web3.js/Anchor) use the Node `Buffer` global; Next 15 does not polyfill it client-side.
 if (typeof window !== "undefined") (globalThis as { Buffer?: typeof Buffer }).Buffer ??= Buffer;
 
-const CLUSTER = (process.env.NEXT_PUBLIC_CLUSTER ?? "devnet") as keyof typeof USDC;
-const USDC_MINT = new PublicKey(process.env.NEXT_PUBLIC_USDC_MINT ?? USDC[CLUSTER] ?? USDC.devnet);
-const WSOL_MINT = new PublicKey("So11111111111111111111111111111111111111112");
 const IDL_BASE = process.env.NEXT_PUBLIC_IDL_BASE ?? "/idl";
 const DEFAULT_SLIPPAGE_BPS = 100;
 const DECIMALS = 1_000_000; // every ICEmarkets coin, memecoin and USDC has 6 decimals
@@ -175,10 +172,15 @@ async function guard<T>(what: string, fn: () => Promise<T>): Promise<T | null> {
 // Actions
 // ---------------------------------------------------------------------------
 
-/** Launch: SDK `buildLaunchTransactions` (CONTRACTS §5) — 1 tx (USDC) or 2 txs (SOL → USDC, then launch). */
+/**
+ * Launch: SDK `buildLaunchTransactions` (CONTRACTS §5) — 1 v0 tx (USDC) or 2 (SOL → USDC, then launch),
+ * compiled against the launch lookup table from `/deployments/<cluster>.json` when present.
+ * Index coins (Composite) are paired like any other commodity; the SDK prices them from their legs.
+ */
 export async function launchMarket(params: LaunchParams, deps: SendTxDeps): Promise<string[] | null> {
   const built = await guard("Launch", async () => {
     const { sdk, pegDesk, commodity, oracle } = await pegContext(deps.connection, params.ownerWallet, params.commoditySymbol);
+    const addressLookupTable = await sdk.loadLaunchAlt(deps.connection, await fetchLaunchAltAddress());
     const routerPda = sdk.feeRouter.router(sdk.FEE_ROUTER_PROGRAM_ID)[0];
     const launch: BuildLaunchTransactionsParams = {
       connection: deps.connection,
@@ -201,13 +203,12 @@ export async function launchMarket(params: LaunchParams, deps: SendTxDeps): Prom
       treasury: new PublicKey(process.env.NEXT_PUBLIC_TREASURY ?? routerPda.toBase58()),
       pegDesk,
       slippageBps: DEFAULT_SLIPPAGE_BPS,
+      addressLookupTable,
     };
     const res = await sdk.buildLaunchTransactions(launch);
-    const { blockhash } = await deps.connection.getLatestBlockhash("confirmed");
+    // v0 txs are compiled (fee payer + blockhash) by the SDK. The launch tx (last one) also needs the
+    // fresh DBC config + base mint keypairs; wallet-adapter applies `signers` before the wallet signs.
     return res.transactions.map((tx, i) => {
-      tx.recentBlockhash = blockhash;
-      tx.feePayer = params.ownerWallet;
-      // The launch tx (last one) creates the DBC config + base mint from fresh keypairs.
       const isLaunchTx = i === res.transactions.length - 1;
       return { tx, signers: isLaunchTx ? [res.configKeypair, res.baseMintKeypair] : [] };
     });
@@ -239,6 +240,19 @@ export async function buyCoin(params: BuySellParams, deps: SendTxDeps): Promise<
 
     const market = await fetchMarket(params.mint);
     if (!market) throw new Error("Unknown market");
+    if (params.payWith === "COIN") {
+      // COIN → memecoin directly on the curve: no Peg Desk leg, so this also works while the coin is Closed.
+      const sdk = await loadSdk();
+      const built = await sdk.buildBuyWithCoin({
+        connection: deps.connection,
+        user: params.wallet,
+        dbcPool: new PublicKey(market.dbcPool),
+        memeMint: new PublicKey(market.mint),
+        coinIn: toBase(params.amountIn),
+        minMemeOut: params.minOut > 0 ? toBase(params.minOut) : 0n,
+      });
+      return toTx(deps.connection, params.wallet, built, sdk);
+    }
     const { sdk, pegDesk, commodity, oracle } = await pegContext(deps.connection, params.wallet, market.commoditySymbol);
     const common = {
       connection: deps.connection,

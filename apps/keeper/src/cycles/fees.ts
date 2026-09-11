@@ -72,7 +72,7 @@ async function recordClaimFromEvents(pool: PoolRow, sig: string, source: 0 | 2):
   const ev = (await parseEvents("fee_router", sig).catch(() => [])).find((e) => e.name === "feesClaimed" || e.name === "FeesClaimed");
   const q = ev ? String(ev.data.quoteAmount ?? ev.data.quote_amount ?? "0") : "0";
   const b = ev ? String(ev.data.baseAmount ?? ev.data.base_amount ?? "0") : "0";
-  await recordFeeClaim({ pool: pool.dbc_pool, source, quote_amount: q, base_amount: b });
+  await recordFeeClaim({ pool: pool.dbc_pool, source, quote_amount: q, base_amount: b, sig });
 }
 
 async function maybeClaimDbc(pool: PoolRow, dbcClient: ReturnType<typeof makeDbcClient>, caller: PublicKey): Promise<void> {

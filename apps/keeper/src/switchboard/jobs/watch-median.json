@@ -1,0 +1,35 @@
+{
+  "name": "watch_submariner_median3",
+  "comment": "CHECK vs Switchboard On-Demand job spec (https://docs.switchboard.xyz) — best-effort per docs/research/03 §2 ('build a Switchboard job per coin, with 2-5 HttpTask sources, a median'), not validated against a live Switchboard oracle in this sandbox (no network). Represents SUBMARINER; the other 9 watch symbols (DAYTONA, GMTMASTER, DATEJUST, ROYALOAK, NAUTILUS, SPEEDMASTER, SANTOS, GSHOCK, TISSOTPRX) get the same job shape with their own reference number substituted — see apps/keeper/src/sources/watches.ts WATCH_REFERENCE. Chrono24 has no public API (see sources/watches.ts fetchChrono24Price) so it is intentionally NOT a task here; only WatchCharts + Collector Crypt feed this job until a compliant Chrono24 source exists. CHECK: the Collector Crypt leg's `divide: [1000000000]` only converts lamports to SOL, not SOL to USD — a real job needs an extra httpTask against Hermes for SOL/USD and a multiplyTask before the median, omitted here for brevity (the keeper-side apps/keeper/src/sources/collectorcrypt.ts does the full conversion). API keys are examples of variable-override names, not real secrets.",
+  "tasks": [
+    {
+      "httpTask": {
+        "url": "https://api.watchcharts.com/v3/watch/market-price?reference_number=126610LN&currency=USD",
+        "headers": [{ "key": "X-Api-Key", "value": "${WATCHCHARTS_API_KEY}" }]
+      }
+    },
+    {
+      "jsonParseTask": { "path": "$.market_price" }
+    },
+    {
+      "conditionalTask": {
+        "attempt": [
+          {
+            "httpTask": {
+              "url": "https://api.helius.xyz/v0/addresses/${COLLECTORCRYPT_SUBMARINER_MINT}/transactions?api-key=${HELIUS_API_KEY}&type=NFT_SALE&limit=5",
+              "headers": []
+            }
+          },
+          { "jsonParseTask": { "path": "$[0].events.nft.amount", "divide": [1000000000] } }
+        ]
+      }
+    },
+    {
+      "medianTask": {}
+    }
+  ],
+  "maxJobRangePct": 25,
+  "minJobResponses": 2,
+  "minOracleSamples": 1,
+  "maxStalenessSeconds": 86400
+}

@@ -16,7 +16,8 @@ export type Category =
   | "game_gold"
   | "trading_cards"
   | "water"
-  | "cars";
+  | "cars"
+  | "watches";
 
 /** Mirrors `OracleKind` in programs/peg_desk/src/state.rs (same discriminants). */
 export enum OracleKind {
@@ -88,7 +89,7 @@ export interface Commodity {
     perTxCapUsd: number;
   };
   /** Which launch phase this coin ships in. */
-  phase: "mvp" | "v1.1" | "v2";
+  phase: "mvp";  // single release — no phases
   /** Trademark-safe display name if the underlying product is a brand. */
   displayName?: string;
   emoji: string;

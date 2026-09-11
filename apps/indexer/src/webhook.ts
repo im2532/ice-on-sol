@@ -1,126 +1,103 @@
 import Fastify from "fastify";
-import { PROGRAM_IDS } from "@icemarkets/registry";
 import { pool, query } from "./db";
+import { defaultConnection, ingestTransaction, type IngestLogger } from "./decode/ingest";
+import { missingIdls } from "./decode/anchorEvents";
+import { fromHeliusEnhanced, fromRawRpc, isHeliusEnhanced, isRawRpc } from "./decode/normalize";
+import type { NormalizedTx } from "./decode/types";
 
 /**
- * Helius "Enhanced" webhook receiver. Configure a webhook in the Helius dashboard (or via their API)
- * pointed at this server's /helius endpoint, watching the four ICEmarkets programs plus the DBC program, with
- * `webhookType: "enhanced"` and `txnType: "Any"`. Each POST body is an array of parsed transactions;
- * we pull out the program logs/instructions we care about and upsert into Postgres.
+ * Helius webhook receiver (`POST /helius`). Accepts both delivery types:
+ *  - "enhanced": `accountData[].tokenBalanceChanges` / `tokenTransfers` drive the DBC / DAMM v2 swap and
+ *    balance decoders; Anchor events need program logs, which enhanced payloads do not carry, so for
+ *    transactions that invoked an ICEmarkets program the logs are fetched with `getTransaction` (RPC_URL).
+ *  - "raw": RPC-shaped transactions with `meta.logMessages` and pre/post token balances — no extra RPC.
+ * Watch the four ICEmarkets program ids, the DBC and DAMM v2 programs, and every registered memecoin
+ * mint (so wallet-to-wallet transfers reach `balance_events`; see README "Helius setup").
  *
- * This is intentionally a thin ingester: it does NOT compute rollups (24h volume, TWAB, curve %) — that
- * happens in apps/keeper or a scheduled SQL job reading the tables this file writes to.
+ * Decoding / table mapping lives in src/decode/* (shared with src/backfill.ts). Rollups (candles, 24h
+ * volume, curve %) stay in candles.ts / the keeper.
  */
 
 const PORT = Number(process.env.WEBHOOK_PORT ?? 4001);
 const HELIUS_AUTH_HEADER = process.env.HELIUS_WEBHOOK_AUTH_HEADER ?? ""; // shared secret Helius echoes back
 
-const WATCHED_PROGRAMS = new Set([
-  PROGRAM_IDS.pegDesk,
-  PROGRAM_IDS.feeRouter,
-  PROGRAM_IDS.distributor,
-  PROGRAM_IDS.buyback,
-  PROGRAM_IDS.dbc,
-]);
+const app = Fastify({ logger: true, bodyLimit: 20 * 1024 * 1024 });
+const log: IngestLogger = {
+  info: (o, m) => app.log.info(o, m),
+  warn: (o, m) => app.log.warn(o, m),
+  error: (o, m) => app.log.error(o, m),
+  debug: (o, m) => app.log.debug(o, m),
+};
 
-interface HeliusEnhancedTx {
-  signature: string;
-  slot: number;
-  timestamp: number;
-  type: string;
-  source: string;
-  accountData?: { account: string }[];
-  instructions?: { programId: string; data: string; accounts: string[] }[];
-  events?: Record<string, unknown>;
+function normalize(item: unknown): NormalizedTx | null {
+  if (isRawRpc(item)) return fromRawRpc(item);
+  if (isHeliusEnhanced(item)) return fromHeliusEnhanced(item);
+  return null;
 }
-
-const app = Fastify({ logger: true });
 
 app.post("/helius", async (req, reply) => {
   if (HELIUS_AUTH_HEADER && req.headers["authorization"] !== HELIUS_AUTH_HEADER) {
     return reply.code(401).send({ error: "unauthorized" });
   }
 
-  const body = req.body as HeliusEnhancedTx[];
+  const body: unknown = req.body;
   if (!Array.isArray(body)) return reply.code(400).send({ error: "expected an array of transactions" });
 
+  const connection = defaultConnection();
   const client = await pool.connect();
+  const totals = { txs: 0, events: 0, trades: 0, balanceEvents: 0, errors: 0, skipped: 0 };
+  let last: NormalizedTx | null = null;
   try {
     await client.query("begin");
-    for (const tx of body) {
-      const touchesUs = tx.instructions?.some((ix) => WATCHED_PROGRAMS.has(ix.programId));
-      if (!touchesUs) continue;
-      await handleTransaction(client, tx);
+    for (const item of body as unknown[]) {
+      const tx = normalize(item);
+      if (!tx) {
+        totals.skipped++;
+        continue;
+      }
+      const r = await ingestTransaction(tx, { client, connection, log }, item);
+      totals.txs++;
+      totals.events += r.events;
+      totals.trades += r.trades;
+      totals.balanceEvents += r.balanceEvents;
+      if (r.error) totals.errors++;
+      last = tx;
     }
-    await client.query(
-      `insert into ingest_cursor (source, last_sig, last_slot, updated_at)
-       values ('helius_webhook', $1, $2, now())
-       on conflict (source) do update set last_sig = excluded.last_sig, last_slot = excluded.last_slot, updated_at = now()`,
-      [body.at(-1)?.signature ?? null, body.at(-1)?.slot ?? null]
-    );
+    if (last) {
+      await client.query(
+        `insert into ingest_cursor (source, last_sig, last_slot, updated_at)
+         values ('helius_webhook', $1, $2, now())
+         on conflict (source) do update set last_sig = excluded.last_sig, last_slot = excluded.last_slot, updated_at = now()`,
+        [last.signature, last.slot],
+      );
+    }
     await client.query("commit");
   } catch (err) {
     await client.query("rollback");
-    app.log.error(err);
+    app.log.error({ err: String(err) }, "ingest batch failed");
     return reply.code(500).send({ error: "ingest failed" });
   } finally {
     client.release();
   }
 
-  return { ok: true, processed: body.length };
+  return { ok: true, processed: body.length, ...totals };
 });
 
-/**
- * Routes one transaction to a handler by which program(s) it touches. Real event decoding requires the
- * Anchor IDLs for peg_desk/fee_router/distributor/buyback (emitted via `emit_cpi!` per CONTRACTS.md) —
- * this stub records the transaction shape so the pipeline is wired, and TODO-marks where a borsh/Anchor
- * event decoder plugs in once the IDLs are generated by `anchor build`.
- */
-async function handleTransaction(client: import("pg").PoolClient, tx: HeliusEnhancedTx) {
-  const touchedPegDesk = tx.instructions?.some((ix) => ix.programId === PROGRAM_IDS.pegDesk);
-  const touchedDbc = tx.instructions?.some((ix) => ix.programId === PROGRAM_IDS.dbc);
-  const touchedFeeRouter = tx.instructions?.some((ix) => ix.programId === PROGRAM_IDS.feeRouter);
-  const touchedDistributor = tx.instructions?.some((ix) => ix.programId === PROGRAM_IDS.distributor);
-
-  if (touchedDbc) {
-    // TODO: decode DBC `swap` events -> insert into trades; `initialize_virtual_pool_with_spl_token` ->
-    // upsert pools; migration completion -> set pools.migrated_at / damm_pool.
-    app.log.debug({ sig: tx.signature }, "dbc tx observed (decode TODO)");
-  }
-  if (touchedPegDesk) {
-    // TODO: decode `Trade` / `PriceUpdated` / `StatusChanged` events (CONTRACTS §1) -> prices / commodities.
-    app.log.debug({ sig: tx.signature }, "peg_desk tx observed (decode TODO)");
-  }
-  if (touchedFeeRouter) {
-    // TODO: decode `FeesClaimed` / `FeesSplit` -> fee_claims.
-    app.log.debug({ sig: tx.signature }, "fee_router tx observed (decode TODO)");
-  }
-  if (touchedDistributor) {
-    // TODO: decode `Payout` -> payouts (amount / 1e6, human units); for kind = 1 (claim) also
-    // `update merkle_leaves set claimed = true where epoch_pubkey = $epoch and wallet = $wallet`
-    // (GET /rewards/:wallet* and the pools rollup rely on it). `EpochOpened` / `EpochFinalized` -> epochs.
-    app.log.debug({ sig: tx.signature }, "distributor tx observed (decode TODO)");
-  }
-
-  // Always keep a raw audit trail so decoding can be replayed once the IDL-based decoder lands.
-  await client.query(
-    `create table if not exists raw_events (sig text primary key, slot bigint, ts timestamptz, payload jsonb)`
+app.get("/healthz", async () => {
+  const cursor = await query<{ last_sig: string | null; last_slot: string | null; updated_at: Date }>(
+    `select last_sig, last_slot, updated_at from ingest_cursor where source = 'helius_webhook'`,
   );
-  await client.query(
-    `insert into raw_events (sig, slot, ts, payload) values ($1, $2, to_timestamp($3), $4)
-     on conflict (sig) do nothing`,
-    [tx.signature, tx.slot, tx.timestamp, JSON.stringify(tx)]
-  );
-}
-
-app.get("/healthz", async () => ({ ok: true }));
+  return { ok: true, missingIdls: missingIdls(), cursor: cursor[0] ?? null };
+});
 
 app
   .listen({ port: PORT, host: "0.0.0.0" })
-  .then(() => app.log.info(`webhook receiver listening on :${PORT}`))
-  .catch((err) => {
+  .then(() => {
+    app.log.info(`webhook receiver listening on :${PORT}`);
+    const missing = missingIdls();
+    if (missing.length > 0) app.log.warn({ missing }, "IDLs missing (run `anchor build` or set IDL_DIR) — events of these programs are not decoded");
+  })
+  .catch((err: unknown) => {
     app.log.error(err);
     process.exit(1);
   });
-
-export { query };

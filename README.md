@@ -29,7 +29,7 @@ docs/                Spec, contracts, research (01–05), review log, build stat
 
 ```bash
 make bootstrap        # rustup, solana 2.1.x, anchor 0.31.1 via avm, pnpm install
-make build            # anchor build + copy IDLs + build packages
+make build            # anchor build (with platform-tools v1.57) + copy IDLs + build packages
 make test             # anchor test (local validator clones Meteora/Pyth/Metaplex from mainnet — needs network)
 cp .env.example .env  # fill RPC_URL (Helius), keypair paths
 make devnet-deploy    # deploy 4 programs, write ids into Anchor.toml / .env / registry

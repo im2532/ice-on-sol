@@ -74,7 +74,7 @@ Seeds (`constants.rs`): `config`, `cmdty` + symbol bytes (padded to 12), `reserv
 | `buy_exact_out` | user | same | `coin_out: u64, max_usdc_in: u64` | used by launch builder |
 | `sell` | user | same (+ treasury_usdc* for spread fee) | `coin_in: u64, min_usdc_out: u64` | burn; pay from reserve; allowed in Open **and** Closed; reverts if reserve insufficient (`ReserveInsufficient`) |
 | `sweep_spread_fees` | keeper | commodity*, reserve_vault*, treasury_usdc* | `amount` | only above 102% reserve ratio |
-| `rebalance_hedge` | admin or keeper | commodity*, reserve_vault*, hedge_vault* … | `amount, direction` | v1.1; transfers USDC↔hedge asset via Jupiter CPI is out of scope for MVP — MVP implements only a manual `deposit_reserve` |
+| `rebalance_hedge` | admin or keeper | commodity*, reserve_vault*, hedge_vault* … | `amount, direction` | backlog (not part of v1.0 — no release phases; tracked in docs/BUILD_STATUS.md); transfers USDC↔hedge asset via Jupiter CPI — v1.0 implements only a manual `deposit_reserve` |
 | `deposit_reserve` | anyone | commodity*, reserve_vault*, from* | `amount` | seed capital / top-ups |
 
 ### Pricing (shared `pricing.rs`, pure functions, unit-tested)
@@ -135,7 +135,7 @@ Seeds: `router` (authority PDA = DBC `fee_claimer` and DAMM v2 position owner), 
 | `claim_dbc` | keeper (or permissionless when `ts - last_claim_ts > 900`) | CPI `dynamic_bonding_curve::claim_trading_fee(max_base=0, max_quote=u64::MAX)`; then split |
 | `claim_dbc_surplus` | keeper | CPI `partner_withdraw_surplus`; split |
 | `record_migration` | anyone | reads dbc pool `is_migrated`, stores damm_pool/position (validate owner == router PDA) |
-| `claim_damm` | keeper / permissionless as above | CPI `cp_amm::claim_position_fee`; split; base-token side (memecoin) is **sold into the DAMM pool for COIN by CPI swap** before split (v1.1) — MVP: forward base to treasury |
+| `claim_damm` | keeper / permissionless as above | CPI `cp_amm::claim_position_fee`; split; base-token side (memecoin) is **sold into the DAMM pool for COIN by CPI swap** before split (backlog, not part of v1.0) — v1.0: forward base to treasury |
 | `split` (internal) | — | `holders → holder_vault[pool]`, `buyback → buyback_vault[coin]`, `protocol → treasury[coin]`; emits `FeesSplit` |
 | `set_split` / `set_keepers` / `pause` | admin | |
 
@@ -179,13 +179,15 @@ Seeds: `buyback` (state), vault = buyback_vault[coin] owned by fee_router; buyba
 | `convert_and_burn` | keeper | for coin ≠ GLD: `peg_desk::sell(coin→USDC)` CPI, then `peg_desk::buy(USDC→GLD)` CPI; then `cp_amm::swap(GLD→ICEmarkets)` CPI on ICE/GLD pool; `spl_token::burn`. Bounded per call by `max_per_cycle`. Emits `Buyback{coin, coin_amount, gld_amount, ice_burned}` |
 | `set_params` | admin | |
 
-MVP scope: `initialize`, `convert_and_burn` for the GLD path only (GLD→ICEmarkets→burn); other coins forwarded via peg_desk sell/buy in v1.1.
+v1.0 scope: `initialize`, `convert_and_burn` for the GLD path only (GLD→ICEmarkets→burn); other coins forwarded via peg_desk sell/buy is backlog, not part of v1.0.
 
 ---
 
 ## 5. Off-chain contracts
 
 ### Launch (client-side, `packages/sdk/src/launch.ts`)
+v0 `VersionedTransaction`s compiled against the launch Address Lookup Table (`scripts/create-alt.ts` →
+`deployments/<cluster>.json#addressLookupTable`); the builder throws if a tx still exceeds 1232 bytes.
 One tx (USDC path): `[ComputeBudget, peg_desk.buy_exact_out(COIN, amountNeeded), dbc.createConfig(keypair), dbc.initializeVirtualPoolWithSplToken, dbc.swap(firstBuy), fee_router.register_pool]`.
 Config per launch built with `buildCurveWithTwoSegments({ totalTokenSupply: 1e9, initialMarketCap: 5000/coinUsd, migrationMarketCap: 35000/coinUsd, percentageSupplyOnMigration: 20, migrationOption: 1 /*DAMM v2*/, tokenBaseDecimal: 6, tokenQuoteDecimal: 6, lockedVestingParam: none, baseFeeParams: {feeSchedulerParam:{startingFeeBps: tier, endingFeeBps: tier, numberOfPeriod: 0, totalDuration: 0}}, dynamicFeeEnabled: false, activationType: 1 /*timestamp*/, collectFeeMode: 0 /*quote*/, migrationFeeOption: 6, migrationFee: {feePercentage: 0, creatorFeePercentage: 0}, partnerLpPercentage: 0, partnerLockedLpPercentage: 100, creatorLpPercentage: 0, creatorLockedLpPercentage: 0, creatorTradingFeePercentage: 0, leftover: 0, tokenUpdateAuthority: 1 /*immutable*/, feeClaimer: routerPda, leftoverReceiver: treasury, quoteMint: COIN, enableFirstSwapWithMinFee: true, poolFeeBps: tier })`.
 SOL path: tx1 Jupiter SOL→USDC; tx2 as above. Field names must be checked against the pinned SDK version at build time — `launch.ts` wraps them in one adapter function so a rename is a one-line fix.
@@ -197,6 +199,9 @@ SOL path: tx1 Jupiter SOL→USDC; tx2 as above. Field names must be checked agai
 `commodities, prices(commodity, ts, price, conf, source)`, `pools(dbc_pool, base_mint, quote_mint, commodity, creator, fee_bps, created_at, migrated_at, damm_pool)`,
 `trades(sig, pool, ts, side, base, quote, price_quote, price_usd, trader)`, `candles(pool, tf, ts, o,h,l,c,v)`, `balances(pool, wallet, amount, updated_slot)`,
 `balance_events(pool, wallet, delta, slot, ts)` (for TWAB), `epochs, payouts, fee_claims, buybacks`.
+v0.2 (additive): `commodity_trades` (peg_desk `Trade`), `fee_splits`, `epoch_progress` (keeper payout plans),
+`raw_events`; idempotency keys (`sig` columns + unique indexes); `pools.{base,quote,damm_base,damm_quote}_vault`;
+memecoin price columns widened to `numeric(38,18)`.
 
 ---
 
@@ -231,3 +236,24 @@ Recorded after the first build pass so the doc matches the code. These are the d
 - Registry USD caps are converted to coin base units at seed time with the live price: `cap = floor(usd·10^6·1e8 / price_1e8)`. Tier A (A24/AHours) seeds `pyth_min_signatures = 0` (Full), tiers B/C seed 5.
 - Indexer DB units: token amounts `numeric(30,6)` are human units (base/1e6), prices `numeric(20,8)` USD; `prices.commodity`/`pools.commodity` are `commodities.symbol`. Exception: `merkle_leaves.amount` is exact base units. `GET /rewards/:wallet/claims` serves unclaimed leaves + proofs to the web claim flow.
 - fee_router vaults are PDA **token accounts** (not ATAs): `holder_vault` = PDA["holder_vault", dbc_pool] (COIN, authority = PoolState PDA), `buyback_vault` = PDA["buyback_vault", coin] and `treasury` = PDA["treasury", mint] (authority = router PDA). Only the router's receiving account is an ATA (`ATA(coin, router PDA)`); the distributor epoch vault is `ATA(coin, Epoch PDA)`.
+
+**Off-chain (v0.2, 2026-09-11 — closes the review's open questions)**
+- Indexer ingestion (`apps/indexer/src/decode/*`): Anchor events from logs via `BorshCoder`/`EventParser` with the
+  runtime IDLs; DBC/DAMM v2 swaps and memecoin balance deltas from vault / owner token-balance changes (venue-agnostic,
+  no Meteora IDL needed). `PoolRegistered` upserts `pools` (ticker/name/uri from the Metaplex metadata account;
+  creator = fee payer). Keeper and indexer both write payouts / fee claims / buybacks / prices / epochs; unique keys make
+  that safe. `backfill.ts` replays a pool from RPC history.
+- Payout epochs are resumable: the share plan is persisted in `epoch_progress` before `open_epoch`; an unfinalized
+  on-chain epoch is always finished (push the unpushed, finalize) before `index + 1` is opened. Merkle leaves are sorted
+  by wallet so a resumed/repaired tree reproduces the on-chain root. Min-holding filter = TWAB × latest candle close ×
+  COIN USD ≥ `PAYOUT_MIN_HOLDING_USD` (skipped with a warning without prices).
+- Buyback `min_ice_out` = cp-amm exact-in quote × (1 − 50 bps); skipped when the quote fails or the GLD reserve is
+  < 20 × the trade.
+- Switchboard-kind commodities are relayed by the keeper through `keeper_update_price` into their KeeperPrice stand-in
+  (same sources as the Switchboard jobs) until `switchboard-on-demand` replaces the stand-in in `oracle.rs`.
+- USDC = `@icemarkets/registry` `usdcMintFor(SOLANA_CLUSTER, USDC_MINT_OVERRIDE)` everywhere (keeper, scripts, web).
+- Composite (index) coins are priced client-side like `read_composite` (weighted legs, oldest publish time) and their
+  leg accounts are appended automatically to buy / buy_exact_out / sell, so the launch builder treats them as any coin.
+- `@icemarkets/registry` resolves to `src/` by default and to `dist/` under the `icemarkets-dist` export condition
+  (`node --conditions=icemarkets-dist`, used by the compiled indexer).
+

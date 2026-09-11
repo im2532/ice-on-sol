@@ -19,7 +19,7 @@
  * for KeeperSigned, and `SEED_PRICE_<SYMBOL>=<usd>` env overrides for anything else (Switchboard).
  * Commodities without a price are skipped (caps can't be sized). Existing commodities are skipped.
  *
- * Env: RPC_URL, ADMIN_KEYPAIR_PATH, PEG_DESK_PROGRAM_ID, [SOLANA_CLUSTER=devnet], [USDC_MINT],
+ * Env: RPC_URL, ADMIN_KEYPAIR_PATH, PEG_DESK_PROGRAM_ID, [SOLANA_CLUSTER=devnet], [USDC_MINT_OVERRIDE],
  *      [TREASURY_PUBKEY=admin], [KEEPER_PUBKEYS=comma-separated], [IDL_DIR=target/idl], [HERMES_URL]
  * Usage: pnpm exec tsx scripts/seed-commodities.ts   (after `anchor build` + deploy)
  */
@@ -27,7 +27,7 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import path from "node:path";
 import { AnchorProvider, Wallet } from "@coral-xyz/anchor";
 import { ComputeBudgetProgram, Connection, Keypair, PublicKey, Transaction, sendAndConfirmTransaction, type TransactionInstruction } from "@solana/web3.js";
-import { byPhase, OracleKind, USDC, type Commodity } from "@icemarkets/registry";
+import { byPhase, OracleKind, parseCluster, usdcMintFor, type Commodity } from "@icemarkets/registry";
 import { PegDeskClient, scaleQuote } from "@icemarkets/sdk";
 
 const HERMES_URL = process.env.HERMES_URL ?? "https://hermes.pyth.network";
@@ -53,11 +53,11 @@ interface DeploymentFile {
 }
 
 async function main(): Promise<void> {
-  const cluster = process.env.SOLANA_CLUSTER ?? "devnet";
+  const cluster = parseCluster(process.env.SOLANA_CLUSTER);
   const connection = new Connection(requireEnv("RPC_URL"), "confirmed");
   const admin = Keypair.fromSecretKey(Uint8Array.from(JSON.parse(readFileSync(requireEnv("ADMIN_KEYPAIR_PATH"), "utf8"))));
   const pegDeskProgramId = new PublicKey(requireEnv("PEG_DESK_PROGRAM_ID"));
-  const usdcMint = new PublicKey(process.env.USDC_MINT ?? USDC[cluster as keyof typeof USDC] ?? USDC.devnet);
+  const usdcMint = new PublicKey(usdcMintFor(cluster, process.env.USDC_MINT_OVERRIDE)); // registry USDC[cluster]
   const treasury = new PublicKey(process.env.TREASURY_PUBKEY ?? admin.publicKey.toBase58());
 
   const provider = new AnchorProvider(connection, new Wallet(admin), { commitment: "confirmed" });
@@ -105,7 +105,18 @@ async function main(): Promise<void> {
 
   const outDir = path.join(process.cwd(), "deployments");
   if (!existsSync(outDir)) mkdirSync(outDir, { recursive: true });
-  writeFileSync(path.join(outDir, `${cluster}.json`), JSON.stringify(deployment, null, 2));
+  // Merge into an existing deployments file: keep commodities seeded by earlier runs (existing ones are
+  // skipped above, so they are not in `deployment.commodities`) and unrelated keys such as the launch
+  // `addressLookupTable` written by scripts/create-alt.ts.
+  const outFile = path.join(outDir, `${cluster}.json`);
+  const previous = existsSync(outFile) ? (JSON.parse(readFileSync(outFile, "utf8")) as Partial<DeploymentFile> & Record<string, unknown>) : {};
+  const fresh = new Set(deployment.commodities.map((e) => e.symbol));
+  const merged = {
+    ...previous,
+    ...deployment,
+    commodities: [...(previous.commodities ?? []).filter((e) => !fresh.has(e.symbol)), ...deployment.commodities],
+  };
+  writeFileSync(outFile, JSON.stringify(merged, null, 2));
   writeFileSync(path.join(outDir, `${cluster}.sql`), sql.join("\n") + "\n");
   console.log(`Wrote deployments/${cluster}.json and deployments/${cluster}.sql (psql "$DATABASE_URL" -f …)`);
 }

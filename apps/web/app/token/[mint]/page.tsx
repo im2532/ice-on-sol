@@ -9,6 +9,7 @@ import { compact, compactNum, pct, pctClass, shortenAddress } from "@/lib/format
 import Chart from "@/components/Chart";
 import TradePanel from "@/components/TradePanel";
 import TradesTable from "@/components/TradesTable";
+import { bySymbol } from "@icemarkets/registry";
 
 type ChartTab = "icemarkets" | "birdeye";
 
@@ -157,7 +158,16 @@ export default function TokenPage() {
         </div>
 
         <div className="lg:sticky lg:top-20 lg:self-start">
-          <TradePanel mint={market.mint} coinSymbol={market.commoditySymbol} payOptions={["SOL", "USDC", "COIN"]} />
+          {/* SOL/USDC buys route through peg_desk.buy (blocked while the paired coin is Closed); buying with the
+              coin itself only touches the DBC/DAMM pool, so it stays available. Sells always settle via peg_desk.sell. */}
+          <TradePanel
+            mint={market.mint}
+            coinSymbol={market.commoditySymbol}
+            payOptions={["SOL", "USDC", "COIN"]}
+            status={commodity?.status}
+            sessionKind={bySymbol(market.commoditySymbol)?.session}
+            buyWhileClosed={["COIN"]}
+          />
           <p className="mt-3 text-center text-xs text-muted">
             <Link href={`/commodities/${market.commoditySymbol}`} className="text-green hover:underline">
               View {market.commoditySymbol} commodity page

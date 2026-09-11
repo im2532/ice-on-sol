@@ -30,6 +30,7 @@ import {
   Status,
   QuoteScale,
   scaleQuote,
+  weightedSum,
   reserveRatioBps,
   quoteBuy,
   quoteSell,
@@ -75,6 +76,26 @@ export interface CommodityAccountView {
   supply: bigint;
   /** Composite only: the leg Commodity PDAs, in `legs` order. */
   legs?: PublicKey[];
+  /** Composite only: per-leg data needed to price the index client-side and build remaining accounts. */
+  legViews?: CompositeLegView[];
+}
+
+/** One leg of a Composite (index) commodity, read from the leg's own `Commodity` account. */
+export interface CompositeLegView {
+  commodity: PublicKey;
+  symbol: string;
+  weightBps: number;
+  oracleKind: number;
+  quoteScale: number;
+  feedAccount: PublicKey;
+  status: Status;
+}
+
+/** `[u8; 12]` NUL-padded symbol → string. */
+function symbolFromBytes(bytes: ArrayLike<number>): string {
+  let out = "";
+  for (let i = 0; i < bytes.length && bytes[i] !== 0; i++) out += String.fromCharCode(bytes[i]);
+  return out;
 }
 
 /** A fresh oracle reading to price a trade against (Pyth PriceUpdateV2, KeeperPrice, or stand-in). */
@@ -183,7 +204,29 @@ export class PegDeskClient {
       reserveHaltBps: big(cfg.reserveHaltBps),
       supply: BigInt(supply.value.amount),
       legs: legCount > 0 ? (c.legs as { commodity: PublicKey }[]).slice(0, legCount).map((l) => l.commodity) : undefined,
+      legViews: legCount > 0 ? await this.fetchLegViews((c.legs as { commodity: PublicKey; weightBps: number }[]).slice(0, legCount)) : undefined,
     };
+  }
+
+  /** Reads each leg's `Commodity` account (Composite coins; oracle.rs `read_composite`). */
+  private async fetchLegViews(legs: { commodity: PublicKey; weightBps: number }[]): Promise<CompositeLegView[]> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const accounts = this.program.account as any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const raws: any[] = await accounts.commodity.fetchMultiple(legs.map((l) => l.commodity));
+    return legs.map((leg, i) => {
+      const r = raws[i];
+      if (!r) throw new Error(`fetchCommodityView: index leg ${leg.commodity.toBase58()} not found`);
+      return {
+        commodity: leg.commodity,
+        symbol: symbolFromBytes(r.symbol as number[]),
+        weightBps: Number(leg.weightBps),
+        oracleKind: Number(r.oracleKind),
+        quoteScale: Number(r.quoteScale),
+        feedAccount: r.feedAccount as PublicKey,
+        status: Number(r.status) as Status,
+      };
+    });
   }
 
   /** Reads the `KeeperPrice` PDA (KeeperSigned) as an `OracleReading`. */
@@ -197,34 +240,63 @@ export class PegDeskClient {
    * The oracle reading the program would use for `commodity` (oracle.rs `read_price`), for client-side
    * quotes: PythPull → decoded PriceUpdateV2 at feed_account (scaled like `scale_quote`; EUR unsupported
    * here), KeeperSigned → KeeperPrice PDA, Switchboard stand-in → KeeperPrice-shaped feed_account.
-   * Composite: not supported client-side yet (v1.1).
+   * Composite (index coins): weighted sum of the legs' readings (see `fetchCompositeReading`).
    */
   async fetchOracleReading(commodity: CommodityAccountView): Promise<OracleReading> {
+    if (commodity.oracleKind === ORACLE_KIND.Composite) return this.fetchCompositeReading(commodity);
+    return this.readSingleOracle(this.commodityPda(commodity.symbol), commodity.oracleKind, commodity.quoteScale, commodity.feedAccount);
+  }
+
+  /** PythPull / KeeperSigned / Switchboard-stand-in reading for one (non-Composite) commodity. */
+  private async readSingleOracle(pda: PublicKey, oracleKind: number, quoteScale: number, feedAccount: PublicKey): Promise<OracleReading> {
     const conn = this.program.provider.connection;
-    const pda = this.commodityPda(commodity.symbol);
-    switch (commodity.oracleKind) {
+    switch (oracleKind) {
       case ORACLE_KIND.KeeperSigned:
         return this.fetchKeeperPrice(pda);
       case ORACLE_KIND.Switchboard: {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const kp = await (this.program.account as any).keeperPrice.fetch(commodity.feedAccount);
+        const kp = await (this.program.account as any).keeperPrice.fetch(feedAccount);
         return { price: BigInt(kp.price.toString()), conf: BigInt(kp.conf.toString()), publishTime: BigInt(kp.publishTime.toString()) };
       }
       case ORACLE_KIND.PythPull: {
-        if (commodity.quoteScale === QuoteScale.Eur) throw new Error("fetchOracleReading: EUR-quoted feeds not supported client-side");
-        const info = await conn.getAccountInfo(commodity.feedAccount);
-        if (!info) throw new Error(`fetchOracleReading: feed account ${commodity.feedAccount.toBase58()} not found`);
+        if (quoteScale === QuoteScale.Eur) throw new Error("fetchOracleReading: EUR-quoted feeds not supported client-side");
+        const info = await conn.getAccountInfo(feedAccount);
+        if (!info) throw new Error(`fetchOracleReading: feed account ${feedAccount.toBase58()} not found`);
         const u = decodePriceUpdateV2(info.data);
         if (u.price <= 0n) throw new Error("fetchOracleReading: non-positive Pyth price");
         return {
-          price: scaleQuote(u.price, u.exponent, commodity.quoteScale),
-          conf: scaleQuote(u.conf, u.exponent, commodity.quoteScale),
+          price: scaleQuote(u.price, u.exponent, quoteScale),
+          conf: scaleQuote(u.conf, u.exponent, quoteScale),
           publishTime: u.publishTime,
         };
       }
       default:
-        throw new Error(`fetchOracleReading: oracle kind ${commodity.oracleKind} not supported client-side`);
+        throw new Error(`fetchOracleReading: oracle kind ${oracleKind} not supported client-side`);
     }
+  }
+
+  /**
+   * Composite (index) reading, mirroring oracle.rs `read_composite`: price = Σ leg price × weight / 10_000,
+   * conf = the same weighted sum of leg confs (both rounded down), publish_time = the OLDEST leg's. Legs
+   * may not be Composite/EUR or Halted (the program rejects those with InvalidLegs / MarketHalted).
+   */
+  private async fetchCompositeReading(commodity: CommodityAccountView): Promise<OracleReading> {
+    const legs = commodity.legViews;
+    if (!legs || legs.length === 0) throw new Error(`fetchOracleReading: ${commodity.symbol} is Composite but has no legs`);
+    const readings = await Promise.all(
+      legs.map((l) => {
+        if (l.oracleKind === ORACLE_KIND.Composite) throw new Error(`index leg ${l.symbol} is itself Composite`);
+        if (l.status === Status.Halted) throw new Error(`index leg ${l.symbol} is Halted`);
+        return this.readSingleOracle(l.commodity, l.oracleKind, l.quoteScale, l.feedAccount);
+      }),
+    );
+    let minPt = readings[0].publishTime;
+    for (const r of readings) if (r.publishTime < minPt) minPt = r.publishTime;
+    return {
+      price: weightedSum(readings.map((r, i): [bigint, number] => [r.price, legs[i].weightBps])),
+      conf: weightedSum(readings.map((r, i): [bigint, number] => [r.conf, legs[i].weightBps])),
+      publishTime: minPt,
+    };
   }
 
   // ---- client-side pricing (mirrors pricing.rs, see pricing.ts) -----------
@@ -297,6 +369,20 @@ export class PegDeskClient {
     }
   }
 
+  /**
+   * Default remaining accounts for a trade on `commodity`: the Composite leg pairs when it is an index
+   * coin (from `legViews`), otherwise none. Used by buy / buy_exact_out / sell when the caller passes none.
+   */
+  tradeRemainingAccounts(commodity: CommodityAccountView): RemainingAccount[] {
+    if (commodity.oracleKind !== ORACLE_KIND.Composite || !commodity.legViews) return [];
+    const out: RemainingAccount[] = [];
+    for (const leg of commodity.legViews) {
+      const src = leg.oracleKind === ORACLE_KIND.KeeperSigned ? this.keeperPricePda(leg.commodity) : leg.feedAccount;
+      out.push({ pubkey: leg.commodity, isSigner: false, isWritable: false }, { pubkey: src, isSigner: false, isWritable: false });
+    }
+    return out;
+  }
+
   /** remaining_accounts for a Composite trade: `[leg Commodity, leg price source]` per leg (oracle.rs `read_composite`). */
   compositeRemainingAccounts(legs: CommodityAccountView[]): RemainingAccount[] {
     const out: RemainingAccount[] = [];
@@ -345,7 +431,7 @@ export class PegDeskClient {
     return this.program.methods
       .buy(new BN(params.usdcIn.toString()), new BN(params.minCoinOut.toString()))
       .accountsPartial(this.tradeAccounts(params.user, params.commodity, params.userUsdcAta))
-      .remainingAccounts(params.remainingAccounts ?? [])
+      .remainingAccounts(params.remainingAccounts ?? this.tradeRemainingAccounts(params.commodity))
       .instruction();
   }
 
@@ -361,7 +447,7 @@ export class PegDeskClient {
     return this.program.methods
       .buyExactOut(new BN(params.coinOut.toString()), new BN(params.maxUsdcIn.toString()))
       .accountsPartial(this.tradeAccounts(params.user, params.commodity, params.userUsdcAta))
-      .remainingAccounts(params.remainingAccounts ?? [])
+      .remainingAccounts(params.remainingAccounts ?? this.tradeRemainingAccounts(params.commodity))
       .instruction();
   }
 
@@ -380,7 +466,7 @@ export class PegDeskClient {
     return this.program.methods
       .sell(new BN(params.coinIn.toString()), new BN(params.minUsdcOut.toString()))
       .accountsPartial(this.tradeAccounts(params.user, params.commodity, params.userUsdcAta))
-      .remainingAccounts(params.remainingAccounts ?? [])
+      .remainingAccounts(params.remainingAccounts ?? this.tradeRemainingAccounts(params.commodity))
       .instruction();
   }
 

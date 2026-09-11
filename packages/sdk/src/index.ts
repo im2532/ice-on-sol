@@ -5,6 +5,7 @@ export * from "./merkle";
 export * from "./twab";
 export * from "./dbc";
 export * from "./meteora";
+export * from "./damm";
 export * from "./jupiter";
 export * from "./pegDesk";
 export * from "./feeRouter";

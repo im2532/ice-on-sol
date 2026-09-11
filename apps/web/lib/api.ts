@@ -5,6 +5,7 @@
  */
 import {
   MOCK_COMMODITY_QUOTES,
+  MOCK_INDEX_QUOTES,
   MOCK_MARKETS,
   MOCK_STATS,
   mockCandles,
@@ -109,13 +110,14 @@ export async function fetchMarket(mint: string): Promise<Market | null> {
   return getJsonOrNull(`/markets/${mint}`);
 }
 
+/** Every commodity coin the indexer knows, index coins (Composite) included once they are seeded. */
 export async function fetchCommodities(): Promise<CommodityQuote[]> {
-  if (USE_MOCK) return delay(MOCK_COMMODITY_QUOTES);
+  if (USE_MOCK) return delay([...MOCK_COMMODITY_QUOTES, ...MOCK_INDEX_QUOTES]);
   return getJson(`/commodities`);
 }
 
 export async function fetchCommodity(symbol: string): Promise<CommodityQuote | null> {
-  if (USE_MOCK) return delay(MOCK_COMMODITY_QUOTES.find((c) => c.symbol === symbol) ?? null);
+  if (USE_MOCK) return delay([...MOCK_COMMODITY_QUOTES, ...MOCK_INDEX_QUOTES].find((c) => c.symbol === symbol) ?? null);
   return getJsonOrNull(`/commodities/${symbol}`);
 }
 

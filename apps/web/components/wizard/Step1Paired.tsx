@@ -1,12 +1,17 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { COMMODITIES, CATEGORY_LABEL } from "@icemarkets/registry";
+import { COMMODITIES, CATEGORY_LABEL, INDEX_COINS, bySymbol } from "@icemarkets/registry";
 import type { Category, Commodity } from "@icemarkets/registry";
 import { usd } from "@/lib/format";
 
-const CATEGORIES: (Category | "all")[] = [
+type Filter = Category | "all" | "index";
+
+const INDEX_SYMBOLS = new Set(INDEX_COINS.map((c) => c.symbol));
+
+const CATEGORIES: Filter[] = [
   "all",
+  "index",
   "metals",
   "energy",
   "agriculture",
@@ -17,6 +22,7 @@ const CATEGORIES: (Category | "all")[] = [
   "trading_cards",
   "water",
   "cars",
+  "watches",
 ];
 
 interface Step1Props {
@@ -28,13 +34,14 @@ interface Step1Props {
 }
 
 export default function Step1Paired({ mode, onModeChange, selected, onSelect, referencePriceUsd }: Step1Props) {
-  const [category, setCategory] = useState<Category | "all">("all");
+  const [category, setCategory] = useState<Filter>("all");
   const [search, setSearch] = useState("");
 
+  // Index coins (Composite) are just commodities to the launch builder: the SDK prices them from their legs.
   const coins: Commodity[] = useMemo(
     () =>
-      COMMODITIES.filter((c) => c.phase === "mvp")
-        .filter((c) => category === "all" || c.category === category)
+      [...COMMODITIES.filter((c) => c.phase === "mvp"), ...INDEX_COINS]
+        .filter((c) => category === "all" || (category === "index" ? INDEX_SYMBOLS.has(c.symbol) : c.category === category && !INDEX_SYMBOLS.has(c.symbol)))
         .filter((c) => {
           if (!search) return true;
           const q = search.toLowerCase();
@@ -43,7 +50,7 @@ export default function Step1Paired({ mode, onModeChange, selected, onSelect, re
     [category, search]
   );
 
-  const selectedCommodity = COMMODITIES.find((c) => c.symbol === selected);
+  const selectedCommodity = bySymbol(selected);
 
   return (
     <div>
@@ -60,15 +67,13 @@ export default function Step1Paired({ mode, onModeChange, selected, onSelect, re
         </button>
         <button
           type="button"
-          aria-pressed={mode === "basket"}
-          disabled
-          title="Index coins — v1.1"
-          className="icemarkets-focus icemarkets-btn-secondary cursor-not-allowed rounded-full px-3.5 py-1.5 text-sm opacity-50"
+          aria-pressed={category === "index"}
+          onClick={() => setCategory("index")}
+          className={`icemarkets-focus rounded-full px-3.5 py-1.5 text-sm font-medium ${
+            category === "index" ? "bg-positive/10 text-positive" : "icemarkets-btn-secondary"
+          }`}
         >
-          Basket · up to 5{" "}
-          <span className="ml-1 rounded bg-surface2 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted">
-            v1.1
-          </span>
+          Index coins
         </button>
       </div>
 
@@ -106,7 +111,7 @@ export default function Step1Paired({ mode, onModeChange, selected, onSelect, re
                 category === cat ? "bg-green/10 text-green" : "text-muted hover:text-text"
               }`}
             >
-              {cat === "all" ? "All" : CATEGORY_LABEL[cat]}
+              {cat === "all" ? "All" : cat === "index" ? "Index coins" : CATEGORY_LABEL[cat]}
             </button>
           ))}
         </div>
@@ -141,7 +146,12 @@ export default function Step1Paired({ mode, onModeChange, selected, onSelect, re
             >
               <span aria-hidden="true">{c.emoji}</span>
               <span className="min-w-0">
-                <span className="block truncate font-medium">{c.symbol}</span>
+                <span className="block truncate font-medium">
+                  {c.symbol}
+                  {INDEX_SYMBOLS.has(c.symbol) && (
+                    <span className="ml-1.5 rounded bg-surface2 px-1 py-0.5 align-middle text-[9px] font-medium uppercase tracking-wide text-muted">Index</span>
+                  )}
+                </span>
                 <span className="block truncate text-xs text-muted">{c.displayName ?? c.name}</span>
               </span>
               {active && <span className="ml-auto text-green">✓</span>}

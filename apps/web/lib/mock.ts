@@ -4,7 +4,7 @@
  * $79.2K paid to holders / 4K wallets, 4.78M burned) scaled down for a smaller, still-plausible universe.
  * Generated once at module load with a seeded PRNG so SSR/CSR renders match (no hydration drift).
  */
-import { COMMODITIES, CATEGORY_LABEL, type Commodity } from "@icemarkets/registry";
+import { COMMODITIES, CATEGORY_LABEL, INDEX_COINS, type Commodity } from "@icemarkets/registry";
 import type {
   Candle,
   CommodityQuote,
@@ -43,6 +43,8 @@ const BASE_PRICE: Record<string, number> = {
   LATTE: 5.65, PIZZA: 14.99, DBLBURGER: 3.49, BACONBRGR: 6.29, SPICYCHIX: 5.79, MEDCOFFEE: 2.79, FRIES: 3.29,
   RSGP: 0.42,
   H2O: 1150.0, LAMBO: 289000.0,
+  SUBMARINER: 13900.0, DAYTONA: 28500.0, GMTMASTER: 17200.0, DATEJUST: 10400.0, ROYALOAK: 52000.0,
+  NAUTILUS: 128000.0, SPEEDMASTER: 6900.0, SANTOS: 7300.0, GSHOCK: 60.0, TISSOTPRX: 675.0,
 };
 const CS2_BASE = 65;
 const CARD_BASE = 145;
@@ -77,6 +79,30 @@ export const MOCK_COMMODITY_QUOTES: CommodityQuote[] = COMMODITIES.map((c) => {
     supplyCap,
     supplyOutstanding,
     reserveRatioBps: Math.floor(rand(9700, 11200)),
+    mint: fakeMint(c.symbol),
+  };
+});
+
+/** Index coins: priced as the weighted sum of their legs, like peg_desk `read_composite`. */
+export const MOCK_INDEX_QUOTES: CommodityQuote[] = INDEX_COINS.map((c) => {
+  const legs = c.oracle.legs ?? [];
+  const priceUsd = legs.reduce((acc, l) => acc + ((MOCK_COMMODITY_QUOTES.find((q) => q.symbol === l.symbol)?.priceUsd ?? 0) * l.weightBps) / 10_000, 0);
+  return {
+    symbol: c.symbol,
+    name: c.name,
+    displayName: c.displayName,
+    category: c.category,
+    emoji: c.emoji,
+    unit: c.unit,
+    unitShort: c.unitShort,
+    priceUsd,
+    change24h: rand(...CHANGE_RANGE),
+    marketsCount: 0,
+    status: "open" as MarketStatus,
+    lastPublishedAgoSec: Math.floor(rand(2, 90)),
+    supplyCap: c.params.supplyCapUsd,
+    supplyOutstanding: 0,
+    reserveRatioBps: 10_000,
     mint: fakeMint(c.symbol),
   };
 });
@@ -145,7 +171,7 @@ export const MOCK_MARKETS: Market[] = Array.from({ length: 96 }, (_, i) => makeM
 
 export const MOCK_STATS: GlobalStats = {
   marketsCount: 647,
-  commoditiesCount: 94,
+  commoditiesCount: COMMODITIES.length, // 93 (incl. watches) + 3 index coins listed separately
   volume24hUsd: 9_600_000,
   valueLockedUsd: 14_200_000,
   paidToHoldersUsd: 79_200,

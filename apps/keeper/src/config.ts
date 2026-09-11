@@ -4,6 +4,9 @@
  * `.env.example` at the repo root.
  */
 import "dotenv/config";
+import { parseCluster as parseClusterValue, usdcMintFor, type Cluster } from "@icemarkets/registry";
+
+export type { Cluster };
 
 export class ConfigError extends Error {}
 
@@ -34,14 +37,29 @@ function optionalFloat(name: string, fallback: number): number {
   return n;
 }
 
-export type Cluster = "localnet" | "devnet" | "mainnet-beta";
-
 function parseCluster(name: string, fallback: Cluster): Cluster {
-  const v = optional(name, fallback);
-  if (v !== "localnet" && v !== "devnet" && v !== "mainnet-beta") {
-    throw new ConfigError(`Env var ${name} must be one of localnet|devnet|mainnet-beta, got: ${v}`);
+  try {
+    return parseClusterValue(process.env[name], fallback);
+  } catch (err) {
+    throw new ConfigError(`Env var ${name}: ${(err as Error).message}`);
   }
-  return v;
+}
+
+/** USDC by cluster from the registry `USDC` map; `USDC_MINT_OVERRIDE` wins (required on localnet). */
+function resolveUsdcMint(cluster: Cluster): string {
+  let mint: string;
+  try {
+    mint = usdcMintFor(cluster, process.env.USDC_MINT_OVERRIDE);
+  } catch (err) {
+    throw new ConfigError((err as Error).message);
+  }
+  // Legacy v0.1 `USDC_MINT` is no longer read; refuse a stale value that disagrees with the cluster
+  // (the v0.1 .env.example paired devnet with the mainnet mint).
+  const legacy = process.env.USDC_MINT?.trim();
+  if (legacy && legacy !== mint) {
+    throw new ConfigError(`USDC_MINT=${legacy} does not match ${cluster} USDC ${mint}; delete it (or rename to USDC_MINT_OVERRIDE to force a custom mint)`);
+  }
+  return mint;
 }
 
 export interface KeeperConfig {
@@ -57,6 +75,7 @@ export interface KeeperConfig {
   dbcProgramId: string;
   dammV2ProgramId: string;
   pythReceiverProgramId: string;
+  /** Resolved from SOLANA_CLUSTER via `@icemarkets/registry` USDC (override: USDC_MINT_OVERRIDE). */
   usdcMint: string;
 
   hermesUrl: string;
@@ -65,6 +84,14 @@ export interface KeeperConfig {
   csfloatApiKey: string | undefined;
   pokemonTcgApiKey: string | undefined;
   dataVendorApiKey: string | undefined;
+  /** Helius API key; also doubles for the DAS `getAssetsByGroup` call and Enhanced Transactions lookups in sources/collectorcrypt.ts. */
+  heliusApiKey: string | undefined;
+  /** watches category: sources/watches.ts WatchCharts lookup. */
+  watchChartsApiKey: string | undefined;
+  /** watches + trading_cards categories: sources/collectorcrypt.ts — the vault collection's on-chain group address (Helius DAS `getAssetsByGroup`). */
+  collectorCryptCollection: string | undefined;
+  /** Optional: a Collector Crypt REST API base URL, used as a fallback if the Helius DAS path is unavailable/fails. */
+  collectorCryptApiUrl: string | undefined;
 
   oraclePushIntervalSec: number;
   feeCycleIntervalSec: number;
@@ -89,8 +116,9 @@ let cached: KeeperConfig | null = null;
 export function loadConfig(): KeeperConfig {
   if (cached) return cached;
 
+  const cluster = parseCluster("SOLANA_CLUSTER", "devnet");
   const cfg: KeeperConfig = {
-    cluster: parseCluster("SOLANA_CLUSTER", "devnet"),
+    cluster,
     rpcUrl: required("RPC_URL"),
     wsUrl: process.env.WS_URL,
     keeperKeypairPath: required("KEEPER_KEYPAIR_PATH"),
@@ -102,7 +130,7 @@ export function loadConfig(): KeeperConfig {
     dbcProgramId: required("DBC_PROGRAM_ID"),
     dammV2ProgramId: required("DAMM_V2_PROGRAM_ID"),
     pythReceiverProgramId: required("PYTH_RECEIVER_PROGRAM_ID"),
-    usdcMint: required("USDC_MINT"),
+    usdcMint: resolveUsdcMint(cluster),
 
     hermesUrl: optional("HERMES_URL", "https://hermes.pyth.network"),
     switchboardQueue: process.env.SWITCHBOARD_QUEUE,
@@ -110,6 +138,10 @@ export function loadConfig(): KeeperConfig {
     csfloatApiKey: process.env.CSFLOAT_API_KEY,
     pokemonTcgApiKey: process.env.POKEMONTCG_API_KEY,
     dataVendorApiKey: process.env.DATA_VENDOR_API_KEY,
+    heliusApiKey: process.env.HELIUS_API_KEY,
+    watchChartsApiKey: process.env.WATCHCHARTS_API_KEY,
+    collectorCryptCollection: process.env.COLLECTORCRYPT_COLLECTION,
+    collectorCryptApiUrl: process.env.COLLECTORCRYPT_API_URL,
 
     oraclePushIntervalSec: optionalInt("ORACLE_PUSH_INTERVAL", 30),
     feeCycleIntervalSec: optionalInt("FEE_CYCLE_INTERVAL", 900),

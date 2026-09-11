@@ -67,6 +67,30 @@ export async function buildBuyWithUsdc(params: BuyWithUsdcParams): Promise<Built
   };
 }
 
+export interface BuyWithCoinParams {
+  connection: Connection;
+  user: PublicKey;
+  dbcPool: PublicKey;
+  memeMint: PublicKey;
+  /** COIN base units spent directly on the DBC curve (no Peg Desk leg — works while the coin is Closed). */
+  coinIn: bigint;
+  /** Minimum MEME out (base units); 0 = unbounded (CHECK: pass a DBC-side quote minimum, as in buildBuyWithUsdc). */
+  minMemeOut?: bigint;
+}
+
+/** `buildBuyWithCoin`: COIN -> MEME (dbc.swap only). */
+export async function buildBuyWithCoin(params: BuyWithCoinParams): Promise<BuiltTrade> {
+  const dbcIxs = await swapIx({
+    client: makeDbcClient({ connection: params.connection }),
+    pool: params.dbcPool,
+    owner: params.user,
+    amountIn: new BN(params.coinIn.toString()),
+    minimumAmountOut: new BN((params.minMemeOut ?? 0n).toString()),
+    swapBaseForQuote: false, // quote(COIN) -> base(MEME)
+  });
+  return { instructions: [...ComputeBudgetIxs(), ...dbcIxs], addressLookupTableAddresses: [], minOut: params.minMemeOut ?? 0n };
+}
+
 export interface SellToUsdcParams {
   connection: Connection;
   user: PublicKey;

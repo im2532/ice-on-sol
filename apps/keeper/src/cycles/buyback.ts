@@ -6,16 +6,30 @@
  * Account keys = camelCase of `ConvertAndBurn` (programs/buyback/src/instructions/convert_and_burn.rs).
  * GLD / ICEmarkets mints and the ICEmarkets pool are read from the on-chain `BuybackState`.
  *
+ * Sandwich protection (v0.2): `min_ice_out = quote × (1 − BUYBACK_SLIPPAGE_BPS)`, where `quote` is a
+ * cp-amm SDK exact-in quote of GLD→ICE on the ICE/GLD DAMM v2 pool at the current slot (sdk `damm.ts`,
+ * CHECK there). If the quote fails the cycle is skipped — it never falls back to an unprotected minimum.
+ * The cycle is also skipped while the pool's GLD-side liquidity is < BUYBACK_MIN_LIQUIDITY_MULT × the
+ * trade size (default 20×, i.e. the trade moves the GLD reserve by ≤ 5%).
+ *
  * Env:
- *   GLD_IS_TOKEN_A      "true" | "false" (default "false") — side of GLD in the ICE/GLD DAMM pool.
- *                       A wrong value makes DAMM reject the vault/mint pairing (cannot misroute funds).
- *   BUYBACK_MIN_ICE_OUT  min ICEmarkets base units out per call (default 1). CHECK: replace with a quote
- *                       from the pool reserves (or send via Jito) before mainnet — 1 is sandwichable.
+ *   GLD_IS_TOKEN_A              "true" | "false" (default "false") — side of GLD in the ICE/GLD DAMM pool.
+ *                               A wrong value makes DAMM reject the vault/mint pairing (cannot misroute funds).
+ *   BUYBACK_SLIPPAGE_BPS        haircut on the quote for min_ice_out (default 50 = 0.5%).
+ *   BUYBACK_MIN_LIQUIDITY_MULT  skip unless GLD reserve ≥ mult × amount (default 20).
  */
 import { PublicKey, type TransactionInstruction } from "@solana/web3.js";
 import { TOKEN_PROGRAM_ID, getAssociatedTokenAddressSync } from "@solana/spl-token";
 import { BN } from "@coral-xyz/anchor";
-import { DAMM_V2_PROGRAM_ID, buyback as buybackPda, feeRouter as feeRouterPda, meteora } from "@icemarkets/sdk";
+import {
+  DAMM_V2_PROGRAM_ID,
+  buyback as buybackPda,
+  dammVaultBalances,
+  feeRouter as feeRouterPda,
+  haircutBps,
+  meteora,
+  quoteDammV2ExactIn,
+} from "@icemarkets/sdk";
 import { getConnection, getKeeperKeypair, sendWithPriority } from "../rpc";
 import { getProgram, parseEvents, programId } from "../programs";
 import { getLatestPrice, recordBuyback } from "../db";
@@ -25,6 +39,16 @@ const log = childLogger("buyback");
 
 const BUYBACK_THRESHOLD_USD = 50; // small MVP threshold; tune once real volume data exists
 const BPS = 10_000n;
+const DEFAULT_SLIPPAGE_BPS = 50;
+const DEFAULT_MIN_LIQUIDITY_MULT = 20n;
+
+function envInt(name: string, fallback: number): number {
+  const v = process.env[name];
+  if (!v || v.trim() === "") return fallback;
+  const n = Number.parseInt(v, 10);
+  if (!Number.isFinite(n) || n < 0) throw new Error(`${name} must be a non-negative integer, got ${v}`);
+  return n;
+}
 
 export async function runBuybackCycle(): Promise<void> {
   const connection = getConnection();
@@ -65,9 +89,42 @@ export async function runBuybackCycle(): Promise<void> {
   if (amountUsd < BUYBACK_THRESHOLD_USD) return;
 
   const gldIsTokenA = (process.env.GLD_IS_TOKEN_A ?? "false") === "true";
-  const minIceMarketsOut = BigInt(process.env.BUYBACK_MIN_ICE_OUT ?? "1");
   const bbAuth = buybackPda.authority(bbId)[0];
   const [aMint, bMint] = gldIsTokenA ? [gldMint, iceMint] : [iceMint, gldMint];
+
+  // ---- liquidity guard: GLD reserve must be ≥ mult × trade size -------------------------------------
+  const mult = BigInt(envInt("BUYBACK_MIN_LIQUIDITY_MULT", Number(DEFAULT_MIN_LIQUIDITY_MULT)));
+  let gldReserve: bigint;
+  try {
+    const reserves = await dammVaultBalances(connection, icePool, aMint, bMint);
+    gldReserve = gldIsTokenA ? reserves.a : reserves.b;
+  } catch (err) {
+    log.warn({ err: String(err) }, "could not read ICE/GLD pool reserves; skipping buyback this cycle");
+    return;
+  }
+  if (gldReserve < amount * mult) {
+    log.warn(
+      { gldReserve: gldReserve.toString(), amount: amount.toString(), mult: mult.toString() },
+      "ICE/GLD pool too shallow for this buyback (reserve < mult × size); skipping",
+    );
+    return;
+  }
+
+  // ---- quote → min_ice_out ----------------------------------------------------------------------
+  const slippageBps = envInt("BUYBACK_SLIPPAGE_BPS", DEFAULT_SLIPPAGE_BPS);
+  let minIceMarketsOut: bigint;
+  try {
+    const quote = await quoteDammV2ExactIn({ connection, pool: icePool, inputMint: gldMint, amountIn: amount });
+    minIceMarketsOut = haircutBps(quote.amountOut, slippageBps);
+    log.info({ quoteOut: quote.amountOut.toString(), minOut: minIceMarketsOut.toString(), priceImpactPct: quote.priceImpactPct }, "ICE/GLD quote");
+  } catch (err) {
+    log.warn({ err: String(err) }, "ICE/GLD quote failed; skipping buyback (never send an unprotected min_ice_out)");
+    return;
+  }
+  if (minIceMarketsOut === 0n) {
+    log.warn({ amount: amount.toString() }, "quote rounds to 0 ICE; skipping");
+    return;
+  }
 
   log.info({ amountUsd, amount: amount.toString() }, "triggering convert_and_burn");
   try {
@@ -101,6 +158,7 @@ export async function runBuybackCycle(): Promise<void> {
       coin_amount: String(ev?.data.coinAmount ?? amount),
       gld_amount: String(ev?.data.gldAmount ?? amount),
       ice_burned: String(ev?.data.iceBurned ?? "0"),
+      sig,
     });
   } catch (err) {
     log.error({ err: String(err) }, "convert_and_burn failed");

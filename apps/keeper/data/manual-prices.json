@@ -13,5 +13,16 @@
   { "symbol": "MEDCOFFEE", "price": 2.99, "source": "menu-price-check-2026-09", "updatedAt": "2026-09-11T00:00:00Z" },
   { "symbol": "FRIES", "price": 3.79, "source": "menu-price-check-2026-09", "updatedAt": "2026-09-11T00:00:00Z" },
   { "symbol": "H2O", "price": 450.0, "source": "estimate-nqh2o-index-TODO-verify", "updatedAt": "2026-09-11T00:00:00Z" },
-  { "symbol": "LAMBO", "price": 260000.0, "source": "estimate-lamborghini-temerario-msrp-TODO-verify", "updatedAt": "2026-09-11T00:00:00Z" }
+  { "symbol": "LAMBO", "price": 260000.0, "source": "estimate-lamborghini-temerario-msrp-TODO-verify", "updatedAt": "2026-09-11T00:00:00Z" },
+
+  { "symbol": "SUBMARINER", "price": 13900.0, "source": "seed-estimate", "updatedAt": "2026-09-11T00:00:00Z" },
+  { "symbol": "DAYTONA", "price": 28500.0, "source": "seed-estimate", "updatedAt": "2026-09-11T00:00:00Z" },
+  { "symbol": "GMTMASTER", "price": 17200.0, "source": "seed-estimate", "updatedAt": "2026-09-11T00:00:00Z" },
+  { "symbol": "DATEJUST", "price": 10400.0, "source": "seed-estimate", "updatedAt": "2026-09-11T00:00:00Z" },
+  { "symbol": "ROYALOAK", "price": 52000.0, "source": "seed-estimate", "updatedAt": "2026-09-11T00:00:00Z" },
+  { "symbol": "NAUTILUS", "price": 128000.0, "source": "seed-estimate", "updatedAt": "2026-09-11T00:00:00Z" },
+  { "symbol": "SPEEDMASTER", "price": 6900.0, "source": "seed-estimate", "updatedAt": "2026-09-11T00:00:00Z" },
+  { "symbol": "SANTOS", "price": 7300.0, "source": "seed-estimate", "updatedAt": "2026-09-11T00:00:00Z" },
+  { "symbol": "GSHOCK", "price": 60.0, "source": "seed-estimate", "updatedAt": "2026-09-11T00:00:00Z" },
+  { "symbol": "TISSOTPRX", "price": 675.0, "source": "seed-estimate", "updatedAt": "2026-09-11T00:00:00Z" }
 ]

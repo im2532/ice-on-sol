@@ -47,9 +47,11 @@ pub struct OpenEpoch<'info> {
 
     pub coin_mint: Box<InterfaceAccount<'info, Mint>>,
 
-    /// COIN ATA owned by the Epoch PDA.
+    /// COIN ATA owned by the Epoch PDA. `init_if_needed`: the ATA address is derivable before the
+    /// epoch exists, so anyone could pre-create it (plain `init` would then fail = DoS on this index).
+    /// Funding is checked as a balance delta in the handler, so pre-seeded tokens can't break it either.
     #[account(
-        init,
+        init_if_needed,
         payer = keeper,
         associated_token::mint = coin_mint,
         associated_token::authority = epoch,
@@ -85,6 +87,7 @@ pub fn handle_open_epoch<'info>(
     require!(args.end_ts > args.start_ts, DistError::InvalidWindow);
     require!(args.total_amount > 0, DistError::ZeroAmount);
 
+    let vault_before = ctx.accounts.epoch_vault.amount;
     let source_authority = ctx.accounts.source_authority.to_account_info();
     let direct =
         source_authority.is_signer && ctx.accounts.source_vault.owner == source_authority.key();
@@ -150,7 +153,7 @@ pub fn handle_open_epoch<'info>(
 
     ctx.accounts.epoch_vault.reload()?;
     require!(
-        ctx.accounts.epoch_vault.amount == args.total_amount,
+        ctx.accounts.epoch_vault.amount.saturating_sub(vault_before) == args.total_amount,
         DistError::FundingMismatch
     );
 

@@ -12,3 +12,4 @@ keys/
 .DS_Store
 coverage/
 apps/web/public/idl/
+apps/web/public/deployments/

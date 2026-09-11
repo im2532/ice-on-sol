@@ -21,7 +21,7 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { AnchorProvider, Wallet } from "@coral-xyz/anchor";
 import { ComputeBudgetProgram, Connection, Keypair, PublicKey, Transaction, sendAndConfirmTransaction, type TransactionInstruction } from "@solana/web3.js";
-import { INDEX_COINS, USDC } from "@icemarkets/registry";
+import { INDEX_COINS, parseCluster, usdcMintFor } from "@icemarkets/registry";
 import { PegDeskClient } from "@icemarkets/sdk";
 
 const COIN_UNIT = 1_000_000n;
@@ -34,11 +34,11 @@ async function main(): Promise<void> {
   const legs = index.oracle.legs ?? [];
   if (legs.length === 0) throw new Error(`create-index-coin: ${symbol} has no legs configured`);
 
-  const cluster = process.env.SOLANA_CLUSTER ?? "devnet";
+  const cluster = parseCluster(process.env.SOLANA_CLUSTER);
   const connection = new Connection(requireEnv("RPC_URL"), "confirmed");
   const admin = Keypair.fromSecretKey(Uint8Array.from(JSON.parse(readFileSync(requireEnv("ADMIN_KEYPAIR_PATH"), "utf8"))));
   const pegDeskProgramId = new PublicKey(requireEnv("PEG_DESK_PROGRAM_ID"));
-  const usdcMint = new PublicKey(process.env.USDC_MINT ?? USDC[cluster as keyof typeof USDC] ?? USDC.devnet);
+  const usdcMint = new PublicKey(usdcMintFor(cluster, process.env.USDC_MINT_OVERRIDE)); // registry USDC[cluster]
   const provider = new AnchorProvider(connection, new Wallet(admin), { commitment: "confirmed" });
   const pegDesk = new PegDeskClient(provider, loadIdl("peg_desk"), pegDeskProgramId);
 

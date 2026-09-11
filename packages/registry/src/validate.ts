@@ -27,6 +27,6 @@ const drugs = ["COKE", "HEROIN", "METH", "FENT", "MOLLY", "WEED", "ACID", "SHROO
 for (const d of drugs) if (seen.has(d)) errors.push(`excluded category present: ${d}`);
 
 console.log(`registry: ${COMMODITIES.length} commodities + ${INDEX_COINS.length} index coins`);
-console.log(`mvp: ${COMMODITIES.filter((c) => c.phase === "mvp").length}, v1.1: ${COMMODITIES.filter((c) => c.phase === "v1.1").length}`);
+console.log(`mvp: ${COMMODITIES.filter((c) => c.phase === "mvp").length}`);
 if (errors.length) { console.error(errors.join("\n")); process.exit(1); }
 console.log("registry OK");

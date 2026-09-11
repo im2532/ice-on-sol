@@ -16,6 +16,26 @@ export const USDC = {
   devnet: "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
 } as const;
 
+export type Cluster = "localnet" | "devnet" | "mainnet-beta";
+
+export function parseCluster(value: string | undefined | null, fallback: Cluster = "devnet"): Cluster {
+  const v = (value ?? "").trim() || fallback;
+  if (v === "localnet" || v === "devnet" || v === "mainnet-beta") return v;
+  throw new Error(`SOLANA_CLUSTER must be one of localnet|devnet|mainnet-beta, got "${v}"`);
+}
+
+/**
+ * The USDC (peg_desk reserve) mint for a cluster: `override` (env `USDC_MINT_OVERRIDE` /
+ * `NEXT_PUBLIC_USDC_MINT_OVERRIDE`) when set, else `USDC[cluster]`. Localnet has no canonical USDC, so it
+ * requires the override (the mint your test validator created or cloned).
+ */
+export function usdcMintFor(cluster: Cluster, override?: string | null): string {
+  const o = override?.trim();
+  if (o) return o;
+  if (cluster === "localnet") throw new Error("localnet has no canonical USDC mint — set USDC_MINT_OVERRIDE");
+  return USDC[cluster];
+}
+
 /** PDA seeds — must match each program's `src/constants.rs` exactly. */
 export const SEEDS = {
   pegDesk: { config: "config", commodity: "cmdty", reserve: "reserve", hedge: "hedge", keeperPrice: "kp", mintAuth: "mint_auth" },

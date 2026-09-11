@@ -62,13 +62,13 @@ create table if not exists pools (
   migrated_at  timestamptz,
   damm_pool    text,
   -- rollup columns (written by the candles/rollup job; read by GET /markets)
-  last_price_quote     numeric(30,12) not null default 0, -- memecoin price in COIN
+  last_price_quote     numeric(38,18) not null default 0, -- memecoin price in COIN
   change_24h           numeric(12,4)  not null default 0, -- %
   volume_24h_usd       numeric(20,2)  not null default 0,
   curve_progress_pct   numeric(6,2)   not null default 0,
   holder_earnings_coin numeric(30,6)  not null default 0
 );
-alter table pools add column if not exists last_price_quote numeric(30,12) not null default 0;
+alter table pools add column if not exists last_price_quote numeric(38,18) not null default 0;
 alter table pools add column if not exists change_24h numeric(12,4) not null default 0;
 alter table pools add column if not exists volume_24h_usd numeric(20,2) not null default 0;
 alter table pools add column if not exists curve_progress_pct numeric(6,2) not null default 0;
@@ -83,8 +83,8 @@ create table if not exists trades (
   side         smallint not null,      -- 0 buy, 1 sell (matches Trade event in CONTRACTS §1)
   base         numeric(30,6) not null, -- memecoin amount
   quote        numeric(30,6) not null, -- commodity coin amount
-  price_quote  numeric(20,8) not null, -- price in commodity coin
-  price_usd    numeric(20,8) not null,
+  price_quote  numeric(38,18) not null, -- price in commodity coin (memecoin prices are ~1e-9 COIN)
+  price_usd    numeric(38,18) not null,
   trader       text not null
 );
 create index if not exists trades_pool_ts_idx on trades (pool, ts desc);
@@ -93,10 +93,10 @@ create table if not exists candles (
   pool  text not null references pools(dbc_pool),
   tf    text not null,   -- '1m' | '5m' | '1h' | '1d'
   ts    timestamptz not null,
-  o     numeric(20,8) not null,
-  h     numeric(20,8) not null,
-  l     numeric(20,8) not null,
-  c     numeric(20,8) not null,
+  o     numeric(38,18) not null,
+  h     numeric(38,18) not null,
+  l     numeric(38,18) not null,
+  c     numeric(38,18) not null,
   v     numeric(30,6) not null default 0,
   primary key (pool, tf, ts)
 );
@@ -183,8 +183,107 @@ create table if not exists buybacks (
 
 -- Cursor for Helius webhook / backfill idempotency.
 create table if not exists ingest_cursor (
-  source      text primary key,   -- 'helius_webhook' | 'backfill'
+  source      text primary key,   -- 'helius_webhook' | 'backfill:<address>'
   last_sig    text,
   last_slot   bigint,
   updated_at  timestamptz not null default now()
 );
+
+-- =====================================================================================================
+-- v0.2 additions (all additive / widening — safe to re-run on an existing v0.1 database).
+-- Writers: apps/indexer/src/decode/* (webhook + backfill) and apps/keeper. Both write some of the same
+-- facts (payouts, fee claims, buybacks, prices, epochs), so every such table has a natural unique key and
+-- both writers use `on conflict do nothing|update` — whichever lands first wins, replays are no-ops.
+-- NOTE: the unique indexes below fail to build if a v0.1 database already holds duplicate rows; dedupe first.
+-- =====================================================================================================
+
+-- Memecoin prices in COIN are ~1e-9 (a $5k-cap, 1e9-supply coin quoted in a $2.6k GLD), which
+-- numeric(20,8) rounds to 0. Widen (lossless) to 18 decimals.
+alter table trades  alter column price_quote type numeric(38,18);
+alter table trades  alter column price_usd   type numeric(38,18);
+alter table candles alter column o type numeric(38,18);
+alter table candles alter column h type numeric(38,18);
+alter table candles alter column l type numeric(38,18);
+alter table candles alter column c type numeric(38,18);
+alter table pools   alter column last_price_quote type numeric(38,18);
+
+-- Token vaults of the DBC pool and (post-migration) the DAMM v2 pool, derived at PoolRegistered /
+-- MigrationRecorded time. The swap decoder matches pre/post token balances of these accounts.
+alter table pools add column if not exists base_vault       text;
+alter table pools add column if not exists quote_vault      text;
+alter table pools add column if not exists damm_base_vault  text;
+alter table pools add column if not exists damm_quote_vault text;
+alter table pools add column if not exists registered_sig   text;
+create index if not exists pools_base_vault_idx on pools (base_vault);
+create index if not exists pools_damm_base_vault_idx on pools (damm_base_vault);
+
+-- Idempotency keys.
+alter table balance_events add column if not exists sig text;
+create unique index if not exists balance_events_sig_uniq on balance_events (pool, wallet, sig);
+alter table fee_claims add column if not exists sig text;
+create unique index if not exists fee_claims_sig_uniq on fee_claims (sig, pool, source);
+alter table buybacks add column if not exists sig text;
+create unique index if not exists buybacks_sig_uniq on buybacks (sig);
+alter table payouts add column if not exists sig text;
+create unique index if not exists payouts_uniq on payouts (pool, epoch, wallet, kind);
+create unique index if not exists prices_uniq on prices (commodity, ts, source);
+
+-- distributor Epoch PDA (lets Payout{epoch} events map back to (pool, index)).
+alter table epochs add column if not exists epoch_pubkey text;
+create unique index if not exists epochs_pubkey_uniq on epochs (epoch_pubkey);
+
+-- peg_desk `Trade` events (commodity coin ↔ USDC on the Peg Desk; memecoin trades live in `trades`).
+create table if not exists commodity_trades (
+  sig         text not null,
+  commodity   text not null references commodities(symbol),
+  ts          timestamptz not null,
+  side        smallint not null,          -- 0 buy (mint), 1 sell (burn)
+  usdc        numeric(30,6) not null,
+  coin        numeric(30,6) not null,
+  price       numeric(20,8) not null,     -- oracle mid, USD
+  spread_bps  integer not null,
+  trader      text not null,
+  primary key (sig, commodity, trader, side)
+);
+create index if not exists commodity_trades_commodity_ts_idx on commodity_trades (commodity, ts desc);
+
+-- fee_router `FeesSplit` events.
+create table if not exists fee_splits (
+  sig       text not null,
+  pool      text not null references pools(dbc_pool),
+  holders   numeric(30,6) not null,
+  buyback   numeric(30,6) not null,
+  protocol  numeric(30,6) not null,
+  ts        timestamptz not null,
+  primary key (sig, pool)
+);
+
+-- Keeper payout-epoch progress (apps/keeper/src/cycles/payouts.ts). The share PLAN is persisted before
+-- `open_epoch` is sent, so a crashed cycle resumes the exact same allocation instead of recomputing TWAB.
+create table if not exists epoch_progress (
+  pool          text not null references pools(dbc_pool),
+  epoch_index   integer not null,
+  epoch_pubkey  text not null,
+  coin_mint     text not null,
+  phase         text not null,            -- planned | opened | pushed | finalized
+  start_ts      bigint not null,          -- unix seconds
+  end_ts        bigint not null,
+  total_amount  numeric(30,0) not null,   -- BASE units
+  plan          jsonb not null,           -- [{ "wallet": base58, "amount": "<base units>" }, …] (sum = total)
+  open_sig      text,
+  finalize_sig  text,
+  merkle_root   text,
+  last_error    text,
+  updated_at    timestamptz not null default now(),
+  primary key (pool, epoch_index)
+);
+
+-- Raw audit trail of every ingested transaction (was created lazily by webhook.ts in v0.1).
+create table if not exists raw_events (
+  sig      text primary key,
+  slot     bigint,
+  ts       timestamptz,
+  payload  jsonb,
+  error    text            -- decode/ingest error (tx skipped; replay with backfill after fixing)
+);
+alter table raw_events add column if not exists error text;

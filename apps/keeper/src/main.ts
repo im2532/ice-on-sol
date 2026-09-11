@@ -31,7 +31,7 @@ let shuttingDown = false;
 
 async function main(): Promise<void> {
   const cfg = loadConfig();
-  log.info({ cluster: cfg.cluster, rpcUrl: cfg.rpcUrl }, "starting ICEmarkets keeper");
+  log.info({ cluster: cfg.cluster, rpcUrl: cfg.rpcUrl, usdcMint: cfg.usdcMint }, "starting ICEmarkets keeper");
 
   // Sanity-check DB connectivity before scheduling anything.
   await getPool().query("select 1");

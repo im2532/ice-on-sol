@@ -1,7 +1,7 @@
 # ICEmarkets — Commodity Market Exchange on Solana
 
 **Design spec, feasibility, scope test and execution plan**
-Version 0.1 · 11 September 2026 · Prepared for Yashish
+Version 0.3 · 11 September 2026 · Prepared for Yashish
 
 > A Solana fork of commodites.market (CME, Robinhood Chain): a launchpad where every memecoin is paired with a commodity coin (gold, crude, wheat, a Dragon Lore, a Charizard) instead of SOL, and 40% of every trading fee is paid to holders in that commodity coin, automatically. Built on Meteora Dynamic Bonding Curve → DAMM v2, Pyth + Switchboard oracles, and a small set of our own audited Anchor programs.
 
@@ -16,8 +16,8 @@ Version 0.1 · 11 September 2026 · Prepared for Yashish
 | D3 | Oracle stack | **Pyth Core (primary, ~22 feeds incl. 24/7 gold/silver/PYTHOIL/brent/natgas/copper indices; constant-maturity WTI1M/BRENT1M/HHGAS1M for energy so no futures rolling) + Switchboard On-Demand (custom feeds: skins, cards, missing futures) + KeeperSigned bounded feeds (food, water, cars)** | Pyth is free, pull-based, has confidence intervals, and has 24/7 indices for the majors so weekend halts are avoided where it matters. Switchboard jobs can hit any HTTP API from a TEE. |
 | D4 | Fee-to-holders | **Fee Router program PDA is DBC `fee_claimer`; keeper claims every 15 min; push payouts (nothing to claim) + Merkle claim fallback for dust** | Token-2022 transfer hooks are revoked at DBC graduation and rejected by DAMM v2 — dead end. Bags.fm runs exactly the PDA-claimer pattern in production. "Nothing to claim" is the original's best UX moment; keep it. |
 | D5 | Fee split | Gross fee 1/2/3% (creator picks). Meteora takes a fixed 20% of it. Of our 80%: **50% holders / 25% $ICE buyback-burn / 25% protocol** = 40% / 20% / 20% of gross, 20% Meteora. No creator share (matches original after 8 Sep 2026). | Preserves the headline "40% to holders in the commodity coin". |
-| D6 | Baskets (up to 5 coins) | **Index coins on the Peg Desk** (e.g. `PMX` = 40% GLD / 30% SLV / 15% XPT / 15% XPD, composite oracle) rather than 5 pools sharing one token | DBC mints one base token per pool; one token cannot sit in 5 DBC pools. An index coin gives the same product ("paired with a basket") with one pool, one payout token, one chart. Phase 2. |
-| D7 | Categories | **10 of 11**: metals, energy, agriculture, livestock, fast food, CS2 skins, game gold, trading cards, water, cars. **Drugs excluded.** | Drugs have no real price data, and invite bans from Jupiter Verify, X, wallets, on-ramps; fentanyl is politically radioactive. Excluding them costs nothing technically. |
+| D6 | Baskets (up to 5 coins) | **Index coins on the Peg Desk** (e.g. `PMX` = 40% GLD / 30% SLV / 15% XPT / 15% XPD, composite oracle; also `WATCHX`, `CS2X`) rather than 5 pools sharing one token — shipped at launch, no custom-basket builder | DBC mints one base token per pool; one token cannot sit in 5 DBC pools. An index coin gives the same product ("paired with a basket") with one pool, one payout token, one chart. |
+| D7 | Categories | **11 categories**: metals, energy, agriculture, livestock, fast food, CS2 skins, game gold, trading cards, water, cars, **watches** (Rolex/AP/Patek/Omega/Cartier + G-Shock/Tissot as accessible entries; Switchboard `watch_*_median3` jobs, WatchCharts + Chrono24 + Collector Crypt). **Drugs excluded.** | Drugs have no real price data, and invite bans from Jupiter Verify, X, wallets, on-ramps; fentanyl is politically radioactive. Excluding them costs nothing technically. |
 | D8 | Brand | **ICEmarkets** — ice-cream-cone mascot, Solana purple `#9945FF` → green `#14F195` gradient on near-black, monospaced numerals like the original. Tagline: *"Cool your commodities."* | Sounds like ICE without using Intercontinental Exchange's mark. Original characters, not a licensed one. |
 | D9 | Platform token | **$ICE**, launched on our own launchpad **paired with GLD** ("the exchange coin is priced in gold"); 20% of gross fees buy and burn it | Dogfoods the product; a gold-denominated exchange token is a marketing hook the original doesn't have. |
 | D10 | Compliance posture | Offshore entity; frontend geo-block US/UK/sanctioned; no leverage; "synthetic, no claim on any commodity, redeemable only against protocol reserve, may halt" disclosure; counsel review before mainnet; generic names for trademarked items (`BURGER` not `BIGMAC`) | CFTC treated Opyn/ZeroEx/Deridex synthetics as swaps and called IP blocking "not sufficient" — this is real risk, not paperwork. |
@@ -127,7 +127,7 @@ Peg Desk additions from verification: `buy_exact_out`; COIN **freeze authority =
 | Buy with USDC | Peg Desk USDC→HG · DBC swap |
 | Buy with HG (already hold it from payouts) | DBC swap |
 | Sell to USDC | DBC swap → HG · Peg Desk HG→USDC |
-| Trade on Axiom/Photon/Jupiter | They see a normal HG-quoted DBC/DAMM v2 pool. Jupiter routes SOL→HG (and runs its $500 round-trip listing test) only if a routable HG pool exists → we seed a **thin DAMM v2 COIN/USDC pool per launch coin (MVP, not phase 2)** kept at peg by our keeper-arb bot (profit stays in-house). Phase 2: Jupiter AMM integration for the Peg Desk itself. |
+| Trade on Axiom/Photon/Jupiter | They see a normal HG-quoted DBC/DAMM v2 pool. Jupiter routes SOL→HG (and runs its $500 round-trip listing test) only if a routable HG pool exists → we seed a **thin DAMM v2 COIN/USDC pool per launch coin (v1.0)** kept at peg by our keeper-arb bot (profit stays in-house). Backlog, not v1.0: Jupiter AMM integration for the Peg Desk itself. |
 
 ### 3.4 Oracle & staleness matrix
 
@@ -137,7 +137,8 @@ Peg Desk additions from verification: `buy_exact_out`; COIN **freeze authority =
 | A hours | CL (WTI1M), XPT, XPD, ALI, ZW, ZC, ZS, SB, KC, CC, LE | Pyth constant-maturity (WTI1M/BRENT1M/HHGAS1M), spot/LME, dated futures + keeper roll blend for ags | 30 s | 120 s / sell-only at 150 bp, or Halted | 15 bp |
 | B intraday | RB, HO, ZM, ZL, ZR, ZO, CT, OJ, GF, HE, DC, LBR, USO | Switchboard job over licensed vendor (Databento / Barchart / Polygon.io) | 60 s | 5 min / 72 h halt | 25 bp |
 | B market | 12 CS2 skins, RSGP | Switchboard job: median of Pricempire + CSFloat + Skinport (+ Steam) | 5 min | 1 h | 100 bp |
-| C slow | 25 trading cards | Switchboard job: TCGplayer via pokemontcg.io / tcgapi + PriceCharting | 1 h | 48 h | 150 bp |
+| C slow | 25 trading cards | Switchboard job: median(TCGplayer via pokemontcg.io / tcgapi + PriceCharting, **Collector Crypt** vaulted-card sales) | 1 h | 48 h | 150 bp |
+| C slow | 10 watches | Switchboard job: median(WatchCharts, Chrono24*, **Collector Crypt** vaulted-watch sales) — *Chrono24 has no public API; source stays disabled (falls back to the other two) until a compliant path exists | 1 h | 48 h | 150 bp |
 | C manual | 13 fast food, H2O, LAMBO | KeeperSigned (multisig, ±5%/update) | weekly / on change | 30 d | 200 bp |
 
 Weekend behaviour: Tier A-24/7 trades through; Tier A-hours defaults to **sell-only at wide spread** (so holders can always exit) and resumes at open; the market page shows the same *"price feed recovering"* banner as the original.
@@ -173,8 +174,8 @@ Brand tokens: bg `#0A0A0F`, surface `#12121A`, text `#F5F5F7`, accent gradient `
 | Meteora dependency | ⚠️ | DBC is upgradeable by Meteora; v0.2.1 not yet in the published audit list; recent releases changed min fee and deprecated modes. Pin interfaces, run CI against the live mainnet program via Surfpool. |
 | Weekend trading for other futures | ⚠️ | Sell-only/halt. Same limitation as the original (72 h staleness). |
 | Terminal support (Axiom/Photon) | ⚠️ | They index DBC pools, but display of non-SOL quotes varies; routing needs a COIN/USDC pool. Mitigated by seeded pools + keeper arb. |
-| Jupiter routing of Peg Desk | ⏳ Phase 2 | Requires `jupiter-amm-interface` impl, audit, traction. Prop-AMM pattern is well trodden. |
-| "Tokenize anything" (TCGplayer) | ✅ Phase 3 | pokemontcg.io / tcgapi / PriceCharting; depth screen = 30-day sales count. |
+| Jupiter routing of Peg Desk | ⏳ Backlog (not v1.0) | Requires `jupiter-amm-interface` impl, audit, traction. Prop-AMM pattern is well trodden. |
+| "Tokenize anything" (TCGplayer) | ✅ Backlog (not v1.0) | pokemontcg.io / tcgapi / PriceCharting; depth screen = 30-day sales count. |
 | Regulatory | ⚠️ Material risk | Synthetic commodity exposure to retail ≈ swap under CEA. Offshore + geo-block + disclosures + counsel. Not a blocker for a memecoin launchpad by industry practice (StonkFun, Ember, Lattice), but it is the top risk. |
 | Reserve solvency (short delta) | ⚠️ | Protocol is short every coin it mints. Hedge GLD/SLV with PAXG/SLV-token vaults; cap supply on the rest; spread income accrues to reserve. Model in §6. |
 
@@ -182,19 +183,21 @@ Brand tokens: bg `#0A0A0F`, surface `#12121A`, text `#F5F5F7`, accent gradient `
 
 ---
 
-## 5. Scope test — MVP vs. full
+## 5. Scope test — v1.0 (single release, no phases)
 
-| Capability | MVP (mainnet launch) | v1.1 (+4 wks) | v2 (+8–12 wks) |
-|---|---|---|---|
-| Commodity coins | 25 majors (Pyth) + 12 CS2 skins + RSGP + 6 top cards + BURGER/FRIES/H2O/LAMBO ≈ **48** | +13 vendor futures, +19 cards, rest of food ≈ 82 | Tokenize-anything (TCGplayer catalogue) |
-| Launch | Single coin, 1/2/3% fee, first buy, 1 tx | Index coins (baskets) | Creator vesting / Alpha Vault option |
-| Trading | SOL/USDC/COIN in & out, own UI | Jupiter routing via seeded pools | Peg Desk in Jupiter router |
-| Rewards | 15-min push payouts + Merkle | Leaderboard, per-wallet history export | Referral share from protocol cut |
-| $ICE | Launch paired with GLD, buyback-burn | Burn dashboard | Staking-free; keep it simple |
-| Charts | Own OHLC (Lightweight Charts) | GMGN/Birdeye embed | — |
-| Compliance | Geo-block, ToS, disclosures | Legal opinion | Entity + licensing review |
+Everything below ships together — there is no MVP/v1.1/v2 split. A capability either is in v1.0 or it is future work called out explicitly in `docs/BUILD_STATUS.md`'s Backlog (Jupiter AMM integration for the Peg Desk itself, tokenize-anything, an agent-kit chat bot, hedge-vault rebalancing).
 
-Cut list if late: cards → v1.1; food/water/cars → v1.1; own OHLC → Birdeye embed only.
+| Capability | v1.0 (single release) |
+|---|---|
+| Commodity coins | **93 commodities** (metals, energy, agriculture, livestock, fast food, CS2 skins, RSGP, 25 trading cards, water, cars, **10 watches**) + **3 index coins** (PMX, WATCHX, CS2X) |
+| Launch | Single coin or a ready-made index coin, 1/2/3% fee, first buy, 1 tx |
+| Trading | SOL/USDC/COIN in & out, own UI, Jupiter routing via seeded COIN/USDC pools |
+| Rewards | 15-min push payouts + Merkle, leaderboard, per-wallet history export |
+| $ICE | Launch paired with GLD, buyback-burn, burn dashboard |
+| Charts | Own OHLC (Lightweight Charts); GMGN/Birdeye embed |
+| Compliance | Geo-block, ToS, disclosures, legal opinion before mainnet |
+
+Not in v1.0 (no date attached, tracked as backlog, not a phase): custom baskets (build-your-own beyond the 3 ready-made index coins), creator vesting / Alpha Vault, Peg Desk as a Jupiter AMM, referral share, tokenize-anything (open TCGplayer catalogue), entity/licensing review.
 
 ---
 
@@ -223,7 +226,7 @@ Cut list if late: cards → v1.1; food/water/cars → v1.1; own OHLC → Birdeye
 
 **Week 11 — $ICE launch + public open.** Launch $ICE paired with GLD on our own curve (fair launch, anti-sniper decay), open launchpad to public, KOL wave, Meteora + Solana ecosystem outreach for amplification (StonkFun got a Solana account quote-tweet), Telegram + X-native community.
 
-**Week 12 — Stabilize + v1.1 start.** Remaining coins, index coins (baskets), Jupiter Peg Desk integration PR.
+**Week 12 — Stabilize + backlog kickoff.** Any coin/edge-case cleanup from the private beta; start the backlog items that stay explicitly out of v1.0 (Jupiter Peg Desk integration PR, tokenize-anything).
 
 **Budget (12 weeks).** Team $120–200k (or founder-built) · audit $60–120k incl. one fix review · RPC/gRPC/indexing $1.5–5k/mo ≈ $5–15k · Pyth posting + keeper SOL float ≈ 20–60 SOL · pinning $50–200/mo · data APIs $1–2k · reserves/hedge $100–250k (recoverable capital, not spend) · legal $15–40k · brand/trailer/KOL $10–40k · X Premium/Verified Org ~$100–1,000. **Total spend ≈ $215–430k + $100–250k reserve capital.** Per-launch on-chain cost shown in UI: ≈ 0.02–0.025 SOL (config rent + Metaplex + pool) plus first buy; each graduation costs us ≈ 0.03–0.05 SOL.
 
@@ -250,10 +253,10 @@ Cut list if late: cards → v1.1; food/water/cars → v1.1; own OHLC → Birdeye
 
 ---
 
-## Appendix A — Commodity coin list (82, drugs excluded)
+## Appendix A — Commodity coin list (93, drugs excluded) + 3 index coins
 
 Metals (6): GLD Gold /oz · SLV Silver /oz · XPT Platinum /oz · XPD Palladium /oz · HG Copper /lb · ALI Aluminium /t
-Energy (6): CL WTI /bbl · BZ Brent /bbl · USO Oil fund /unit · NG Natural Gas /MMBtu · RB Gasoline /gal · HO Heating Oil /gal
+Energy (7): CL WTI /bbl · BZ Brent /bbl · OIL Oil (Pyth 24/7 blend) /bbl · USO Oil fund /unit · NG Natural Gas /MMBtu · RB Gasoline /gal · HO Heating Oil /gal
 Agriculture (14): LBR Lumber /mbf · ZW Wheat /bu · ZC Corn /bu · ZS Soybeans /bu · ZM Soybean Meal /ton · ZL Soybean Oil /lb · ZR Rice /cwt · ZO Oats /bu · SB Sugar /lb · KC Coffee /lb · CC Cocoa /t · CT Cotton /lb · OJ Orange Juice /lb · DC Milk /cwt
 Livestock (3): LE Live Cattle /lb · GF Feeder Cattle /lb · HE Lean Hogs /lb
 Fast food (13, generic tickers): BURGER, NUGGETS, WHOPPR→BIGBURGER, CHIXSAND, TACO, BURRITO, LATTE, PIZZA, DBLBURGER, BACONBURGER, SPICYCHIX, MEDCOFFEE, FRIES — /item
@@ -262,6 +265,9 @@ Game gold (1): RSGP OSRS Gold /M gp
 Trading cards (25): 13 ETBs (151, Prismatic Evolutions, Destined Rivals, Ascended Heroes, Chaos Rising, Phantasmal Flames, Twilight Masquerade, Surging Sparks, Black Bolt, White Flare, Mega Evolution, Crown Zenith, Obsidian Flames) + 12 singles (Umbreon ex SIR 161/131, Umbreon VMAX Alt Art, Charizard ex SIR 199/165, Charizard ex SIR 223/197, Base Set Charizard, Pikachu ex SIR 238/191, Mew ex SIR 232/091, Team Rocket's Mewtwo ex SIR, Mega Charizard Y ex 294/217, Giratina V Alt Art, Cynthia's Garchomp ex SIR, N's Zoroark ex SIR) — /box, /card
 Water (1): H2O California Water /af
 Cars (1): LAMBO Lamborghini Temerario /car
+Watches (10): SUBMARINER Rolex Submariner Date 126610LN · DAYTONA Rolex Cosmograph Daytona 126500LN · GMTMASTER Rolex GMT-Master II 126710BLNR · DATEJUST Rolex Datejust 41 126334 · ROYALOAK AP Royal Oak 15510ST · NAUTILUS Patek Philippe Nautilus 5811/1G · SPEEDMASTER Omega Speedmaster Moonwatch · SANTOS Cartier Santos Large WSSA0018 · GSHOCK Casio G-Shock DW-5600E · TISSOTPRX Tissot PRX Powermatic 80 — /watch (unworn, full set); priced from WatchCharts + Chrono24 (disabled, no public API) + Collector Crypt vaulted-watch sales
+
+Index coins (3, Composite oracle, D6): PMX Precious Metals Index (40% GLD / 30% SLV / 15% XPT / 15% XPD) · WATCHX Luxury Watch Index (25% SUBMARINER / 25% DAYTONA / 20% ROYALOAK / 20% NAUTILUS / 10% SPEEDMASTER) · CS2X CS2 Skins Index (25% KARAMBIT / 25% HOWL / 25% DLORE / 15% AWPASIIMOV / 10% AKREDLINE)
 
 ## Appendix B — Pyth feed IDs used at launch (Tier A)
 

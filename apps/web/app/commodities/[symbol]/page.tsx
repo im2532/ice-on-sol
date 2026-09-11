@@ -10,6 +10,7 @@ import Chart from "@/components/Chart";
 import TradePanel from "@/components/TradePanel";
 import StatusPill from "@/components/StatusPill";
 import MarketCard from "@/components/MarketCard";
+import { INDEX_COINS, bySymbol } from "@icemarkets/registry";
 
 type Range = "24h" | "7d" | "30d";
 
@@ -55,6 +56,11 @@ export default function CommodityPage() {
           <div>
             <h1 className="text-xl font-bold sm:text-2xl">
               {displayName} <span className="text-muted">${commodity.symbol}</span>
+              {INDEX_COINS.some((c) => c.symbol === commodity.symbol) && (
+                <span className="ml-2 rounded bg-surface2 px-1.5 py-0.5 align-middle text-[10px] font-medium uppercase tracking-wide text-muted">
+                  Index
+                </span>
+              )}
             </h1>
             <p className="mt-0.5 text-xs text-muted">
               Tracks {displayName} · 1 {commodity.symbol} = {commodity.unit}
@@ -152,8 +158,8 @@ export default function CommodityPage() {
             mint={commodity.mint}
             coinSymbol={commodity.symbol}
             payOptions={["USDC"]}
-            disabled={status === "halted"}
-            disabledReason="Feed halted"
+            status={status}
+            sessionKind={bySymbol(commodity.symbol)?.session}
           />
           <p className="mt-3 text-center text-xs text-muted">
             Redeemable only against the protocol&apos;s USDC reserve.{" "}
