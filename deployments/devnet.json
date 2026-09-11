@@ -1,6 +1,6 @@
 {
   "cluster": "devnet",
-  "generatedAt": "2026-09-11T21:33:02.412Z",
+  "generatedAt": "2026-09-11T21:45:19.215Z",
   "globalConfig": "9E4VJpHEjkUgoNCMkwLDt5jzUVgD7jsvjU4myP6KdjRJ",
   "commodities": [
     {
@@ -292,6 +292,219 @@
       "seedPriceUsd": 675,
       "supplyCap": "37037037",
       "perTxCap": "3703703"
+    },
+    {
+      "symbol": "RB",
+      "commodityPda": "2eG4Gwu3LDYstcaauNjiiENhjKDvgWL6eAcmy8ifvioW",
+      "coinMint": "BLQcdqLpfjxFk7QyE9XxxKKmwp6vMhcdeusaZoXp8P1P",
+      "reserveVault": "m4yBKcWcJwLXTeuCo7yqoNCovqMnafsFnxgmRgBEAhN",
+      "feedId": null,
+      "seedPriceUsd": 3.15,
+      "supplyCap": "23809523809",
+      "perTxCap": "2380952380"
+    },
+    {
+      "symbol": "HO",
+      "commodityPda": "9P4KQ5LQPe7PjkZ7hem9SChkABpkMZwipP7brhL3JVdu",
+      "coinMint": "64RBN2zppLFz4DVgLTfG9hixnnVT6L1pyaU1nju1HbCL",
+      "reserveVault": "BrTvwSarWXu165LLoCNo42gbNy3dp2vASDyR3Rw2DDqt",
+      "feedId": null,
+      "seedPriceUsd": 4.81,
+      "supplyCap": "15592515592",
+      "perTxCap": "1559251559"
+    },
+    {
+      "symbol": "LBR",
+      "commodityPda": "41Qq8k53ZreWoLjqnYUUvzEDYZ6bvrc4e98givLFECmf",
+      "coinMint": "7MX6vhyy6SPLCNX9bUZM8h4SuUG29eZUg5bzJey6eV91",
+      "reserveVault": "C3SZt4KaENWJxLNpNr53BWqzDStfedRP9MyJPvy7Xtyi",
+      "feedId": null,
+      "seedPriceUsd": 570,
+      "supplyCap": "131578947",
+      "perTxCap": "13157894"
+    },
+    {
+      "symbol": "ZM",
+      "commodityPda": "DWu9AGeih9XtpjhkZKekpFcE6u8s3b3LtzuNcrEHWzdP",
+      "coinMint": "7oP2smb8NKnUJNbpec4eNdnF5i7bZwFDzjMRZ975d3hP",
+      "reserveVault": "8octqDa2qasBcju1H6RU8LKra3kR9uPhNgDAFshfVJrx",
+      "feedId": null,
+      "seedPriceUsd": 352.75,
+      "supplyCap": "212615166",
+      "perTxCap": "21261516"
+    },
+    {
+      "symbol": "ZL",
+      "commodityPda": "8iHTfY1Nn9HbvkN5qswAfe8c9hfPEGFw2eL6c4m35M8N",
+      "coinMint": "2XfpznTYepHZJ3hMYLEZXSUcV5k6RbvzZhgan2FdiKQy",
+      "reserveVault": "HxegM4gCqvDp5iEvcqbff88i2SNMeyzLbppL9AV1KeT9",
+      "feedId": null,
+      "seedPriceUsd": 0.6999,
+      "supplyCap": "107158165452",
+      "perTxCap": "10715816545"
+    },
+    {
+      "symbol": "ZR",
+      "commodityPda": "7eR44fou8U9p9bhYjY9YejfximZ1qkkYTHiYSRSKvf9B",
+      "coinMint": "L9eniRF2YsjWCGgXi37h93EoaTPom2YCZ6YqDHyMcKT",
+      "reserveVault": "CMBmHeNXPzbU72aNTKX5yC5YoHhA5Sx682k9UrFXcH3a",
+      "feedId": null,
+      "seedPriceUsd": 16.14,
+      "supplyCap": "4646840148",
+      "perTxCap": "464684014"
+    },
+    {
+      "symbol": "ZO",
+      "commodityPda": "A5xFLoMhyhcGhnBpLp5C4oV9dG8VHWzad3a6cNRTnpVx",
+      "coinMint": "4esAS8xjXcyFh2bwiz4a1dGxSw9Pj9KMV6x2LgAPC3WB",
+      "reserveVault": "EJjFzjD3BRSorZMr5GE67J3BYQZvb1zZpcwzdWvsBc9N",
+      "feedId": null,
+      "seedPriceUsd": 3.78,
+      "supplyCap": "19841269841",
+      "perTxCap": "1984126984"
+    },
+    {
+      "symbol": "CT",
+      "commodityPda": "E3AXXRfKQNhgreTXdfJE8nDuGy3fEQAwBLs3DupyJv9N",
+      "coinMint": "5Vo4GbXdfL9LsDuxoWL6izVMrVzzXqT9vjdnjrj5P4y4",
+      "reserveVault": "3oSi1padCkxe8saF2TDYYKp5tovPpwAqut5rYV6Co56T",
+      "feedId": null,
+      "seedPriceUsd": 0.8737,
+      "supplyCap": "85841822135",
+      "perTxCap": "8584182213"
+    },
+    {
+      "symbol": "OJ",
+      "commodityPda": "CavFAjyaHHk6BnoVh6uSQDTvdnN5gLQEQu91hh3LB7oK",
+      "coinMint": "5SQZKmdJeaaYz9L4RBjnUbK192CGFPTsqhy2Bhke8CYc",
+      "reserveVault": "3nMgvBZn2hAVxvXtENswFwnn14whtUrQGRXr1c9t6jCH",
+      "feedId": null,
+      "seedPriceUsd": 1.44,
+      "supplyCap": "52083333333",
+      "perTxCap": "5208333333"
+    },
+    {
+      "symbol": "DC",
+      "commodityPda": "2k3viuSHeqJ65t9DqbHC9qV1A7EK2ifTiJwVjfpd9ufY",
+      "coinMint": "2a4nGyr7EREC7u7E6GnVycAqVPLCSCuHVGmMKW7fnmTe",
+      "reserveVault": "EMdDJzCuFFiP46EALrYVL9WLtardBRWW7xLcLEZY186e",
+      "feedId": null,
+      "seedPriceUsd": 16.19,
+      "supplyCap": "4632489190",
+      "perTxCap": "463248919"
+    },
+    {
+      "symbol": "GF",
+      "commodityPda": "9TXYVZh2cKkuR13Lg3mi12nw5pwjyRr2LvfxskLgFwmG",
+      "coinMint": "CzSVsnP3cdYZw3Kx4HGuBwwHXRkjtP3KXp4UG5WuiWnL",
+      "reserveVault": "4Avm7PDXGs33rpbMyvhz5S5fm79WcbPcwrjtw1f2Dv1p",
+      "feedId": null,
+      "seedPriceUsd": 3.33,
+      "supplyCap": "22522522522",
+      "perTxCap": "2252252252"
+    },
+    {
+      "symbol": "HE",
+      "commodityPda": "8Qt3PYgtPopAc23rnFcHmJq9r94gTkQ9CGbwUwtuQjSB",
+      "coinMint": "EM1uBTdv7Dr52E2kMYQbzsBgNWVVKLnMTdAr6svMGFe6",
+      "reserveVault": "DNifJVdP9ZZCp3oEsjEYo6qyC2GbfppfcW4ncYxN3bo6",
+      "feedId": null,
+      "seedPriceUsd": 0.8195,
+      "supplyCap": "91519219035",
+      "perTxCap": "9151921903"
+    },
+    {
+      "symbol": "AKREDLINE",
+      "commodityPda": "DXkk35VSuMR7u1hjTpa2ZXSSZmeTATzqHDhw4BFYB1g9",
+      "coinMint": "FfgkWwuQWzMnPnpMTyoaAyZvwzCdqv7E3Peom8Y62QJe",
+      "reserveVault": "7rsLyJ5qy8XrBPwidsvo7JKrXJr1Fk8ydBYyoM21JrzE",
+      "feedId": null,
+      "seedPriceUsd": 26.78,
+      "supplyCap": "1867064973",
+      "perTxCap": "186706497"
+    },
+    {
+      "symbol": "AWPASIIMOV",
+      "commodityPda": "EM348m7oWQdnczo5r1NXe7HxfExc2gGwS9ny9sTBKWup",
+      "coinMint": "64cMoh9PbT7VvPu4VCUPkoJh4Rgf3JXuj4nLLnwbKgAm",
+      "reserveVault": "J4WeJ8xMKJ4zujc8NJPXe9gpazajgiX9n7qAGjKvLcSA",
+      "feedId": null,
+      "seedPriceUsd": 110.1,
+      "supplyCap": "454132606",
+      "perTxCap": "45413260"
+    },
+    {
+      "symbol": "DLORE",
+      "commodityPda": "8QQEUEGr6nywUgXMUEGTCMEV2xJCVKzJyK9hk8wWYuhz",
+      "coinMint": "EGhhfnw4fGBahvbPFiD59PA1WyAPrfRbFQsk43pzXkoC",
+      "reserveVault": "FMtzZMnMYuCXqFtj3amQvrz7Nu2VCe3PqRtDPnuigJze",
+      "feedId": null,
+      "seedPriceUsd": 6110.23,
+      "supplyCap": "8182998",
+      "perTxCap": "818299"
+    },
+    {
+      "symbol": "HOWL",
+      "commodityPda": "C8KNdA4MX29mT2jxDqE6v5fGK6Xa993qykTZhwmvWDvP",
+      "coinMint": "F6Bbcd9ubR1SvsxkLUABeRTPN83cTrTHuoaFPpUdjTfL",
+      "reserveVault": "3pWkF9KJb3UUiBk8yrrkAWfEhcaT3DfN5XV7wE3ePy4L",
+      "feedId": null,
+      "seedPriceUsd": 4336.95,
+      "supplyCap": "11528839",
+      "perTxCap": "1152883"
+    },
+    {
+      "symbol": "KARAMBIT",
+      "commodityPda": "Dg3PMg74Y7xGtJGpF9Xsowb8QiLVQVuQwwavthKpRGYx",
+      "coinMint": "8bkwzNvPXqPjtSWAxZN4aoqq173HirPoALLpnzohcNzT",
+      "reserveVault": "623ThaTPDYz7giiEHW5bH71172yhHucZmHuoJt5w9ijN",
+      "feedId": null,
+      "seedPriceUsd": 10049.99,
+      "supplyCap": "4975129",
+      "perTxCap": "497512"
+    },
+    {
+      "symbol": "BFLYFADE",
+      "commodityPda": "826evQoUyqLeQe1fEEhcyvPaNGQcXU3SCtCiHLi8BVQs",
+      "coinMint": "AWT4cM6krqVSLimx9AHf9dU727KSJHXaj55isJsB9ozi",
+      "reserveVault": "2XnAJfhcBHApJvkER5LGAmcDTSbKDyFnw6Gvay1oPu9y",
+      "feedId": null,
+      "seedPriceUsd": 2174.56,
+      "supplyCap": "22993157",
+      "perTxCap": "2299315"
+    },
+    {
+      "symbol": "DEAGLBLAZE",
+      "commodityPda": "HxMVLPH3eCffLzZ3aAKyjLwo9eFaAaaW55kdi4ypdc1d",
+      "coinMint": "3KsUR2L6wst1nntAo6LVHeQkCPcSGYnmye58hfvxonFV",
+      "reserveVault": "93CbnzdDeY38ZHb57F4G9dC9MA8ZfcXFtjGTSDEryHSm",
+      "feedId": null,
+      "seedPriceUsd": 639.97,
+      "supplyCap": "78128662",
+      "perTxCap": "7812866"
+    },
+    {
+      "symbol": "GLOCKFADE",
+      "commodityPda": "BkF8RE7Ut4BN2NqM8xFeR5FA9eYrAGNVrnTGC1b4Sa6W",
+      "coinMint": "Vqp6CpFXXC4mhm6NfuFwLsTFoeAW6GjWepzocgVjvS5",
+      "reserveVault": "3t6WRY3moqxtjuPvEgm3eiapEECQHSWMKyK2uxXub9JC",
+      "feedId": null,
+      "seedPriceUsd": 1590.39,
+      "supplyCap": "31438829",
+      "perTxCap": "3143882"
+    },
+    {
+      "symbol": "SPEEDMSTR",
+      "commodityPda": "9w7qGHVEKAK9UekKDsUsN5UHsFvBagQy17xigQ3x9zoW",
+      "coinMint": "E7p5VnytBBA6auaepvLB6WioAtAbzCbgME2cm1fkqysJ",
+      "reserveVault": "9JDgkPJYms6JwvScvuG2UMBft8PKGsX3RYf75XAuFrpF",
+      "feedId": null,
+      "seedPriceUsd": 6900,
+      "supplyCap": "3623188",
+      "perTxCap": "362318"
     }
-  ]
+  ],
+  "addressLookupTable": "9LerqCHwsEJu98LHzmpqetuaAJQoCyDHNcXErYMU7bpb",
+  "addressLookupTableAuthority": "7zgVsNDejXYJ2jEjrbiZfq5CAmZP2n1GUNkCA39PSMTG",
+  "addressLookupTableSize": 256
 }

@@ -29,13 +29,14 @@ async function main(): Promise<void> {
   await client.connect();
   await client.query(readFileSync(path.resolve("apps/indexer/schema.sql"), "utf8"));
   const seedFile = path.resolve("deployments", `${cluster}.sql`);
-  const { rows } = await client.query("select count(*)::int as n from commodities");
-  if (rows[0].n === 0 && existsSync(seedFile)) {
+  // The seed SQL is idempotent (insert ... on conflict do update), so re-apply it on every start to pick
+  // up commodities seeded since the last run.
+  if (existsSync(seedFile)) {
     await client.query(readFileSync(seedFile, "utf8"));
     const after = await client.query("select count(*)::int as n from commodities");
     console.log(`applied ${path.basename(seedFile)}: ${after.rows[0].n} commodities`);
   } else {
-    console.log(`commodities table has ${rows[0].n} rows${rows[0].n === 0 ? ` (no ${path.basename(seedFile)} to load)` : ""}`);
+    console.log(`no ${path.basename(seedFile)} to load`);
   }
   await client.end();
 

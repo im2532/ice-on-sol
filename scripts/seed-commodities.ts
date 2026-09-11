@@ -283,8 +283,21 @@ on conflict (symbol) do update set mint = excluded.mint, supply_cap = excluded.s
 }
 
 async function send(connection: Connection, payer: Keypair, ixs: TransactionInstruction[], extraSigners: Keypair[] = [], cu = 200_000): Promise<string> {
-  const tx = new Transaction().add(ComputeBudgetProgram.setComputeUnitLimit({ units: cu }), ...ixs);
-  return sendAndConfirmTransaction(connection, tx, [payer, ...extraSigners], { commitment: "confirmed" });
+  // Public RPCs (api.devnet.solana.com) intermittently answer "Blockhash not found" under rate limiting;
+  // retry with a fresh blockhash a few times before giving up.
+  let lastErr: unknown;
+  for (let attempt = 1; attempt <= 4; attempt++) {
+    const tx = new Transaction().add(ComputeBudgetProgram.setComputeUnitLimit({ units: cu }), ...ixs);
+    try {
+      return await sendAndConfirmTransaction(connection, tx, [payer, ...extraSigners], { commitment: "confirmed" });
+    } catch (err) {
+      lastErr = err;
+      const msg = String(err);
+      if (!/Blockhash not found|block height exceeded|429|Too Many Requests/i.test(msg) || attempt === 4) throw err;
+      await new Promise((r) => setTimeout(r, 1500 * attempt));
+    }
+  }
+  throw lastErr;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

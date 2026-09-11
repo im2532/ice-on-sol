@@ -1,3 +1,7 @@
 packages:
   - "packages/*"
   - "apps/*"
+
+# jito-ts pins @solana/web3.js 1.77, whose rpc-websockets 7.11 lacks the dist/lib/client entry it requires; unify on 1.99.
+overrides:
+  "jito-ts>@solana/web3.js": "^1.99.0"

@@ -174,4 +174,130 @@ values ('TISSOTPRX', 'Tissot PRX Powermatic 80', 'Tissot PRX', 'watches', '⌚',
   'EK9uVKzVyY54WyHGo2CdAoFz3GsNTeeKn1qej413REne', 6, 'open', 37037037::numeric / 1e6, 'CWHY5SeWBebuyoYiBTRWhss9KdnXnLGyiR7xiRCaBZkV', 1, 4, 675)
 on conflict (symbol) do update set mint = excluded.mint, supply_cap = excluded.supply_cap, commodity_pubkey = excluded.commodity_pubkey,
   oracle_kind = excluded.oracle_kind, session_kind = excluded.session_kind;
+insert into commodities (symbol, name, display_name, category, emoji, unit, unit_short, mint, decimals, status,
+  supply_cap, commodity_pubkey, oracle_kind, session_kind, last_price_usd)
+values ('RB', 'Gasoline', null, 'energy', '⛽', '1 gallon', 'gal',
+  'BLQcdqLpfjxFk7QyE9XxxKKmwp6vMhcdeusaZoXp8P1P', 6, 'open', 23809523809::numeric / 1e6, '2eG4Gwu3LDYstcaauNjiiENhjKDvgWL6eAcmy8ifvioW', 1, 1, 3.15)
+on conflict (symbol) do update set mint = excluded.mint, supply_cap = excluded.supply_cap, commodity_pubkey = excluded.commodity_pubkey,
+  oracle_kind = excluded.oracle_kind, session_kind = excluded.session_kind;
+insert into commodities (symbol, name, display_name, category, emoji, unit, unit_short, mint, decimals, status,
+  supply_cap, commodity_pubkey, oracle_kind, session_kind, last_price_usd)
+values ('HO', 'Heating Oil', null, 'energy', '🏠', '1 gallon', 'gal',
+  '64RBN2zppLFz4DVgLTfG9hixnnVT6L1pyaU1nju1HbCL', 6, 'open', 15592515592::numeric / 1e6, '9P4KQ5LQPe7PjkZ7hem9SChkABpkMZwipP7brhL3JVdu', 1, 1, 4.81)
+on conflict (symbol) do update set mint = excluded.mint, supply_cap = excluded.supply_cap, commodity_pubkey = excluded.commodity_pubkey,
+  oracle_kind = excluded.oracle_kind, session_kind = excluded.session_kind;
+insert into commodities (symbol, name, display_name, category, emoji, unit, unit_short, mint, decimals, status,
+  supply_cap, commodity_pubkey, oracle_kind, session_kind, last_price_usd)
+values ('LBR', 'Lumber', null, 'agriculture', '🪵', '1,000 board ft', 'mbf',
+  '7MX6vhyy6SPLCNX9bUZM8h4SuUG29eZUg5bzJey6eV91', 6, 'open', 131578947::numeric / 1e6, '41Qq8k53ZreWoLjqnYUUvzEDYZ6bvrc4e98givLFECmf', 1, 1, 570)
+on conflict (symbol) do update set mint = excluded.mint, supply_cap = excluded.supply_cap, commodity_pubkey = excluded.commodity_pubkey,
+  oracle_kind = excluded.oracle_kind, session_kind = excluded.session_kind;
+insert into commodities (symbol, name, display_name, category, emoji, unit, unit_short, mint, decimals, status,
+  supply_cap, commodity_pubkey, oracle_kind, session_kind, last_price_usd)
+values ('ZM', 'Soybean Meal', null, 'agriculture', '🥣', '1 short ton', 'ton',
+  '7oP2smb8NKnUJNbpec4eNdnF5i7bZwFDzjMRZ975d3hP', 6, 'open', 212615166::numeric / 1e6, 'DWu9AGeih9XtpjhkZKekpFcE6u8s3b3LtzuNcrEHWzdP', 1, 1, 352.75)
+on conflict (symbol) do update set mint = excluded.mint, supply_cap = excluded.supply_cap, commodity_pubkey = excluded.commodity_pubkey,
+  oracle_kind = excluded.oracle_kind, session_kind = excluded.session_kind;
+insert into commodities (symbol, name, display_name, category, emoji, unit, unit_short, mint, decimals, status,
+  supply_cap, commodity_pubkey, oracle_kind, session_kind, last_price_usd)
+values ('ZL', 'Soybean Oil', null, 'agriculture', '🫙', '1 lb', 'lb',
+  '2XfpznTYepHZJ3hMYLEZXSUcV5k6RbvzZhgan2FdiKQy', 6, 'open', 107158165452::numeric / 1e6, '8iHTfY1Nn9HbvkN5qswAfe8c9hfPEGFw2eL6c4m35M8N', 1, 1, 0.6999)
+on conflict (symbol) do update set mint = excluded.mint, supply_cap = excluded.supply_cap, commodity_pubkey = excluded.commodity_pubkey,
+  oracle_kind = excluded.oracle_kind, session_kind = excluded.session_kind;
+insert into commodities (symbol, name, display_name, category, emoji, unit, unit_short, mint, decimals, status,
+  supply_cap, commodity_pubkey, oracle_kind, session_kind, last_price_usd)
+values ('ZR', 'Rice', null, 'agriculture', '🍚', '1 cwt', 'cwt',
+  'L9eniRF2YsjWCGgXi37h93EoaTPom2YCZ6YqDHyMcKT', 6, 'open', 4646840148::numeric / 1e6, '7eR44fou8U9p9bhYjY9YejfximZ1qkkYTHiYSRSKvf9B', 1, 1, 16.14)
+on conflict (symbol) do update set mint = excluded.mint, supply_cap = excluded.supply_cap, commodity_pubkey = excluded.commodity_pubkey,
+  oracle_kind = excluded.oracle_kind, session_kind = excluded.session_kind;
+insert into commodities (symbol, name, display_name, category, emoji, unit, unit_short, mint, decimals, status,
+  supply_cap, commodity_pubkey, oracle_kind, session_kind, last_price_usd)
+values ('ZO', 'Oats', null, 'agriculture', '🌾', '1 bushel', 'bu',
+  '4esAS8xjXcyFh2bwiz4a1dGxSw9Pj9KMV6x2LgAPC3WB', 6, 'open', 19841269841::numeric / 1e6, 'A5xFLoMhyhcGhnBpLp5C4oV9dG8VHWzad3a6cNRTnpVx', 1, 1, 3.78)
+on conflict (symbol) do update set mint = excluded.mint, supply_cap = excluded.supply_cap, commodity_pubkey = excluded.commodity_pubkey,
+  oracle_kind = excluded.oracle_kind, session_kind = excluded.session_kind;
+insert into commodities (symbol, name, display_name, category, emoji, unit, unit_short, mint, decimals, status,
+  supply_cap, commodity_pubkey, oracle_kind, session_kind, last_price_usd)
+values ('CT', 'Cotton', null, 'agriculture', '☁️', '1 lb', 'lb',
+  '5Vo4GbXdfL9LsDuxoWL6izVMrVzzXqT9vjdnjrj5P4y4', 6, 'open', 85841822135::numeric / 1e6, 'E3AXXRfKQNhgreTXdfJE8nDuGy3fEQAwBLs3DupyJv9N', 1, 2, 0.8737)
+on conflict (symbol) do update set mint = excluded.mint, supply_cap = excluded.supply_cap, commodity_pubkey = excluded.commodity_pubkey,
+  oracle_kind = excluded.oracle_kind, session_kind = excluded.session_kind;
+insert into commodities (symbol, name, display_name, category, emoji, unit, unit_short, mint, decimals, status,
+  supply_cap, commodity_pubkey, oracle_kind, session_kind, last_price_usd)
+values ('OJ', 'Orange Juice', null, 'agriculture', '🍊', '1 lb', 'lb',
+  '5SQZKmdJeaaYz9L4RBjnUbK192CGFPTsqhy2Bhke8CYc', 6, 'open', 52083333333::numeric / 1e6, 'CavFAjyaHHk6BnoVh6uSQDTvdnN5gLQEQu91hh3LB7oK', 1, 2, 1.44)
+on conflict (symbol) do update set mint = excluded.mint, supply_cap = excluded.supply_cap, commodity_pubkey = excluded.commodity_pubkey,
+  oracle_kind = excluded.oracle_kind, session_kind = excluded.session_kind;
+insert into commodities (symbol, name, display_name, category, emoji, unit, unit_short, mint, decimals, status,
+  supply_cap, commodity_pubkey, oracle_kind, session_kind, last_price_usd)
+values ('DC', 'Milk', null, 'agriculture', '🥛', '1 cwt (Class III)', 'cwt',
+  '2a4nGyr7EREC7u7E6GnVycAqVPLCSCuHVGmMKW7fnmTe', 6, 'open', 4632489190::numeric / 1e6, '2k3viuSHeqJ65t9DqbHC9qV1A7EK2ifTiJwVjfpd9ufY', 1, 1, 16.19)
+on conflict (symbol) do update set mint = excluded.mint, supply_cap = excluded.supply_cap, commodity_pubkey = excluded.commodity_pubkey,
+  oracle_kind = excluded.oracle_kind, session_kind = excluded.session_kind;
+insert into commodities (symbol, name, display_name, category, emoji, unit, unit_short, mint, decimals, status,
+  supply_cap, commodity_pubkey, oracle_kind, session_kind, last_price_usd)
+values ('GF', 'Feeder Cattle', null, 'livestock', '🐂', '1 lb', 'lb',
+  'CzSVsnP3cdYZw3Kx4HGuBwwHXRkjtP3KXp4UG5WuiWnL', 6, 'open', 22522522522::numeric / 1e6, '9TXYVZh2cKkuR13Lg3mi12nw5pwjyRr2LvfxskLgFwmG', 1, 1, 3.33)
+on conflict (symbol) do update set mint = excluded.mint, supply_cap = excluded.supply_cap, commodity_pubkey = excluded.commodity_pubkey,
+  oracle_kind = excluded.oracle_kind, session_kind = excluded.session_kind;
+insert into commodities (symbol, name, display_name, category, emoji, unit, unit_short, mint, decimals, status,
+  supply_cap, commodity_pubkey, oracle_kind, session_kind, last_price_usd)
+values ('HE', 'Lean Hogs', null, 'livestock', '🐖', '1 lb', 'lb',
+  'EM1uBTdv7Dr52E2kMYQbzsBgNWVVKLnMTdAr6svMGFe6', 6, 'open', 91519219035::numeric / 1e6, '8Qt3PYgtPopAc23rnFcHmJq9r94gTkQ9CGbwUwtuQjSB', 1, 1, 0.8195)
+on conflict (symbol) do update set mint = excluded.mint, supply_cap = excluded.supply_cap, commodity_pubkey = excluded.commodity_pubkey,
+  oracle_kind = excluded.oracle_kind, session_kind = excluded.session_kind;
+insert into commodities (symbol, name, display_name, category, emoji, unit, unit_short, mint, decimals, status,
+  supply_cap, commodity_pubkey, oracle_kind, session_kind, last_price_usd)
+values ('AKREDLINE', 'AK-47 Redline (FT)', null, 'cs2_skins', '🔫', '1 item', 'item',
+  'FfgkWwuQWzMnPnpMTyoaAyZvwzCdqv7E3Peom8Y62QJe', 6, 'open', 1867064973::numeric / 1e6, 'DXkk35VSuMR7u1hjTpa2ZXSSZmeTATzqHDhw4BFYB1g9', 1, 0, 26.78)
+on conflict (symbol) do update set mint = excluded.mint, supply_cap = excluded.supply_cap, commodity_pubkey = excluded.commodity_pubkey,
+  oracle_kind = excluded.oracle_kind, session_kind = excluded.session_kind;
+insert into commodities (symbol, name, display_name, category, emoji, unit, unit_short, mint, decimals, status,
+  supply_cap, commodity_pubkey, oracle_kind, session_kind, last_price_usd)
+values ('AWPASIIMOV', 'AWP Asiimov (FT)', null, 'cs2_skins', '🔫', '1 item', 'item',
+  '64cMoh9PbT7VvPu4VCUPkoJh4Rgf3JXuj4nLLnwbKgAm', 6, 'open', 454132606::numeric / 1e6, 'EM348m7oWQdnczo5r1NXe7HxfExc2gGwS9ny9sTBKWup', 1, 0, 110.1)
+on conflict (symbol) do update set mint = excluded.mint, supply_cap = excluded.supply_cap, commodity_pubkey = excluded.commodity_pubkey,
+  oracle_kind = excluded.oracle_kind, session_kind = excluded.session_kind;
+insert into commodities (symbol, name, display_name, category, emoji, unit, unit_short, mint, decimals, status,
+  supply_cap, commodity_pubkey, oracle_kind, session_kind, last_price_usd)
+values ('DLORE', 'AWP Dragon Lore (FT)', null, 'cs2_skins', '🔫', '1 item', 'item',
+  'EGhhfnw4fGBahvbPFiD59PA1WyAPrfRbFQsk43pzXkoC', 6, 'open', 8182998::numeric / 1e6, '8QQEUEGr6nywUgXMUEGTCMEV2xJCVKzJyK9hk8wWYuhz', 1, 0, 6110.23)
+on conflict (symbol) do update set mint = excluded.mint, supply_cap = excluded.supply_cap, commodity_pubkey = excluded.commodity_pubkey,
+  oracle_kind = excluded.oracle_kind, session_kind = excluded.session_kind;
+insert into commodities (symbol, name, display_name, category, emoji, unit, unit_short, mint, decimals, status,
+  supply_cap, commodity_pubkey, oracle_kind, session_kind, last_price_usd)
+values ('HOWL', 'M4A4 Howl (FT)', null, 'cs2_skins', '🔫', '1 item', 'item',
+  'F6Bbcd9ubR1SvsxkLUABeRTPN83cTrTHuoaFPpUdjTfL', 6, 'open', 11528839::numeric / 1e6, 'C8KNdA4MX29mT2jxDqE6v5fGK6Xa993qykTZhwmvWDvP', 1, 0, 4336.95)
+on conflict (symbol) do update set mint = excluded.mint, supply_cap = excluded.supply_cap, commodity_pubkey = excluded.commodity_pubkey,
+  oracle_kind = excluded.oracle_kind, session_kind = excluded.session_kind;
+insert into commodities (symbol, name, display_name, category, emoji, unit, unit_short, mint, decimals, status,
+  supply_cap, commodity_pubkey, oracle_kind, session_kind, last_price_usd)
+values ('KARAMBIT', 'Karambit Doppler (FN)', null, 'cs2_skins', '🔫', '1 item', 'item',
+  '8bkwzNvPXqPjtSWAxZN4aoqq173HirPoALLpnzohcNzT', 6, 'open', 4975129::numeric / 1e6, 'Dg3PMg74Y7xGtJGpF9Xsowb8QiLVQVuQwwavthKpRGYx', 1, 0, 10049.99)
+on conflict (symbol) do update set mint = excluded.mint, supply_cap = excluded.supply_cap, commodity_pubkey = excluded.commodity_pubkey,
+  oracle_kind = excluded.oracle_kind, session_kind = excluded.session_kind;
+insert into commodities (symbol, name, display_name, category, emoji, unit, unit_short, mint, decimals, status,
+  supply_cap, commodity_pubkey, oracle_kind, session_kind, last_price_usd)
+values ('BFLYFADE', 'Butterfly Knife Fade (FN)', null, 'cs2_skins', '🔫', '1 item', 'item',
+  'AWT4cM6krqVSLimx9AHf9dU727KSJHXaj55isJsB9ozi', 6, 'open', 22993157::numeric / 1e6, '826evQoUyqLeQe1fEEhcyvPaNGQcXU3SCtCiHLi8BVQs', 1, 0, 2174.56)
+on conflict (symbol) do update set mint = excluded.mint, supply_cap = excluded.supply_cap, commodity_pubkey = excluded.commodity_pubkey,
+  oracle_kind = excluded.oracle_kind, session_kind = excluded.session_kind;
+insert into commodities (symbol, name, display_name, category, emoji, unit, unit_short, mint, decimals, status,
+  supply_cap, commodity_pubkey, oracle_kind, session_kind, last_price_usd)
+values ('DEAGLBLAZE', 'Desert Eagle Blaze (FN)', null, 'cs2_skins', '🔫', '1 item', 'item',
+  '3KsUR2L6wst1nntAo6LVHeQkCPcSGYnmye58hfvxonFV', 6, 'open', 78128662::numeric / 1e6, 'HxMVLPH3eCffLzZ3aAKyjLwo9eFaAaaW55kdi4ypdc1d', 1, 0, 639.97)
+on conflict (symbol) do update set mint = excluded.mint, supply_cap = excluded.supply_cap, commodity_pubkey = excluded.commodity_pubkey,
+  oracle_kind = excluded.oracle_kind, session_kind = excluded.session_kind;
+insert into commodities (symbol, name, display_name, category, emoji, unit, unit_short, mint, decimals, status,
+  supply_cap, commodity_pubkey, oracle_kind, session_kind, last_price_usd)
+values ('GLOCKFADE', 'Glock-18 Fade (FN)', null, 'cs2_skins', '🔫', '1 item', 'item',
+  'Vqp6CpFXXC4mhm6NfuFwLsTFoeAW6GjWepzocgVjvS5', 6, 'open', 31438829::numeric / 1e6, 'BkF8RE7Ut4BN2NqM8xFeR5FA9eYrAGNVrnTGC1b4Sa6W', 1, 0, 1590.39)
+on conflict (symbol) do update set mint = excluded.mint, supply_cap = excluded.supply_cap, commodity_pubkey = excluded.commodity_pubkey,
+  oracle_kind = excluded.oracle_kind, session_kind = excluded.session_kind;
+insert into commodities (symbol, name, display_name, category, emoji, unit, unit_short, mint, decimals, status,
+  supply_cap, commodity_pubkey, oracle_kind, session_kind, last_price_usd)
+values ('SPEEDMSTR', 'Omega Speedmaster Moonwatch 310.30.42.50.01.001', 'Omega Speedmaster', 'watches', '⌚', '1 watch (unworn, full set)', 'watch',
+  'E7p5VnytBBA6auaepvLB6WioAtAbzCbgME2cm1fkqysJ', 6, 'open', 3623188::numeric / 1e6, '9w7qGHVEKAK9UekKDsUsN5UHsFvBagQy17xigQ3x9zoW', 1, 4, 6900)
+on conflict (symbol) do update set mint = excluded.mint, supply_cap = excluded.supply_cap, commodity_pubkey = excluded.commodity_pubkey,
+  oracle_kind = excluded.oracle_kind, session_kind = excluded.session_kind;
 commit;
