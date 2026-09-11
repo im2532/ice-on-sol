@@ -1,11 +1,12 @@
 SHELL := /bin/bash
 # Make cargo/solana visible even in a shell that has not re-sourced its profile.
 export PATH := $(HOME)/.cargo/bin:$(HOME)/.local/share/solana/install/active_release/bin:$(HOME)/.avm/bin:$(PATH)
-SOLANA_VERSION ?= 2.1.21
+# Keep in sync with [toolchain] solana_version in Anchor.toml.
+SOLANA_VERSION ?= 4.2.2
 ANCHOR_VERSION ?= 0.31.1
-# Solana 2.1.x ships cargo 1.79; modern crates need edition2024, so build with newer platform tools.
-PLATFORM_TOOLS ?= v1.57
-ANCHOR_BUILD := anchor build -- --tools-version $(PLATFORM_TOOLS)
+# Solana 2.1 bundles cargo 1.79 which cannot parse edition-2024 crates; Anchor.toml pins a current Agave CLI
+# and avm/anchor activate it automatically on `anchor build`.
+ANCHOR_BUILD := anchor build
 
 .PHONY: bootstrap toolchain deps build idl web-deployments test devnet-deploy seed alt keeper web fmt
 
@@ -20,7 +21,6 @@ toolchain:
 	@avm install $(ANCHOR_VERSION) && avm use $(ANCHOR_VERSION)
 	@command -v pnpm >/dev/null || npm i -g pnpm@9
 	@solana --version && anchor --version
-	@cargo build-sbf --tools-version $(PLATFORM_TOOLS) --install-only
 
 deps:
 	pnpm install

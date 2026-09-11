@@ -1,6 +1,9 @@
 [toolchain]
 anchor_version = "0.31.1"
-solana_version = "2.1.21"
+# Must be pinned: the avm proxy otherwise maps Anchor 0.31.1 -> Solana 2.1.0, whose
+# platform-tools cargo (1.79) cannot parse edition-2024 crates. 4.2.2 is the Agave stable
+# release; both avm and anchor-cli install/activate it via `agave-install init` if needed.
+solana_version = "4.2.2"
 
 [features]
 resolution = true
