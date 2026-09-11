@@ -140,7 +140,7 @@ export async function runBuybackCycle(): Promise<void> {
         gldMint,
         iceMint,
         bbGld: getAssociatedTokenAddressSync(gldMint, bbAuth, true),
-        bbIceMarkets: getAssociatedTokenAddressSync(iceMint, bbAuth, true),
+        bbIcemarkets: getAssociatedTokenAddressSync(iceMint, bbAuth, true),
         dammPoolAuthority: meteora.dammPoolAuthority(),
         dammPool: icePool,
         dammTokenAVault: meteora.dammTokenVault(aMint, icePool),
