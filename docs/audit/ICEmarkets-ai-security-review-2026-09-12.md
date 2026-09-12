@@ -9,8 +9,8 @@
 > this code. AI analysis cannot establish the absence of vulnerabilities and no guarantee of security
 > is given. A paid independent review, a bug bounty and on-chain monitoring are still required before
 > caps are lifted (see `docs/MAINNET_RUNBOOK.md`). Fix status below refers to the commit that lands
-> this document; every fix must be re-run through `anchor test` (49 tests + the ones added here) and
-> the localnet money loop (`make localnet`) before deployment.
+> this document; every fix was re-run through `anchor test` (51/51) and the localnet money loop
+> (`make localnet`) — see *Verification status* at the end.
 
 ---
 
@@ -260,8 +260,16 @@ _Vulnerability trails with concrete code smells where the full exploit path coul
 
 ## Verification status
 
-| Check                                                   | Status at report time                                     |
-|---------------------------------------------------------|-----------------------------------------------------------|
+| Check                                                   | Status (updated 12 Sep 2026, head `941da2c`)                                          |
+|---------------------------------------------------------|----------------------------------------------------------------------------------------|
+| Pure-Rust unit tests (`pricing.rs`, buyback math)       | Pass                                                                                   |
+| `anchor build && anchor test`                           | **Pass — 51/51** (`b0c463a` + `941da2c`: `[test] upgradeable = true` so the F-09 gate sees a real upgrade authority; chain-clock waits in the peg_desk / distributor suites) |
+| Localnet money loop (`make localnet`)                   | **Pass** on the audited binaries: launch → 5 buys → fee claim → epoch under the chain-time window → forced migration → DAMM fee claim → `make ice` (anchor derived from pool: 990 ICE/USDC) → buyback burned 2,342 ICE under the anchored breaker |
+| Follow-on fix found by the test run                     | Keeper `payouts` cycle built the epoch window from wall time — would have failed L-03's `end_ts ≤ Clock` on a lagging RPC in production; now uses chain time (`941da2c`) |
+| Devnet re-deploy + `make smoke`                         | **Pending** (KeeperPrice re-seed required)                                             |
+| Independent human review                                | **Not performed**                                                                      |
+
+---------------------------------------------------------|-----------------------------------------------------------|
 | Pure-Rust unit tests (`pricing.rs`, buyback math)       | Pass (standalone `rustc --test` in the review environment) |
 | `anchor build && anchor test` (49 + new tests)          | **Pending** — must run on the build machine after this commit |
 | Localnet money loop (`make localnet`)                   | **Pending** — KeeperPrice/Commodity layout changed; re-seed required |
