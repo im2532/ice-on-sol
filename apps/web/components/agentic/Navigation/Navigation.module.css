@@ -1,0 +1,233 @@
+/* ==========================================================================
+   Navigation Component — Design System
+   Enterprise sidebar navigation with Classic and Tree variants.
+   Figma source: NAVIGATION (node 230:699)
+   ========================================================================== */
+
+/* === Navigation Shell === */
+.navigation {
+  display: flex;
+  flex-direction: column;
+  width: 247px;
+  height: 100%;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+/* === Logo Header === */
+.logo {
+  display: flex;
+  align-items: center;
+  padding: var(--space-24) var(--space-24) var(--space-16);
+  flex-shrink: 0;
+}
+
+.logoContainer {
+  display: flex;
+  align-items: center;
+  gap: var(--space-16);
+}
+
+.logoWordmark {
+  display: inline-block;
+  width: 75px;
+  height: 20px;
+  background-color: currentColor;
+  color: var(--color-content-primary);
+  mask-image: url('/agentic/assets/logo-wordmark.svg');
+  mask-size: contain;
+  mask-repeat: no-repeat;
+  mask-position: left center;
+  -webkit-mask-image: url('/agentic/assets/logo-wordmark.svg');
+  -webkit-mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: left center;
+  flex-shrink: 0;
+}
+
+.menuToggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--color-content-icon);
+  flex-shrink: 0;
+}
+
+/* === Nav Body (Scrollable) === */
+.body {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-24) var(--space-24) 0 var(--space-16);
+  gap: var(--space-4);
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.bodyTree {
+  gap: var(--space-16);
+}
+
+/* === Footer === */
+.footer {
+  display: flex;
+  align-items: center;
+  padding: var(--space-24);
+  flex-shrink: 0;
+}
+
+.userSettings {
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.userName {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-body);
+  font-size: var(--text-small);
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-small);
+  letter-spacing: var(--tracking-normal);
+  color: var(--color-content-primary);
+}
+
+.overflowButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--color-content-primary);
+  flex-shrink: 0;
+}
+
+/* === NavLink === */
+.navLink {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  padding: var(--space-8);
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  color: var(--color-content-primary);
+  cursor: pointer;
+  background: none;
+  border: none;
+  font-family: var(--font-label);
+  font-size: var(--text-tiny);
+  font-weight: var(--weight-regular);
+  line-height: var(--leading-tiny);
+  letter-spacing: var(--tracking-normal);
+  text-transform: uppercase;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.navLink:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.navLinkFull {
+  width: 100%;
+}
+
+/* Section label style — non-interactive header */
+.navLinkLabel {
+  composes: navLink;
+  gap: 0;
+  color: var(--color-content-secondary);
+  cursor: default;
+}
+
+.navLinkLabel:hover {
+  background: none;
+}
+
+.navLinkChevron {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 0;
+}
+
+/* === NavSubLink === */
+.subLink {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: var(--space-8);
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  cursor: pointer;
+  font-family: var(--font-label);
+  font-size: var(--text-tiny);
+  font-weight: var(--weight-regular);
+  line-height: var(--leading-tiny);
+  letter-spacing: var(--tracking-normal);
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--color-content-secondary);
+  background: none;
+  border: none;
+  flex-shrink: 0;
+}
+
+.subLink:hover {
+  background: rgba(0, 0, 0, 0.04);
+  color: var(--color-content-primary);
+}
+
+.subLinkActive {
+  gap: var(--space-4);
+  color: var(--color-content-primary);
+  width: 100%;
+}
+
+.subLinkIndicator {
+  width: 8px;
+  height: 12px;
+  background: var(--color-content-primary);
+  flex-shrink: 0;
+}
+
+/* === NavSection === */
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  width: 100%;
+}
+
+.sectionDivider {
+  padding-top: var(--space-24);
+}
+
+.subLinksWrapper {
+  display: flex;
+  flex-direction: column;
+  padding-left: var(--space-16);
+  width: 100%;
+}
+
+.subLinksContainer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-left: var(--space-16);
+  border-left: 1px solid var(--color-border-subtle);
+}

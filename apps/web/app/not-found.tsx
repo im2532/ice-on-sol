@@ -1,15 +1,16 @@
-import Link from "next/link";
-import Mascot from "@/components/Mascot";
-
+import { Button } from "@/components/agentic/Button";
+import { Icon } from "@/components/agentic/Icon/Icon";
 export default function NotFound() {
   return (
-    <div className="mx-auto flex max-w-xl flex-col items-center gap-5 px-4 py-24 text-center">
-      <Mascot size={72} mood="sad" />
-      <h1 className="display text-2xl font-bold">404 — melted</h1>
-      <p className="text-sm text-body">This page doesn&apos;t exist, or it hasn&apos;t graduated yet.</p>
-      <Link href="/" className="btn-primary tap">
-        Back to markets
-      </Link>
+    <div className="agentic-page mx-auto flex max-w-xl flex-col items-center gap-5 py-24 text-center">
+      <Icon name="search" size={40} />
+      <span className="eyebrow">404 · Page not found</span>
+      <h1 className="display text-4xl">Nothing to see here.</h1>
+      <p className="text-sm text-body">
+        This page or market could not be found. Let’s get you back to the
+        exchange.
+      </p>
+      <Button href="/">Back to markets</Button>
     </div>
   );
 }

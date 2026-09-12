@@ -1,0 +1,163 @@
+/* ==========================================================================
+   SLIDER COMPONENT
+   Source: Figma AGENTIC-DESIGN-SYSTEM v1.2 — node 4074:1001
+   ========================================================================== */
+
+.slider {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  width: 100%;
+}
+
+/* --- Track container --- */
+.track {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  background: var(--color-bg-primary);
+  border: 0.5px solid var(--color-border-subtle);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  position: relative;
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+  transition: var(--duration-hover) ease;
+  transition-property: border-color;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .track:hover .handleLine {
+    background: var(--color-content-secondary);
+    width: 3px;
+  }
+}
+
+.track:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 1px;
+}
+
+.trackDragging,
+.trackDragging:hover {
+  cursor: grabbing;
+  border-color: var(--color-border-strong);
+}
+
+.trackDragging .handleLine {
+  background: var(--color-content-primary);
+  width: 3px;
+}
+
+.trackDisabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.trackSm {
+  composes: track;
+  height: 32px;
+}
+
+.trackLg {
+  composes: track;
+  height: 48px;
+}
+
+/* --- Fill (left portion) --- */
+.fill {
+  height: 100%;
+  background: var(--color-bg-tertiary);
+  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: var(--space-4);
+  flex-shrink: 0;
+  overflow: visible;
+  z-index: 1;
+}
+
+/* --- Drag handle (vertical line at fill edge) --- */
+.handle {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  overflow: visible;
+}
+
+.handleLine {
+  display: block;
+  width: 2px;
+  height: 16px;
+  background: var(--color-content-icon);
+  border-radius: 9999px;
+  transition: var(--duration-hover) ease;
+  transition-property: width, background-color;
+}
+
+.trackLg .handleLine {
+  height: 32px;
+}
+
+/* --- Snap dots --- */
+.snapDots {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.snapDot {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  border-radius: 9999px;
+  background: var(--color-content-disabled);
+}
+
+/* --- Percentage label --- */
+.valueLabel {
+  position: absolute;
+  right: var(--space-16);
+  z-index: 2;
+  font-family: var(--font-label);
+  font-size: var(--text-button);
+  font-weight: var(--weight-regular);
+  line-height: var(--leading-small);
+  letter-spacing: var(--tracking-spacious);
+  text-transform: uppercase;
+  color: var(--color-content-primary);
+  text-align: right;
+}
+
+/* --- Scale labels (0, 0.5, 1) --- */
+.scaleLabels {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.scaleLabel {
+  font-family: var(--font-label);
+  font-size: var(--text-button);
+  font-weight: var(--weight-regular);
+  line-height: var(--leading-small);
+  letter-spacing: var(--tracking-spacious);
+  text-transform: uppercase;
+  color: var(--color-content-secondary);
+  width: 24px;
+  text-align: center;
+}
+
+.scaleLabel:first-child {
+  text-align: left;
+}
+
+.scaleLabel:last-child {
+  text-align: right;
+}

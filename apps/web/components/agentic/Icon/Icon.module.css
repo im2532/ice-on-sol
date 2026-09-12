@@ -1,0 +1,27 @@
+/* ==========================================================================
+   Icon Component — Design System
+   Supports two rendering modes:
+   - mask (default): CSS mask-image + currentColor for monochrome icons
+   - img: native <img> for multi-color icons (checkmark-filled, error-circle)
+   ========================================================================== */
+
+.icon {
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.mask {
+  composes: icon;
+  mask-size: contain;
+  mask-repeat: no-repeat;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  background-color: currentColor;
+}
+
+.img {
+  composes: icon;
+  object-fit: contain;
+}

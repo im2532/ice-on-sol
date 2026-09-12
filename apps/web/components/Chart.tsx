@@ -4,17 +4,6 @@ import { useEffect, useRef } from "react";
 import type { IChartApi, ISeriesApi } from "lightweight-charts";
 import type { Candle, PricePoint } from "@/lib/types";
 
-/** Glacier chart palette — green line over a fading green area, on the glass panel itself. */
-const COLORS = {
-  bg: "transparent",
-  text: "#8B90A6",
-  grid: "rgba(255,255,255,0.06)",
-  border: "rgba(255,255,255,0.08)",
-  line: "#14F195",
-  areaTop: "rgba(20,241,149,0.30)",
-  areaBottom: "rgba(20,241,149,0)",
-};
-
 interface LineChartProps {
   kind: "line";
   data: PricePoint[];
@@ -44,57 +33,79 @@ export default function Chart(props: ChartProps) {
     let disposed = false;
     let ro: ResizeObserver | null = null;
 
-    import("lightweight-charts").then(({ createChart, ColorType, CrosshairMode }) => {
-      if (disposed || !containerRef.current) return;
-      const chart = createChart(containerRef.current, {
-        height: props.height ?? 300,
-        layout: {
-          background: { type: ColorType.Solid, color: COLORS.bg },
-          textColor: COLORS.text,
-          fontFamily: "var(--font-mono), 'JetBrains Mono', monospace",
-        },
-        grid: {
-          vertLines: { color: "transparent" },
-          horzLines: { color: COLORS.grid },
-        },
-        rightPriceScale: { borderColor: COLORS.border },
-        timeScale: { borderColor: COLORS.border, timeVisible: true, secondsVisible: false },
-        crosshair: { mode: CrosshairMode.Normal },
-        autoSize: true,
-      });
-      chartRef.current = chart;
+    import("lightweight-charts").then(
+      ({ createChart, ColorType, CrosshairMode }) => {
+        if (disposed || !containerRef.current) return;
+        const css = getComputedStyle(containerRef.current);
+        const token = (name: string) => css.getPropertyValue(name).trim();
+        const COLORS = {
+          bg: "transparent",
+          text: token("--color-content-secondary"),
+          grid: token("--color-border-subtle"),
+          border: token("--color-border-subtle"),
+          line: token("--color-content-primary"),
+          areaTop: "rgba(25,25,25,0.09)",
+          areaBottom: "rgba(25,25,25,0)",
+        };
+        const chart = createChart(containerRef.current, {
+          height: props.height ?? 300,
+          layout: {
+            background: { type: ColorType.Solid, color: COLORS.bg },
+            textColor: COLORS.text,
+            fontFamily: css.fontFamily,
+          },
+          grid: {
+            vertLines: { color: "transparent" },
+            horzLines: { color: COLORS.grid },
+          },
+          rightPriceScale: { borderColor: COLORS.border },
+          timeScale: {
+            borderColor: COLORS.border,
+            timeVisible: true,
+            secondsVisible: false,
+          },
+          crosshair: { mode: CrosshairMode.Normal },
+          autoSize: true,
+        });
+        chartRef.current = chart;
 
-      const points =
-        props.kind === "candles"
-          ? props.data.map((d) => ({ time: d.ts as number, value: d.c }))
-          : props.data.map((d) => ({ time: d.ts as number, value: d.price }));
+        const points =
+          props.kind === "candles"
+            ? props.data.map((d) => ({ time: d.ts as number, value: d.c }))
+            : props.data.map((d) => ({ time: d.ts as number, value: d.price }));
 
-      // A token priced at 0.0000848 of its commodity would render every axis label as "0.00" on
-      // the default 2-decimal format, so precision follows the last value's magnitude.
-      const last = points.length > 0 ? points[points.length - 1].value : 1;
-      const precision = priceDecimals(last);
+        // A token priced at 0.0000848 of its commodity would render every axis label as "0.00" on
+        // the default 2-decimal format, so precision follows the last value's magnitude.
+        const last = points.length > 0 ? points[points.length - 1].value : 1;
+        const precision = priceDecimals(last);
 
-      const series = chart.addAreaSeries({
-        lineColor: COLORS.line,
-        lineWidth: 2,
-        topColor: COLORS.areaTop,
-        bottomColor: COLORS.areaBottom,
-        priceLineVisible: false,
-        crosshairMarkerBorderColor: COLORS.line,
-        crosshairMarkerBackgroundColor: COLORS.line,
-        // `1e-n` rather than Math.pow, which returns 0.000009999999999999999 at n = 5.
-        priceFormat: { type: "price", precision, minMove: Number(`1e-${precision}`) },
-      });
-      series.setData(points as never);
-      seriesRef.current = series;
+        const series = chart.addAreaSeries({
+          lineColor: COLORS.line,
+          lineWidth: 2,
+          topColor: COLORS.areaTop,
+          bottomColor: COLORS.areaBottom,
+          priceLineVisible: false,
+          crosshairMarkerBorderColor: COLORS.line,
+          crosshairMarkerBackgroundColor: COLORS.line,
+          // `1e-n` rather than Math.pow, which returns 0.000009999999999999999 at n = 5.
+          priceFormat: {
+            type: "price",
+            precision,
+            minMove: Number(`1e-${precision}`),
+          },
+        });
+        series.setData(points as never);
+        seriesRef.current = series;
 
-      chart.timeScale().fitContent();
+        chart.timeScale().fitContent();
 
-      ro = new ResizeObserver(() => {
-        if (containerRef.current) chart.applyOptions({ width: containerRef.current.clientWidth });
-      });
-      ro.observe(containerRef.current);
-    });
+        ro = new ResizeObserver(() => {
+          if (containerRef.current)
+            chart.applyOptions({ width: containerRef.current.clientWidth });
+        });
+        ro.observe(containerRef.current);
+      },
+    );
 
     return () => {
       disposed = true;
@@ -106,5 +117,11 @@ export default function Chart(props: ChartProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props.kind, props.data]);
 
-  return <div ref={containerRef} className="w-full" style={{ height: props.height ?? 300 }} />;
+  return (
+    <div
+      ref={containerRef}
+      className="w-full"
+      style={{ height: props.height ?? 300 }}
+    />
+  );
 }

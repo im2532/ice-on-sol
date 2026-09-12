@@ -1,0 +1,10 @@
+<svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g transform="translate(2, 1)">
+<g>
+<path d="M5 5H4V11H5V5Z" fill="#000000"/>
+<path d="M8 5H7V11H8V5Z" fill="#000000"/>
+<path d="M0 2V3H1V13C1 13.2652 1.10536 13.5196 1.29289 13.7071C1.48043 13.8946 1.73478 14 2 14H10C10.2652 14 10.5196 13.8946 10.7071 13.7071C10.8946 13.5196 11 13.2652 11 13V3H12V2H0ZM2 13V3H10V13H2Z" fill="#000000"/>
+<path d="M8 0H4V1H8V0Z" fill="#000000"/>
+</g>
+</g>
+</svg>

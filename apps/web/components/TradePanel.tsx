@@ -1,5 +1,9 @@
 "use client";
 
+import { Input } from "@/components/agentic/Input";
+import CurrencyLogo from "@/components/CurrencyLogo";
+import { Button } from "@/components/agentic/Button";
+import SegmentedControl from "@/components/layout/SegmentedControl";
 import { useEffect, useMemo, useState } from "react";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
@@ -80,11 +84,13 @@ export default function TradePanel({
   const halted = status === "halted";
   const closedBuyPays = useMemo(
     () => payOptions.filter((p) => buyWhileClosed.includes(p)),
-    [payOptions, buyWhileClosed]
+    [payOptions, buyWhileClosed],
   );
   const buyTabDisabled = halted || (closed && closedBuyPays.length === 0);
 
-  const [side, setSide] = useState<"buy" | "sell">(buyTabDisabled ? "sell" : "buy");
+  const [side, setSide] = useState<"buy" | "sell">(
+    buyTabDisabled ? "sell" : "buy",
+  );
   const [payWith, setPayWith] = useState<PayWith>(payOptions[0]);
   const [amount, setAmount] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -94,7 +100,8 @@ export default function TradePanel({
   const now = useMinuteClock();
 
   const closedTooltip = closedBuyTooltip(sessionKind, now);
-  const payDisabled = (p: PayWith) => side === "buy" && closed && !closedBuyPays.includes(p);
+  const payDisabled = (p: PayWith) =>
+    side === "buy" && closed && !closedBuyPays.includes(p);
 
   // Status arrives asynchronously (react-query): default to Sell once the commodity turns out Closed, and move
   // the pay option off one that cannot buy while Closed.
@@ -102,19 +109,30 @@ export default function TradePanel({
     if (buyTabDisabled && side === "buy") setSide("sell");
   }, [buyTabDisabled, side]);
   useEffect(() => {
-    if (side === "buy" && closed && !closedBuyPays.includes(payWith) && closedBuyPays.length > 0)
+    if (
+      side === "buy" &&
+      closed &&
+      !closedBuyPays.includes(payWith) &&
+      closedBuyPays.length > 0
+    )
       setPayWith(closedBuyPays[0]);
   }, [side, closed, closedBuyPays, payWith]);
 
   const payLabel = payWith === "COIN" ? coinSymbol : payWith;
   const outLabel = ticker ?? coinSymbol;
   const notAllowed = !!publicKey && !walletAllowed(publicKey);
-  const tradingBlocked = disabled || halted || notAllowed || (side === "buy" && buyTabDisabled) || payDisabled(payWith);
+  const tradingBlocked =
+    disabled ||
+    halted ||
+    notAllowed ||
+    (side === "buy" && buyTabDisabled) ||
+    payDisabled(payWith);
 
   // Rough client-side estimate only — the real quote comes from the pool at signing time.
   const estimate = useMemo(() => {
     const amt = Number.parseFloat(amount);
-    if (!Number.isFinite(amt) || amt <= 0 || !priceUsd || priceUsd <= 0) return null;
+    if (!Number.isFinite(amt) || amt <= 0 || !priceUsd || priceUsd <= 0)
+      return null;
     return side === "buy" ? amt / priceUsd : amt * priceUsd;
   }, [amount, priceUsd, side]);
 
@@ -122,7 +140,9 @@ export default function TradePanel({
   // Buying a memecoin hops through its commodity coin (USDC → HG → COPPERINU); trading the coin itself is
   // a single hop, so repeated legs collapse.
   const route = (
-    side === "buy" ? [payLabel, coinSymbol, outLabel] : [outLabel, coinSymbol, payLabel]
+    side === "buy"
+      ? [payLabel, coinSymbol, outLabel]
+      : [outLabel, coinSymbol, payLabel]
   )
     .filter((leg, i, all) => leg && all.indexOf(leg) === i)
     .join(" → ");
@@ -140,7 +160,13 @@ export default function TradePanel({
     }
     setSubmitting(true);
     try {
-      const params = { wallet: publicKey, mint, amountIn: amt, minOut: 0, payWith };
+      const params = {
+        wallet: publicKey,
+        mint,
+        amountIn: amt,
+        minOut: 0,
+        payWith,
+      };
       const deps = { connection, sendTransaction };
       if (side === "buy") await buyCoin(params, deps);
       else await sellCoin(params, deps);
@@ -153,21 +179,26 @@ export default function TradePanel({
   }
 
   return (
-    <div className="glass-strong flex flex-col gap-3.5 p-4">
+    <div className="glass-strong trade-panel flex flex-col gap-4">
       {halted && (
-        <p role="alert" className="chip chip-warn h-auto py-2 text-left leading-snug" style={{ whiteSpace: "normal" }}>
-          Feed recovering — trading resumes automatically once a fresh price is posted.
+        <p
+          role="alert"
+          className="chip chip-warn h-auto py-2 text-left leading-snug"
+          style={{ whiteSpace: "normal" }}
+        >
+          Feed recovering — trading resumes automatically once a fresh price is
+          posted.
         </p>
       )}
 
       {closed && !halted && (
         <p
           role="status"
-          className="flex items-start gap-2 rounded-xl px-3 py-2 text-left text-xs leading-snug"
+          className="trade-warning flex items-start gap-2 rounded-xl px-3 py-2 text-left text-xs leading-snug"
           style={{
-            background: "rgba(242,178,63,0.12)",
-            border: "1px solid rgba(242,178,63,0.35)",
-            color: "#F2B23F",
+            background: "var(--color-badge-bg-yellow)",
+            border: "1px solid var(--color-badge-stroke-default)",
+            color: "var(--color-badge-label-yellow)",
           }}
         >
           <svg
@@ -194,46 +225,33 @@ export default function TradePanel({
         </p>
       )}
 
-      {/* Buy / Sell segmented control */}
-      <div role="tablist" aria-label="Trade side" className="flex gap-1.5 rounded-[14px] bg-black/25 p-1">
-        {(["buy", "sell"] as const).map((s) => {
-          const tabDisabled = halted || (s === "buy" && buyTabDisabled);
-          const tooltip = halted ? "Price feed recovering" : s === "buy" && buyTabDisabled ? closedTooltip : undefined;
-          const on = side === s;
-          return (
-            <button
-              key={s}
-              type="button"
-              role="tab"
-              aria-selected={on}
-              aria-disabled={tabDisabled}
-              disabled={tabDisabled}
-              title={tooltip}
-              onClick={() => setSide(s)}
-              className="tap h-10 flex-1 rounded-xl text-sm font-bold capitalize transition-colors disabled:cursor-not-allowed disabled:opacity-40"
-              style={
-                on
-                  ? s === "buy"
-                    ? { background: "rgba(20,241,149,0.14)", color: "#14F195", boxShadow: "inset 0 0 0 1px rgba(20,241,149,0.4)" }
-                    : { background: "rgba(255,92,122,0.14)", color: "#FF5C7A", boxShadow: "inset 0 0 0 1px rgba(255,92,122,0.4)" }
-                  : { color: "#8B90A6" }
-              }
-            >
-              {s}
-            </button>
-          );
-        })}
-      </div>
+      <SegmentedControl
+        label="Trade side"
+        fullWidth
+        value={side}
+        options={[
+          { value: "buy", label: "Buy", disabled: buyTabDisabled },
+          { value: "sell", label: "Sell", disabled: halted },
+        ]}
+        onChange={setSide}
+      />
 
       {/* Pay with */}
       <div className="flex flex-col gap-2">
-        <span className="eyebrow">{side === "buy" ? "Pay with" : "Receive in"}</span>
-        <div className="flex flex-wrap gap-1.5" role="group" aria-label={side === "buy" ? "Pay with" : "Receive in"}>
+        <span className="eyebrow">
+          {side === "buy" ? "Pay with" : "Receive in"}
+        </span>
+        <div
+          className="flex flex-wrap gap-1.5"
+          role="group"
+          aria-label={side === "buy" ? "Pay with" : "Receive in"}
+        >
           {payOptions.map((p) => {
             const off = payDisabled(p) || halted;
             const on = payWith === p;
             return (
-              <button
+              <Button
+                plain
                 key={p}
                 type="button"
                 aria-pressed={on}
@@ -243,9 +261,12 @@ export default function TradePanel({
                 className={`chip tap gap-1.5 ${p === "COIN" ? "pl-2" : ""} ${on ? "chip-on" : ""} disabled:cursor-not-allowed disabled:opacity-40`}
                 style={{ height: 30 }}
               >
-                {p === "COIN" && <CommodityLogo symbol={coinSymbol} size={14} />}
+                {p === "COIN" && (
+                  <CommodityLogo symbol={coinSymbol} size={14} />
+                )}
+                {(p === "USDC" || p === "SOL") && <CurrencyLogo symbol={p} size={18} />}
                 {p === "COIN" ? coinSymbol : p}
-              </button>
+              </Button>
             );
           })}
         </div>
@@ -256,7 +277,7 @@ export default function TradePanel({
         <label htmlFor="trade-amount" className="sr-only">
           Amount to {side}
         </label>
-        <input
+        <Input
           id="trade-amount"
           inputMode="decimal"
           placeholder="0.00"
@@ -265,11 +286,21 @@ export default function TradePanel({
           onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ""))}
           className="mono w-full bg-transparent text-[26px] font-semibold outline-none placeholder:text-muted/50 disabled:cursor-not-allowed"
         />
-        <span className="mono shrink-0 text-[13px] text-muted">{side === "buy" ? payLabel : outLabel}</span>
+        <span className="mono shrink-0 text-[13px] text-muted">
+          {side === "buy" ? payLabel : outLabel}
+        </span>
       </div>
 
       <div className="flex justify-center text-muted" aria-hidden="true">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+        >
           <path d="M12 4v16M6 14l6 6 6-6" />
         </svg>
       </div>
@@ -279,7 +310,9 @@ export default function TradePanel({
         <span className="mono text-[26px] font-semibold">
           {estimate != null ? fmtAmount(estimate) : "—"}
         </span>
-        <span className="mono shrink-0 text-[13px] text-muted">{side === "buy" ? outLabel : payLabel}</span>
+        <span className="mono shrink-0 text-[13px] text-muted">
+          {side === "buy" ? outLabel : payLabel}
+        </span>
       </div>
 
       {/* Route + terms */}
@@ -292,7 +325,12 @@ export default function TradePanel({
               <>
                 {fmtPrice(commodityPriceUsd)}
                 {commodityUnitShort ? ` / ${commodityUnitShort}` : ""}
-                {commodityAgeSec != null && <span className="text-muted"> · {Math.round(commodityAgeSec)}s</span>}
+                {commodityAgeSec != null && (
+                  <span className="text-muted">
+                    {" "}
+                    · {Math.round(commodityAgeSec)}s
+                  </span>
+                )}
               </>
             }
           />
@@ -304,7 +342,8 @@ export default function TradePanel({
               <>
                 {pct(feeBps / 100, { decimals: 2, showSign: false })}{" "}
                 <span className="text-positive">
-                  → {pct(holderShare!, { decimals: 2, showSign: false })} to holders
+                  → {pct(holderShare!, { decimals: 2, showSign: false })} to
+                  holders
                 </span>
               </>
             }
@@ -314,11 +353,23 @@ export default function TradePanel({
       </dl>
 
       {tradingBlocked ? (
-        <button type="button" disabled className="btn-primary tap h-12 w-full text-[15px]">
-          {halted ? "Feed recovering" : notAllowed ? NOT_ALLOWED_MESSAGE : disabled ? disabledReason ?? "Trading unavailable" : "Market closed"}
-        </button>
+        <Button
+          plain
+          type="button"
+          disabled
+          className="btn-primary tap h-12 w-full text-[15px]"
+        >
+          {halted
+            ? "Feed recovering"
+            : notAllowed
+              ? NOT_ALLOWED_MESSAGE
+              : disabled
+                ? (disabledReason ?? "Trading unavailable")
+                : "Market closed"}
+        </Button>
       ) : (
-        <button
+        <Button
+          plain
           type="button"
           onClick={submit}
           disabled={submitting}
@@ -329,7 +380,7 @@ export default function TradePanel({
             : publicKey
               ? `${side === "buy" ? "Buy" : "Sell"} ${outLabel}`
               : "Connect"}
-        </button>
+        </Button>
       )}
     </div>
   );

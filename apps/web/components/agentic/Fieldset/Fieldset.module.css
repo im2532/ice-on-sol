@@ -1,0 +1,81 @@
+/* Fieldset — reset */
+.fieldset {
+  border: none;
+  padding: 0;
+  margin: 0;
+}
+
+/* Legend — semibold heading */
+.legend {
+  font-family: var(--font-heading);
+  font-weight: var(--weight-semibold);
+  font-size: var(--text-large);
+  line-height: var(--leading-regular);
+  color: var(--color-content-primary);
+}
+
+/* FieldGroup — flex column with gap */
+.fieldGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-24);
+}
+
+/* Field — flex column for label/control/description/error composition */
+.field {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Adjacent sibling spacing via data-slot */
+.field [data-slot="label"] + [data-slot="control"] {
+  margin-top: var(--space-4);
+}
+
+.field [data-slot="label"] + [data-slot="description"] {
+  margin-top: var(--space-2);
+}
+
+.field [data-slot="description"] + [data-slot="control"] {
+  margin-top: var(--space-4);
+}
+
+.field [data-slot="control"] + [data-slot="error"] {
+  margin-top: var(--space-4);
+}
+
+.field [data-slot="control"] + [data-slot="description"] {
+  margin-top: var(--space-4);
+}
+
+/* Label — medium weight, no user select */
+.label {
+  font-family: var(--font-body);
+  font-weight: var(--weight-medium);
+  font-size: var(--text-regular);
+  line-height: var(--leading-regular);
+  color: var(--color-content-primary);
+  user-select: none;
+}
+
+.label[data-disabled] {
+  opacity: 0.5;
+}
+
+/* Description — secondary color */
+.description {
+  font-family: var(--font-body);
+  font-size: var(--text-small);
+  line-height: var(--leading-small);
+  color: var(--color-content-secondary);
+  margin: 0;
+}
+
+/* ErrorMessage — red text */
+.errorMessage {
+  font-family: var(--font-body);
+  font-size: var(--text-small);
+  line-height: var(--leading-small);
+  color: #dc2626;
+  margin: 0;
+}

@@ -1,0 +1,8 @@
+/* ==========================================================================
+   SLIDING TEXT — Subtle bump animation for live-updating values
+   ========================================================================== */
+
+.wrapper {
+  display: inline-block;
+  will-change: transform, opacity;
+}

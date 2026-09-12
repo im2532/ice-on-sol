@@ -1,0 +1,23 @@
+/* TouchTarget — invisible hit area expansion to 44x44px minimum */
+
+.wrapper {
+  position: relative;
+  display: inline-flex;
+}
+
+.expand {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: max(100%, 2.75rem);   /* 44px */
+  height: max(100%, 2.75rem);  /* 44px */
+  transform: translate(-50%, -50%);
+  pointer-events: auto;
+}
+
+/* Only show on coarse pointer (touch) devices */
+@media (pointer: fine) {
+  .expand {
+    display: none;
+  }
+}

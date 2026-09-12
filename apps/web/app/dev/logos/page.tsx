@@ -14,7 +14,7 @@ export default function DevLogosPage() {
   if (process.env.NODE_ENV === "production") notFound();
 
   return (
-    <div className="container-x py-10">
+    <div className="agentic-page container-x py-10">
       <div className="flex flex-col gap-2 pb-6">
         <span className="eyebrow">Dev only</span>
         <h1 className="display text-2xl font-bold">Commodity marks</h1>

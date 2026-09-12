@@ -1,0 +1,77 @@
+/* Backdrop — fixed overlay */
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(0, 0, 0, 0.5);
+  padding: var(--space-16);
+}
+
+/* Panel — centered card */
+.panel {
+  position: relative;
+  width: 100%;
+  max-height: 85vh;
+  overflow-y: auto;
+  border-radius: var(--radius-lg);
+  background-color: var(--color-bg-primary);
+  box-shadow: var(--shadow-elevation-4);
+  padding: var(--space-24);
+}
+
+/* Size variants */
+.sm {
+  max-width: 24rem;
+}
+
+.md {
+  max-width: 28rem;
+}
+
+.lg {
+  max-width: 32rem;
+}
+
+.xl {
+  max-width: 36rem;
+}
+
+.full {
+  max-width: 48rem;
+}
+
+/* DialogTitle */
+.title {
+  font-family: var(--font-heading);
+  font-weight: var(--weight-semibold);
+  font-size: var(--text-large);
+  line-height: var(--leading-regular);
+  color: var(--color-content-primary);
+  margin: 0;
+}
+
+/* DialogDescription */
+.description {
+  font-family: var(--font-body);
+  font-size: var(--text-regular);
+  line-height: var(--leading-regular);
+  color: var(--color-content-secondary);
+  margin: 0;
+  margin-top: var(--space-4);
+}
+
+/* DialogBody */
+.body {
+  margin-top: var(--space-16);
+}
+
+/* DialogActions */
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-8);
+  margin-top: var(--space-24);
+}

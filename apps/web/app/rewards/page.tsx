@@ -1,18 +1,25 @@
 "use client";
 
+import SegmentedControl from "@/components/layout/SegmentedControl";
+import { Button } from "@/components/agentic/Button";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
-import { fetchLeaderboard, fetchWalletRewards } from "@/lib/api";
-import { fmtAmount, usd } from "@/lib/format";
+import PageHeader, { PageStats } from "@/components/layout/PageHeader";
+import { Icon } from "@/components/agentic/Icon/Icon";
+import { fetchStats, fetchLeaderboard, fetchWalletRewards } from "@/lib/api";
+import { compact, fmtAmount, usd } from "@/lib/format";
 import Leaderboard from "@/components/Leaderboard";
 import FeeDonut from "@/components/FeeDonut";
 import CommodityLogo from "@/components/CommodityLogo";
 import { claim } from "@/lib/actions";
 
 const STEPS: [string, string][] = [
-  ["Hold a market's token", "Every trade on that market charges its fee. 40% of it is set aside for holders."],
+  [
+    "Hold a market's token",
+    "Every trade on that market charges its fee. 40% of it is set aside for holders.",
+  ],
   [
     "Get paid automatically",
     "Each cycle pays holders in the commodity coin, weighted by balance, straight to the wallet.",
@@ -27,10 +34,17 @@ export default function RewardsPage() {
   const { publicKey, sendTransaction } = useWallet();
   const { connection } = useConnection();
   const { setVisible } = useWalletModal();
+  const { data: stats } = useQuery({
+    queryKey: ["stats"],
+    queryFn: fetchStats,
+  });
   const [coinFilter, setCoinFilter] = useState<string | null>(null);
   const [visibleRows, setVisibleRows] = useState(15);
 
-  const { data: leaderboard } = useQuery({ queryKey: ["leaderboard"], queryFn: fetchLeaderboard });
+  const { data: leaderboard } = useQuery({
+    queryKey: ["leaderboard"],
+    queryFn: fetchLeaderboard,
+  });
   const { data: rewards } = useQuery({
     queryKey: ["rewards", publicKey?.toBase58()],
     queryFn: () => fetchWalletRewards(publicKey!.toBase58()),
@@ -38,14 +52,18 @@ export default function RewardsPage() {
   });
 
   const totalHolderShare = useMemo(
-    () => (leaderboard ? leaderboard.reduce((sum, r) => sum + r.holderShareUsd, 0) : 0),
-    [leaderboard]
+    () =>
+      leaderboard
+        ? leaderboard.reduce((sum, r) => sum + r.holderShareUsd, 0)
+        : 0,
+    [leaderboard],
   );
 
   const coinChips = useMemo(() => {
     if (!leaderboard) return [];
     const map = new Map<string, number>();
-    for (const r of leaderboard) map.set(r.pairedWith, (map.get(r.pairedWith) ?? 0) + r.holderShareUsd);
+    for (const r of leaderboard)
+      map.set(r.pairedWith, (map.get(r.pairedWith) ?? 0) + r.holderShareUsd);
     return Array.from(map.entries())
       .sort((a, b) => b[1] - a[1])
       .slice(0, 6);
@@ -53,12 +71,17 @@ export default function RewardsPage() {
 
   const rows = useMemo(() => {
     if (!leaderboard) return [];
-    const filtered = coinFilter ? leaderboard.filter((r) => r.pairedWith === coinFilter) : leaderboard;
+    const filtered = coinFilter
+      ? leaderboard.filter((r) => r.pairedWith === coinFilter)
+      : leaderboard;
     return filtered.slice(0, visibleRows);
   }, [leaderboard, coinFilter, visibleRows]);
 
   const totalRows = leaderboard
-    ? (coinFilter ? leaderboard.filter((r) => r.pairedWith === coinFilter) : leaderboard).length
+    ? (coinFilter
+        ? leaderboard.filter((r) => r.pairedWith === coinFilter)
+        : leaderboard
+      ).length
     : 0;
 
   async function handleClaim(symbol: string) {
@@ -67,40 +90,60 @@ export default function RewardsPage() {
       return;
     }
     try {
-      await claim({ wallet: publicKey, coinSymbol: symbol }, { connection, sendTransaction });
+      await claim(
+        { wallet: publicKey, coinSymbol: symbol },
+        { connection, sendTransaction },
+      );
     } catch {
       // claim() already toasts
     }
   }
 
   return (
-    <div className="container-x pb-16 pt-8 md:pt-12">
-      <header className="flex flex-col gap-3">
-        <span className="eyebrow">Rewards</span>
-        <h1 className="display text-[32px] font-bold leading-tight text-white md:text-[44px]">
-          Hold a market, get paid in commodities.
-        </h1>
-        <p className="max-w-2xl text-[15px] leading-relaxed text-body">
-          Holders of every market earn 40% of its trading fees, paid automatically in the commodity coin it
-          is paired with — every fifteen minutes, with nothing to claim. Track what you have earned here.
-        </p>
-      </header>
-
-      <div className="mt-7 grid gap-5 lg:grid-cols-[8fr_4fr] lg:items-start lg:gap-6">
+    <div className="agentic-page container-x pb-16 pt-8 md:pt-12">
+      <PageHeader
+        eyebrow="A share of every trade"
+        title="Rewards"
+        description="Hold a market token. Earn in its paired commodity. Track the rewards flowing back to the community."
+      />
+      <PageStats
+        items={[
+          {
+            label: "Total paid to holders",
+            value: stats ? compact(stats.paidToHoldersUsd) : "—",
+            note: "Across the exchange",
+          },
+          {
+            label: "Rewards · 24h",
+            value: stats ? compact(stats.paidToHolders24hUsd) : "—",
+            note: "Paid in commodity coins",
+          },
+          {
+            label: "Holder wallets",
+            value: stats?.holderWallets.toLocaleString("en-US") ?? "—",
+            note: "Sharing in trading fees",
+          },
+        ]}
+      />
+      <div className="detail-grid mt-7">
         <div className="flex flex-col gap-5">
           {/* ---- wallet earnings ---- */}
-          <section className="glass flex flex-col gap-4 p-5" aria-labelledby="earnings-heading">
+          <section
+            className="glass flex flex-col gap-4 p-5"
+            aria-labelledby="earnings-heading"
+          >
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <h2 id="earnings-heading" className="display text-base font-semibold">
+              <h2
+                id="earnings-heading"
+                className="display text-base font-semibold"
+              >
                 Your earnings
               </h2>
               {publicKey && rewards ? (
-                <span className="mono text-lg font-semibold text-positive">{usd(rewards.totalEarnedUsd)}</span>
-              ) : (
-                <button type="button" onClick={() => setVisible(true)} className="btn-ghost tap">
-                  Connect wallet
-                </button>
-              )}
+                <span className="mono text-lg font-semibold text-positive">
+                  {usd(rewards.totalEarnedUsd)}
+                </span>
+              ) : null}
             </div>
 
             {publicKey && rewards ? (
@@ -115,61 +158,65 @@ export default function RewardsPage() {
                       <span className="mono text-sm">{c.symbol}</span>
                     </span>
                     <span className="flex shrink-0 items-center gap-2.5">
-                      <span className="mono text-sm">{fmtAmount(c.amount)}</span>
+                      <span className="mono text-sm">
+                        {fmtAmount(c.amount)}
+                      </span>
                       {c.claimable > 0 && (
-                        <button
+                        <Button
+                          plain
                           type="button"
                           onClick={() => handleClaim(c.symbol)}
                           className="chip chip-positive tap"
                           title={`Claim ${fmtAmount(c.claimable)} ${c.symbol} held in a Merkle epoch`}
                         >
                           Claim
-                        </button>
+                        </Button>
                       )}
                     </span>
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="text-sm leading-relaxed text-muted">
-                Connect a wallet to see what each commodity coin has paid you. Payouts land automatically —
-                the Claim buttons here only cover remainders held in a Merkle epoch, for wallets that had no
-                token account at payout time.
-              </p>
+              <div className="empty-wallet">
+                <svg className="wallet-illustration" width="120" height="96" viewBox="0 0 120 96" fill="none" aria-hidden="true">
+                  <ellipse cx="60" cy="85" rx="43" ry="5" fill="var(--color-border-subtle)" />
+                  <rect x="35" y="11" width="57" height="45" rx="6" transform="rotate(12 35 11)" fill="var(--color-bg-primary)" stroke="var(--color-border-medium)" strokeWidth="1.5" />
+                  <path d="M25 33L80 19" stroke="var(--color-content-secondary)" strokeWidth="1.5" />
+                  <rect x="20" y="30" width="80" height="50" rx="10" fill="var(--color-bg-primary)" stroke="var(--color-content-primary)" strokeWidth="2" />
+                  <path d="M20 42H98" stroke="var(--color-border-subtle)" />
+                  <rect x="77" y="47" width="28" height="20" rx="5" fill="var(--color-bg-secondary)" stroke="var(--color-content-primary)" strokeWidth="2" />
+                  <circle cx="86" cy="57" r="2.5" fill="var(--color-content-primary)" />
+                  <path d="M12 23V31M8 27H16M106 12V20M102 16H110" stroke="var(--color-content-secondary)" strokeWidth="1.5" strokeLinecap="round" />
+                </svg>
+                <h3>Your rewards start here</h3>
+                <p>Connect a wallet to see what each commodity coin has paid you and track your earnings in one place.</p>
+                <Button type="button" onClick={() => setVisible(true)}>Connect wallet</Button>
+              </div>
             )}
           </section>
 
           {/* ---- leaderboard ---- */}
-          <section className="glass overflow-hidden" aria-labelledby="leaderboard-heading">
+          <section
+            className="glass overflow-hidden"
+            aria-labelledby="leaderboard-heading"
+          >
             <div className="flex flex-col gap-3 border-b border-white/[0.08] p-4 sm:px-5">
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <h2 id="leaderboard-heading" className="display text-lg font-semibold">
+                <h2
+                  id="leaderboard-heading"
+                  className="display text-lg font-semibold"
+                >
                   Leaderboard
                 </h2>
                 <span className="mono text-xs text-muted">
                   {usd(totalHolderShare)} paid to holders by all markets
                 </span>
               </div>
-              <div className="flex flex-wrap gap-1.5" role="group" aria-label="Filter by commodity coin">
-                <button
-                  type="button"
-                  aria-pressed={coinFilter === null}
-                  onClick={() => setCoinFilter(null)}
-                  className={`chip tap ${coinFilter === null ? "chip-on" : ""}`}
-                >
-                  All
-                </button>
-                {coinChips.map(([symbol, amount]) => (
-                  <button
-                    key={symbol}
-                    type="button"
-                    aria-pressed={coinFilter === symbol}
-                    onClick={() => setCoinFilter(symbol)}
-                    className={`chip mono tap ${coinFilter === symbol ? "chip-on" : ""}`}
-                  >
-                    {symbol} {usd(amount, { decimals: 0 })}
-                  </button>
-                ))}
+              <div className="filter-bar">
+                <SegmentedControl label="Filter by commodity coin" value={coinFilter ?? "all"}
+                  onChange={(value) => { setCoinFilter(value === "all" ? null : value); setVisibleRows(15); }}
+                  options={[{ value: "all", label: "All" }, ...coinChips.map(([symbol, amount]) => ({ value: symbol, label: `${symbol} ${usd(amount, { decimals: 0 })}` }))]}
+                />
               </div>
             </div>
 
@@ -180,13 +227,14 @@ export default function RewardsPage() {
                 <span className="text-xs text-muted">
                   Showing {rows.length} of {totalRows}
                 </span>
-                <button
+                <Button
+                  plain
                   type="button"
                   onClick={() => setVisibleRows((v) => v + 15)}
                   className="tap rounded text-xs text-dim hover:text-text"
                 >
                   Show 15 more
-                </button>
+                </Button>
               </div>
             )}
           </section>
@@ -195,19 +243,30 @@ export default function RewardsPage() {
         {/* ---- rail ---- */}
         <div className="flex flex-col gap-5">
           <FeeDonut />
-          <section className="glass flex flex-col gap-4 p-5" aria-labelledby="how-heading">
+          <section
+            className="glass flex flex-col gap-4 p-5"
+            aria-labelledby="how-heading"
+          >
             <h2 id="how-heading" className="eyebrow">
               How it reaches you
             </h2>
-            <ol className="flex flex-col gap-4">
+            <ol className="rewards-steps">
               {STEPS.map(([title, body], i) => (
-                <li key={title} className="flex gap-3">
-                  <span className="step-badge" style={{ background: "rgba(20,241,149,0.14)", color: "#14F195" }}>
+                <li key={title} className="rewards-step">
+                  <span
+                    className="step-badge"
+                    style={{
+                      background: "var(--color-bg-secondary)",
+                      color: "var(--color-badge-label-green)",
+                    }}
+                  >
                     {i + 1}
                   </span>
-                  <span className="flex flex-col gap-1">
+                  <span className="rewards-step-copy flex flex-col gap-1">
                     <span className="text-sm font-semibold">{title}</span>
-                    <span className="text-[13px] leading-relaxed text-muted">{body}</span>
+                    <span className="text-[13px] leading-relaxed text-muted">
+                      {body}
+                    </span>
                   </span>
                 </li>
               ))}

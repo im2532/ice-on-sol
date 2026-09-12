@@ -5,8 +5,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ConnectionProvider, WalletProvider } from "@solana/wallet-adapter-react";
 import { WalletModalProvider } from "@solana/wallet-adapter-react-ui";
 import { PhantomWalletAdapter, SolflareWalletAdapter } from "@solana/wallet-adapter-wallets";
-import { Toaster } from "./Toast";
-import TosModal from "./TosModal";
 
 // wallet-adapter-react-ui ships default styles; keep them, our CSS overrides only the connect button.
 import "@solana/wallet-adapter-react-ui/styles.css";
@@ -24,8 +22,6 @@ export default function Providers({ children }: { children: React.ReactNode }) {
         <WalletProvider wallets={wallets} autoConnect>
           <WalletModalProvider>
             {children}
-            <Toaster />
-            <TosModal />
           </WalletModalProvider>
         </WalletProvider>
       </ConnectionProvider>

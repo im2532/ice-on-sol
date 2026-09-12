@@ -1,0 +1,228 @@
+/* ==========================================================================
+   TAB GROUP + TAB — Tab navigation component
+   Source: Figma AGENTIC-DESIGN-SYSTEM v1.2 — node 4052:537
+   Extracted: 2026-04-05
+   Tokens: color-bg-primary, color-bg-secondary, color-content-primary,
+           color-content-secondary, color-content-icon, color-border-strong,
+           color-hover-overlay, color-focus-ring,
+           space-2, space-4, space-6, space-8, space-12, space-16, space-24,
+           radius-sm, radius-md, radius-full, shadow-elevation-1,
+           font-label, text-button, weight-regular, leading-small, tracking-spacious,
+           duration-hover, ease-out-expo
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   TAB GROUP — Container
+   -------------------------------------------------------------------------- */
+.tabGroup {
+  display: inline-flex;
+  align-items: center;
+}
+
+.fullWidth {
+  display: flex;
+  width: 100%;
+}
+
+/* --------------------------------------------------------------------------
+   TAB — Individual tab item
+   -------------------------------------------------------------------------- */
+.tab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-8);
+  cursor: pointer;
+  border: none;
+  background: none;
+  padding: 0;
+  margin: 0;
+  font-family: var(--font-label);
+  font-size: var(--text-button);
+  font-weight: var(--weight-regular);
+  line-height: var(--leading-small);
+  letter-spacing: var(--tracking-spacious);
+  text-transform: uppercase;
+  color: var(--color-content-secondary);
+  max-height: 40px;
+  position: relative;
+  white-space: nowrap;
+  transition: var(--duration-hover) ease;
+  transition-property: color, background-color;
+}
+
+.tabActive {
+  color: var(--color-content-primary);
+}
+
+.tabDisabled {
+  opacity: 0.5;
+  pointer-events: none;
+  cursor: not-allowed;
+}
+
+/* --- Sub-elements (z-index above indicator) --- */
+.label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 1;
+}
+
+.leadIcon {
+  display: flex;
+  flex-shrink: 0;
+  color: var(--color-content-icon);
+  position: relative;
+  z-index: 1;
+  transition: var(--duration-hover) ease;
+  transition-property: color;
+}
+
+.tabActive .leadIcon {
+  color: var(--color-content-primary);
+}
+
+.tailIcon {
+  display: flex;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 1;
+}
+
+/* --------------------------------------------------------------------------
+   ANIMATED INDICATOR — slides between active tabs via layoutId
+   Renders inside the active tab, provides all visual active styling.
+   -------------------------------------------------------------------------- */
+.indicator {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* --------------------------------------------------------------------------
+   HOVER — inactive tabs (Figma: State=hover)
+   -------------------------------------------------------------------------- */
+@media (hover: hover) and (pointer: fine) {
+  .tab:not(.tabActive):hover {
+    background-color: var(--color-hover-overlay);
+    color: var(--color-content-primary);
+  }
+
+  .tab:not(.tabActive):hover .leadIcon {
+    color: var(--color-content-primary);
+  }
+}
+
+/* --------------------------------------------------------------------------
+   FOCUS-VISIBLE — all tabs (Figma: State=focus)
+   -------------------------------------------------------------------------- */
+.tab:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 1px;
+  color: var(--color-content-primary);
+}
+
+.tab:focus-visible .leadIcon {
+  color: var(--color-content-primary);
+}
+
+/* --------------------------------------------------------------------------
+   PILL STYLE
+   -------------------------------------------------------------------------- */
+.pill {
+  gap: var(--space-2);
+}
+
+.pill .tab {
+  padding: var(--space-12) var(--space-16);
+  border-radius: var(--radius-full);
+  border: 1px solid transparent;
+}
+
+.pill .indicator {
+  border-radius: inherit;
+  background: var(--color-bg-primary);
+  box-shadow: inset 0 0 0 1px var(--color-border-strong);
+}
+
+/* --------------------------------------------------------------------------
+   SEGMENTED STYLE
+   -------------------------------------------------------------------------- */
+.segmented {
+  gap: var(--space-2);
+  background: var(--color-ice-subtle);
+  padding: var(--space-4);
+  border-radius: var(--radius-full);
+}
+
+.segmented .tab {
+  padding: var(--space-12) var(--space-16);
+  border-radius: var(--radius-full);
+}
+
+.segmented .indicator {
+  border-radius: inherit;
+  background: var(--color-ice-selected);
+  box-shadow: inset 0 0 0 1px var(--color-ice-line);
+}
+
+.segmented .indicator::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0px -1px 0px 0px rgba(0, 0, 0, 0.1);
+  pointer-events: none;
+}
+
+/* --------------------------------------------------------------------------
+   UNDERLINE STYLE
+   -------------------------------------------------------------------------- */
+.underline {
+  gap: 0;
+}
+
+.underline .tab {
+  padding: var(--space-12) var(--space-24);
+  border-bottom: 1px solid transparent;
+}
+
+.underline .indicator {
+  inset: auto 0 0 0;
+  height: 1px;
+  background: var(--color-border-strong);
+  border-radius: 0;
+}
+
+/* --------------------------------------------------------------------------
+   ROUNDED STYLE
+   -------------------------------------------------------------------------- */
+.rounded {
+  gap: var(--space-2);
+  background: var(--color-ice-subtle);
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+}
+
+.rounded .tab {
+  padding: var(--space-6) var(--space-12);
+  border-radius: var(--radius-sm);
+}
+
+.rounded .indicator {
+  border-radius: inherit;
+  background: var(--color-ice-selected);
+  box-shadow: inset 0 0 0 1px var(--color-ice-line);
+}
+
+.rounded .indicator::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0px -1px 0px 0px rgba(0, 0, 0, 0.1);
+  pointer-events: none;
+}

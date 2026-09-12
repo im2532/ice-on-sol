@@ -1,5 +1,8 @@
 "use client";
 
+import SearchField from "@/components/layout/SearchField";
+import SegmentedControl from "@/components/layout/SegmentedControl";
+import { Button } from "@/components/agentic/Button";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { CATEGORY_LABEL, INDEX_COINS } from "@icemarkets/registry";
@@ -45,7 +48,10 @@ export default function CommodityPicker({
   selected: string;
   onSelect: (symbol: string) => void;
 }) {
-  const { data } = useQuery({ queryKey: ["commodities"], queryFn: fetchCommodities });
+  const { data } = useQuery({
+    queryKey: ["commodities"],
+    queryFn: fetchCommodities,
+  });
   const [filter, setFilter] = useState<Filter>("all");
   const [search, setSearch] = useState("");
   const [shown, setShown] = useState(PAGE);
@@ -58,7 +64,7 @@ export default function CommodityPicker({
           ? true
           : filter === "index"
             ? INDEX_SYMBOLS.has(c.symbol)
-            : c.category === filter && !INDEX_SYMBOLS.has(c.symbol)
+            : c.category === filter && !INDEX_SYMBOLS.has(c.symbol),
       )
       .filter((c) => {
         if (!search) return true;
@@ -80,92 +86,89 @@ export default function CommodityPicker({
   }, [coins, shown, selected, data]);
 
   return (
-    <section className="glass flex flex-col gap-3.5 p-5 sm:px-[22px]" aria-labelledby="pair-heading">
+    <section
+      className="launch-section commodity-picker glass flex flex-col gap-3.5 p-5 sm:px-[22px]"
+      aria-labelledby="pair-heading"
+    >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2.5">
-          <span className="step-badge" style={{ background: "rgba(20,241,149,0.18)", color: "#14F195" }}>
+          <span
+            className="step-badge"
+            style={{
+              background: "var(--color-bg-secondary)",
+              color: "var(--color-badge-label-green)",
+            }}
+          >
             1
           </span>
           <h2 id="pair-heading" className="display text-base font-semibold">
             Paired with
           </h2>
         </div>
-        <div
-          className="field h-[34px] min-h-0 gap-2.5 px-3 sm:w-[240px]"
-          style={{ borderRadius: 10, background: "rgba(255,255,255,0.05)" }}
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8B90A6" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
-            <circle cx="11" cy="11" r="7" />
-            <path d="M20 20l-3.5-3.5" />
-          </svg>
-          <label htmlFor="pair-search" className="sr-only">
-            Search commodity coins
-          </label>
-          <input
-            id="pair-search"
-            type="search"
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setShown(PAGE);
-            }}
-            placeholder="gold, crude, cocoa, daytona…"
-            className="w-full bg-transparent text-[13px] outline-none placeholder:text-muted"
-          />
-        </div>
+        <SearchField
+          id="pair-search"
+          aria-label="Search commodity coins"
+          value={search}
+          onChange={(e) => { setSearch(e.target.value); setShown(PAGE); }}
+          placeholder="Search commodities…"
+        />
+      </div>
+      <div className="filter-bar">
+        <SegmentedControl label="Filter by category" value={filter}
+          onChange={(value) => { setFilter(value); setShown(PAGE); }}
+          options={FILTERS.map(value => ({ value, label: label(value) }))}
+        />
       </div>
 
-      <div className="flex flex-wrap gap-1.5" role="group" aria-label="Filter by category">
-        {FILTERS.map((f) => (
-          <button
-            key={f}
-            type="button"
-            aria-pressed={filter === f}
-            onClick={() => {
-              setFilter(f);
-              setShown(PAGE);
-            }}
-            className={`chip tap ${filter === f ? "chip-on" : ""}`}
-          >
-            {label(f)}
-          </button>
-        ))}
-      </div>
-
-      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3" role="listbox" aria-label="Commodity coins">
+      <div
+        className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3"
+        role="listbox"
+        aria-label="Commodity coins"
+      >
         {visible.map((c) => {
           const on = c.symbol === selected;
           return (
-            <button
+            <Button
+              plain
               key={c.symbol}
               type="button"
               role="option"
               aria-selected={on}
               onClick={() => onSelect(c.symbol)}
-              className="tap flex items-center gap-3 rounded-[14px] border px-3.5 py-3 text-left transition-colors"
+              className="commodity-choice tap flex items-center gap-3 rounded-[14px] border px-3.5 py-3 text-left transition-colors"
               style={
                 on
                   ? {
-                      borderColor: "rgba(20,241,149,0.5)",
-                      background: "rgba(20,241,149,0.08)",
-                      boxShadow: "inset 0 0 0 1px rgba(20,241,149,0.3)",
+                      borderColor: "var(--color-border-strong)",
+                      background: "var(--color-bg-secondary)",
+                      boxShadow: "inset 0 0 0 1px var(--color-border-strong)",
                     }
-                  : { borderColor: "rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)" }
+                  : {
+                      borderColor: "var(--color-border-subtle)",
+                      background: "var(--color-bg-secondary)",
+                    }
               }
             >
+              <span className="choice-indicator" aria-hidden="true">{on ? "✓" : ""}</span>
               <CommodityLogo symbol={c.symbol} size={36} />
               <span className="flex min-w-0 flex-1 flex-col leading-tight">
-                <span className="mono text-[13px] font-semibold">{c.symbol}</span>
+                <span className="mono text-[13px] font-semibold">
+                  {c.symbol}
+                </span>
                 <span className="truncate text-[11px] text-muted">
                   {c.displayName ?? c.name} · {c.unit}
                 </span>
               </span>
-              <span className="mono shrink-0 text-xs">{fmtPrice(c.priceUsd)}</span>
-            </button>
+              <span className="mono shrink-0 text-xs">
+                {fmtPrice(c.priceUsd)}
+              </span>
+            </Button>
           );
         })}
         {visible.length === 0 && (
-          <p className="col-span-full py-6 text-center text-sm text-muted">No commodity matches that search.</p>
+          <p className="col-span-full py-6 text-center text-sm text-muted">
+            No commodity matches that search.
+          </p>
         )}
       </div>
 
@@ -174,9 +177,14 @@ export default function CommodityPicker({
         {coins.length > visible.length && (
           <>
             {" · "}
-            <button type="button" onClick={() => setShown((n) => n + 12)} className="tap rounded link">
+            <Button
+              plain
+              type="button"
+              onClick={() => setShown((n) => n + 12)}
+              className="tap rounded link"
+            >
               see more
-            </button>
+            </Button>
           </>
         )}
       </p>

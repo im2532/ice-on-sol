@@ -1,0 +1,206 @@
+/* ==========================================================================
+   MENU COMPONENT
+   Source: Figma AGENTIC-DESIGN-SYSTEM v1.2 — node 591:3836
+   ========================================================================== */
+
+/* --- Menu Container --- */
+.menu {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  border: 0.5px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-elevation-2);
+  overflow: hidden;
+  background: var(--color-bg-primary);
+}
+
+.menuRegular {
+  composes: menu;
+  min-width: 160px;
+}
+
+.menuSm {
+  composes: menu;
+  min-width: 128px;
+}
+
+.menuWide {
+  composes: menu;
+  min-width: 160px;
+}
+
+/* ==========================================================================
+   MENU ITEM
+   States: default | hover | focus | focus+hover | disabled
+   ========================================================================== */
+.item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  width: 100%;
+  background: var(--color-bg-primary);
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  position: relative;
+  transition: background 0.15s ease;
+  font-family: var(--font-body);
+  color: var(--color-content-primary);
+}
+
+.item:hover {
+  background: var(--color-hover-overlay);
+}
+
+.item:focus-visible {
+  outline: 2px solid var(--color-border-strong);
+  outline-offset: -2px;
+  z-index: 1;
+}
+
+.item:focus-visible:hover {
+  background: var(--color-hover-overlay);
+}
+
+.itemDisabled {
+  composes: item;
+  opacity: 0.4;
+  pointer-events: none;
+  cursor: default;
+}
+
+/* --- Item Sizes --- */
+.itemRegular {
+  padding: var(--space-8) var(--space-12);
+  min-height: 40px;
+  font-size: var(--text-small);
+  line-height: var(--leading-small);
+}
+
+.itemSm {
+  padding: var(--space-4) var(--space-8);
+  min-height: 24px;
+  font-size: var(--text-tiny);
+  line-height: var(--leading-tiny);
+}
+
+/* --- Selected state (bold text) --- */
+.itemSelected {
+  font-weight: var(--weight-medium);
+}
+
+/* --- Item content layout --- */
+.itemContent {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.itemContentSm {
+  composes: itemContent;
+  gap: var(--space-8);
+}
+
+/* --- Label --- */
+.label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: var(--weight-regular);
+}
+
+.labelSelected {
+  composes: label;
+  font-weight: var(--weight-medium);
+}
+
+/* --- Helper text (description line below label) --- */
+.labelGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  flex: 1;
+  min-width: 0;
+}
+
+.helperText {
+  font-family: var(--font-body);
+  font-size: var(--text-tiny);
+  font-weight: var(--weight-regular);
+  line-height: var(--leading-tiny);
+  color: var(--color-content-secondary);
+  white-space: pre-wrap;
+}
+
+/* --- Trailing elements --- */
+.trailing {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  color: var(--color-content-icon);
+}
+
+/* --- Keyboard shortcut --- */
+.shortcut {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  font-family: var(--font-label);
+  font-size: var(--text-small);
+  font-weight: var(--weight-regular);
+  line-height: var(--leading-tiny);
+  letter-spacing: var(--tracking-tight);
+  color: var(--color-content-secondary);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.shortcutIcon {
+  width: var(--icon-14);
+  height: var(--icon-14);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--color-content-secondary);
+}
+
+/* --- Model icon badge --- */
+.modelIcon {
+  width: var(--icon-24);
+  height: var(--icon-24);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-xs);
+  background: var(--color-bg-primary);
+}
+
+/* --- Divider --- */
+.divider {
+  height: 1px;
+  background: var(--color-border-subtle);
+  margin: 0;
+  border: none;
+}
+
+/* --- Section header (e.g. "Anthropic") --- */
+.sectionHeader {
+  padding: var(--space-8) var(--space-12);
+  font-family: var(--font-body);
+  font-size: var(--text-small);
+  font-weight: var(--weight-regular);
+  line-height: var(--leading-small);
+  color: var(--color-content-secondary);
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+}

@@ -1,0 +1,23 @@
+/* ==========================================================================
+   PROGRESS BAR — Segmented
+   Source: Figma AGENTIC-DESIGN-SYSTEM v1.2 — node 4072:7707
+   ========================================================================== */
+
+.bar {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  width: 100%;
+}
+
+.segmentFilled {
+  flex: 1;
+  height: 100%;
+  background: var(--color-bg-success);
+}
+
+.segmentEmpty {
+  flex: 1;
+  height: 100%;
+  background: var(--color-bg-disabled);
+}

@@ -2,10 +2,10 @@ const R = 36;
 const C = 2 * Math.PI * R; // 226.19
 
 const SEGMENTS = [
-  { label: "40% holders", pct: 40, color: "#14F195" },
-  { label: "20% $ICE burn", pct: 20, color: "#9945FF" },
-  { label: "20% exchange", pct: 20, color: "#8B90A6" },
-  { label: "20% Meteora", pct: 20, color: "rgba(255,255,255,0.22)" },
+  { label: "40% holders", pct: 40, color: "var(--color-content-primary)" },
+  { label: "20% $ICE burn", pct: 20, color: "var(--color-content-secondary)" },
+  { label: "20% exchange", pct: 20, color: "var(--color-content-icon)" },
+  { label: "20% Meteora", pct: 20, color: "var(--color-bg-tertiary)" },
 ];
 
 /**
@@ -29,7 +29,7 @@ export default function FeeDonut({ size = 88 }: { size?: number }) {
           className="shrink-0"
         >
           {/* toFixed here is SVG dash geometry, not a displayed number. */}
-          <circle cx="44" cy="44" r={R} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="10" />
+          <circle cx="44" cy="44" r={R} fill="none" stroke="var(--color-border-subtle)" strokeWidth="10" />
           {SEGMENTS.map((s) => {
             const dash = (s.pct / 100) * C;
             const dashOffset = -offset;

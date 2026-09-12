@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Mark } from "./Mark";
+import { Icon } from "./agentic/Icon/Icon";
+import { Button } from "./agentic/Button";
 
 const TOS_KEY = "icemarkets.tos.accepted.v1";
 
@@ -36,19 +37,22 @@ export default function TosModal() {
     >
       <div className="glass-strong w-full max-w-lg p-6">
         <div className="mb-4 flex items-center gap-3">
-          <Mark size={34} />
+          <Icon name="gem" size={32} />
           <h2 id="tos-title" className="display text-lg font-semibold">
             Before you trade
           </h2>
         </div>
         <p className="mb-3 text-sm leading-relaxed text-body">
-          ICEmarkets lists commodity coins — synthetic coins whose price tracks a real commodity via an
-          oracle feed. They are not redeemable for any physical asset, only against the protocol's USDC
-          reserve, and trading may halt if a feed goes stale. Nothing here is investment advice, and ICEmarkets is not available to
-          persons in the United States, the United Kingdom, or any sanctioned jurisdiction.
+          ICEmarkets lists commodity coins — synthetic coins whose price tracks
+          a real commodity via an oracle feed. They are not redeemable for any
+          physical asset, only against the protocol's USDC reserve, and trading
+          may halt if a feed goes stale. Nothing here is investment advice, and
+          ICEmarkets is not available to persons in the United States, the
+          United Kingdom, or any sanctioned jurisdiction.
         </p>
         <p className="mb-5 text-sm leading-relaxed text-body">
-          By continuing you confirm you are not a resident of a restricted jurisdiction and accept the{" "}
+          By continuing you confirm you are not a resident of a restricted
+          jurisdiction and accept the{" "}
           <a href="/docs" className="link underline underline-offset-2">
             terms and risk disclosures
           </a>
@@ -58,9 +62,7 @@ export default function TosModal() {
           <a href="/restricted" className="btn-ghost tap">
             I&apos;m not eligible
           </a>
-          <button type="button" onClick={accept} className="btn-primary tap">
-            Accept &amp; continue
-          </button>
+          <Button onClick={accept}>Accept &amp; continue</Button>
         </div>
       </div>
     </div>

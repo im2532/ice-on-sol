@@ -1,0 +1,64 @@
+/* ==========================================================================
+   TEXTAREA COMPONENT
+   States: hover, focus, invalid, disabled
+   ========================================================================== */
+
+/* --- Wrapper --- */
+.wrapper {
+  display: inline-flex;
+  width: 100%;
+}
+
+/* --- Base --- */
+.textarea {
+  display: block;
+  width: 100%;
+  min-height: 80px;
+  padding: var(--space-8) var(--space-12);
+  font-family: var(--font-body);
+  font-size: var(--text-small);
+  line-height: var(--leading-small);
+  color: var(--color-content-primary);
+  background-color: var(--color-bg-primary);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  resize: vertical;
+  transition-property: border-color, box-shadow;
+  transition-duration: var(--duration-hover);
+  transition-timing-function: ease;
+}
+
+.textarea::placeholder {
+  color: var(--color-content-icon);
+}
+
+/* --- Hover --- */
+@media (hover: hover) and (pointer: fine) {
+  .textarea:hover:not(:disabled):not(.invalid) {
+    border-color: var(--color-border-medium);
+  }
+}
+
+/* --- Focus --- */
+.textarea:focus {
+  outline: none;
+  border-color: var(--color-focus-ring);
+  box-shadow: var(--shadow-focus-ring);
+}
+
+/* --- Invalid --- */
+.invalid {
+  border-color: #dc2626;
+}
+
+.invalid:focus {
+  border-color: #dc2626;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.15);
+}
+
+/* --- Disabled --- */
+.textarea:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background-color: var(--color-bg-secondary);
+}

@@ -1,5 +1,6 @@
 "use client";
 
+import { Input } from "@/components/agentic/Input";
 import Link from "next/link";
 import { useCallback, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -7,6 +8,11 @@ import { fetchCommodities } from "@/lib/api";
 import { CATEGORY_LABEL, INDEX_COINS } from "@icemarkets/registry";
 import type { Category } from "@icemarkets/registry";
 import type { CommodityQuote } from "@/lib/types";
+import PageHeader, { PageStats } from "@/components/layout/PageHeader";
+import { Icon } from "@/components/agentic/Icon/Icon";
+import SegmentedControl from "@/components/layout/SegmentedControl";
+import SearchField from "@/components/layout/SearchField";
+import { Button } from "@/components/agentic/Button";
 import CommodityTile from "@/components/CommodityTile";
 
 const INDEX_SYMBOLS = new Set(INDEX_COINS.map((c) => c.symbol));
@@ -26,8 +32,12 @@ const CATEGORY_ORDER: Category[] = [
 ];
 
 export default function CommoditiesPage() {
-  const { data, isLoading } = useQuery({ queryKey: ["commodities"], queryFn: fetchCommodities });
+  const { data, isLoading } = useQuery({
+    queryKey: ["commodities"],
+    queryFn: fetchCommodities,
+  });
   const [search, setSearch] = useState("");
+  const [category, setCategory] = useState<string>("all");
 
   const matches = useCallback(
     (c: CommodityQuote) => {
@@ -39,14 +49,20 @@ export default function CommoditiesPage() {
         (c.displayName ?? "").toLowerCase().includes(q)
       );
     },
-    [search]
+    [search],
   );
 
   const byCategory = useMemo(() => {
     const map = new Map<Category, CommodityQuote[]>();
     if (!data) return map;
     for (const cat of CATEGORY_ORDER) {
-      map.set(cat, data.filter((c) => c.category === cat && !INDEX_SYMBOLS.has(c.symbol) && matches(c)));
+      map.set(
+        cat,
+        data.filter(
+          (c) =>
+            c.category === cat && !INDEX_SYMBOLS.has(c.symbol) && matches(c),
+        ),
+      );
     }
     return map;
   }, [data, matches]);
@@ -60,8 +76,12 @@ export default function CommoditiesPage() {
       const legs = ic.oracle.legs ?? [];
       if (quote) return { quote, seeded: true, legs };
       const priceUsd = legs.reduce(
-        (acc, l) => acc + ((data.find((q) => q.symbol === l.symbol)?.priceUsd ?? 0) * l.weightBps) / 10_000,
-        0
+        (acc, l) =>
+          acc +
+          ((data.find((q) => q.symbol === l.symbol)?.priceUsd ?? 0) *
+            l.weightBps) /
+            10_000,
+        0,
       );
       const placeholder: CommodityQuote = {
         symbol: ic.symbol,
@@ -85,77 +105,62 @@ export default function CommoditiesPage() {
     }).filter((b) => matches(b.quote));
   }, [data, matches]);
 
-  const count = data ? data.filter((c) => !INDEX_SYMBOLS.has(c.symbol)).length : null;
+  const count = data
+    ? data.filter((c) => !INDEX_SYMBOLS.has(c.symbol)).length
+    : null;
 
   return (
-    <div className="container-x pb-16 pt-8 md:pt-12">
-      <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-        <div className="flex flex-col gap-3">
-          <span className="eyebrow">Commodities</span>
-          <h1 className="display text-[32px] font-bold leading-tight text-white md:text-[44px]">
-            What a market can be paired with.
-          </h1>
-          <p className="max-w-xl text-[15px] leading-relaxed text-body">
-            {count ?? "…"} commodity coins, each pegged to a live oracle price. Pair a market with one and
-            its fees pay holders in that commodity. Open one to see its chart and trade it for USDC.
-          </p>
-        </div>
-        <Link href="/launch" className="btn-primary tap shrink-0">
-          Launch a market
-        </Link>
+    <div className="agentic-page container-x pb-16 pt-8 md:pt-12">
+      <PageHeader
+        eyebrow="Explore the underlying assets"
+        title="Commodities"
+        description="From gold and crude to collectibles. Discover the commodity coins that power every market."
+        action={
+          <Button href="/launch">
+            <Icon name="plus" />
+            Launch a market
+          </Button>
+        }
+      />
+      <PageStats
+        items={[
+          {
+            label: "Commodity coins",
+            value: count?.toLocaleString("en-US") ?? "—",
+            note: "Real-world reference prices",
+          },
+          {
+            label: "Asset categories",
+            value: String(CATEGORY_ORDER.length),
+            note: "Metals, energy, collectibles & more",
+          },
+          {
+            label: "Index coins",
+            value: String(INDEX_COINS.length),
+            note: "Diversified baskets of commodities",
+          },
+        ]}
+      />
+      <div className="page-toolbar">
+        <h2 className="display text-xl">Find a commodity</h2>
+        <SearchField
+            id="commodity-search"
+            aria-label="Search commodities"
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search name or symbol…"
+          />
       </div>
-
-      <div
-        className="field mt-6 h-11 gap-2.5 sm:max-w-sm"
-        style={{ borderRadius: 12, background: "rgba(255,255,255,0.05)" }}
-      >
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8B90A6" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
-          <circle cx="11" cy="11" r="7" />
-          <path d="M20 20l-3.5-3.5" />
-        </svg>
-        <label htmlFor="commodity-search" className="sr-only">
-          Search commodities
-        </label>
-        <input
-          id="commodity-search"
-          type="search"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="gold, crude, cocoa, daytona…"
-          className="w-full bg-transparent text-sm outline-none placeholder:text-muted"
+      <div className="filter-bar">
+        <SegmentedControl label="Commodity category" value={category} onChange={setCategory}
+          options={[
+            { value: "all", label: "All commodities" },
+            { value: "index", label: "Index coins" },
+            ...CATEGORY_ORDER.map(value => ({ value, label: CATEGORY_LABEL[value] })),
+          ]}
         />
       </div>
-
-      {/* Pre-redesign feature panel, restyled: TCGplayer-wide tokenization, disabled until v2. */}
-      <section className="glass mt-5 flex flex-col gap-2.5 p-5" aria-labelledby="tokenize-heading">
-        <h2 id="tokenize-heading" className="display text-base font-semibold">
-          Tokenize anything
-        </h2>
-        <p className="max-w-xl text-[13px] leading-relaxed text-muted">
-          Every product on TCGplayer, screened for depth. Deep enough markets become a coin and can be
-          paired with any launch — coming in v2.
-        </p>
-        <div className="group relative">
-          <label htmlFor="tokenize-search" className="sr-only">
-            Search anything to tokenize
-          </label>
-          <input
-            id="tokenize-search"
-            disabled
-            aria-describedby="tokenize-tooltip"
-            placeholder="Charizard, Black Lotus, One Piece booster box…"
-            className="field cursor-not-allowed text-sm text-muted"
-          />
-          <span
-            id="tokenize-tooltip"
-            role="tooltip"
-            className="chip pointer-events-none absolute left-3 top-full mt-1.5 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
-          >
-            Coming in v2
-          </span>
-        </div>
-      </section>
-
       {isLoading && (
         <div className="mt-9 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           {Array.from({ length: 8 }).map((_, i) => (
@@ -164,27 +169,38 @@ export default function CommoditiesPage() {
         </div>
       )}
 
-      {!isLoading && indexCoins.length > 0 && (
-        <Section
-          title="Index coins"
-          note="Baskets priced as the weighted sum of their legs' oracle prices. Pair a market with one like any other commodity coin."
-        >
-          {indexCoins.map(({ quote, seeded, legs }) => (
-            <CommodityTile
-              key={quote.symbol}
-              commodity={quote}
-              badge="Index"
-              href={seeded ? undefined : null}
-              footer={seeded ? `${quote.marketsCount} markets` : legs.map((l) => l.symbol).join(" · ")}
-            />
-          ))}
-        </Section>
-      )}
+      {!isLoading &&
+        (category === "all" || category === "index") &&
+        indexCoins.length > 0 && (
+          <Section
+            title="Index coins"
+            note="Baskets priced as the weighted sum of their legs' oracle prices. Pair a market with one like any other commodity coin."
+          >
+            {indexCoins.map(({ quote, seeded, legs }) => (
+              <CommodityTile
+                key={quote.symbol}
+                commodity={quote}
+                badge="Index"
+                href={seeded ? undefined : null}
+                footer={
+                  seeded
+                    ? `${quote.marketsCount} markets`
+                    : legs.map((l) => l.symbol).join(" · ")
+                }
+              />
+            ))}
+          </Section>
+        )}
 
       {!isLoading &&
         CATEGORY_ORDER.map((cat) => {
           const items = byCategory.get(cat);
-          if (!items || items.length === 0) return null;
+          if (
+            !items ||
+            items.length === 0 ||
+            (category !== "all" && category !== cat)
+          )
+            return null;
           return (
             <Section key={cat} title={CATEGORY_LABEL[cat]}>
               {items.map((c) => (
@@ -194,21 +210,48 @@ export default function CommoditiesPage() {
           );
         })}
 
-      {!isLoading && indexCoins.length === 0 && CATEGORY_ORDER.every((c) => (byCategory.get(c) ?? []).length === 0) && (
-        <p className="mt-12 text-center text-sm text-muted">No commodity matches that search.</p>
-      )}
+      {!isLoading &&
+        (category === "all"
+          ? indexCoins.length === 0 &&
+            CATEGORY_ORDER.every((c) => (byCategory.get(c) ?? []).length === 0)
+          : category === "index"
+            ? indexCoins.length === 0
+            : (byCategory.get(category as Category) ?? []).length === 0) && (
+          <p className="mt-12 text-center text-sm text-muted">
+            No commodity matches that search.
+          </p>
+        )}
+      <section className="coming-soon" aria-labelledby="tokenize-heading">
+        <Icon name="sparkle" size={24} />
+        <div>
+          <h2 id="tokenize-heading">Tokenize anything</h2>
+          <p>
+            Discover and tokenize deeper collectible markets. TCGplayer-wide
+            support is on its way.
+          </p>
+        </div>
+        <span className="chip">Coming in v2</span>
+      </section>
     </div>
   );
 }
 
-function Section({ title, note, children }: { title: string; note?: string; children: React.ReactNode }) {
+function Section({
+  title,
+  note,
+  children,
+}: {
+  title: string;
+  note?: string;
+  children: React.ReactNode;
+}) {
   return (
     <section className="mt-9">
       <div className="mb-3 flex flex-col gap-1">
-        <h2 className="eyebrow">{title}</h2>
+        <h2 className="display text-xl">{title}</h2>
         {note && <p className="max-w-2xl text-xs text-muted">{note}</p>}
       </div>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">{children}</div>
+      <div className="commodity-grid">{children}</div>
     </section>
   );
 }

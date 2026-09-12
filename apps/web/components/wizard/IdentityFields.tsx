@@ -1,5 +1,9 @@
 "use client";
 
+import { Textarea } from "@/components/agentic/Textarea";
+import { Input } from "@/components/agentic/Input";
+import { Button } from "@/components/agentic/Button";
+import { Field as AgenticField, Label } from "@/components/agentic/Fieldset";
 import { useRef, useState } from "react";
 import { toast } from "@/components/Toast";
 
@@ -71,42 +75,70 @@ export default function IdentityFields({
   }
 
   return (
-    <section className="glass flex flex-col gap-3.5 p-5 sm:px-[22px]" aria-labelledby="launch-identity-heading">
+    <section
+      className="launch-section glass flex flex-col gap-3.5 p-5 sm:px-[22px]"
+      aria-labelledby="launch-identity-heading"
+    >
       <div className="flex items-center gap-2.5">
-        <span className="step-badge" style={{ background: "rgba(153,69,255,0.2)", color: "#C9B6FF" }}>
+        <span
+          className="step-badge"
+          style={{
+            background: "var(--color-bg-secondary)",
+            color: "var(--color-content-primary)",
+          }}
+        >
           2
         </span>
-        <h2 id="launch-identity-heading" className="display text-base font-semibold">
+        <h2
+          id="launch-identity-heading"
+          className="display text-base font-semibold"
+        >
           Identity
         </h2>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-[96px_1fr_1fr] sm:items-start">
+      <div className="identity-main">
         <div className="flex flex-col gap-1.5">
-          <span className="sr-only">Image</span>
-          <button
+          <span className="text-sm font-medium">Market image</span>
+          <Button
+            plain
             type="button"
             onClick={() => inputRef.current?.click()}
             aria-label="Upload the market image"
-            className="tap relative grid h-24 w-24 place-items-center gap-1.5 overflow-hidden rounded-2xl border border-dashed border-white/20 transition-colors hover:border-positive/50"
+            className="image-upload"
+            disabled={uploading}
           >
             {value.imagePreview ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={value.imagePreview} alt="" className="h-full w-full object-cover" />
+              <img
+                src={value.imagePreview}
+                alt=""
+                className="h-full w-full object-cover"
+              />
             ) : (
               <span className="flex flex-col items-center gap-1.5">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8B90A6" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="var(--color-content-secondary)"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  aria-hidden="true"
+                >
                   <path d="M12 16V4M6 10l6-6 6 6M4 20h16" />
                 </svg>
-                <span className="mono text-[10px] text-muted">image</span>
+                <span className="text-sm font-medium">Upload image</span>
+                <span className="text-xs text-muted">PNG, JPG or WEBP · up to 5 MB</span>
               </span>
             )}
             {uploading && (
-              <span className="mono absolute inset-0 grid place-items-center bg-black/60 text-[11px]">
+              <span className="mono absolute inset-0 grid place-items-center bg-black/60 text-white text-[11px]">
                 Uploading…
               </span>
             )}
-          </button>
+          </Button>
           <input
             ref={inputRef}
             type="file"
@@ -117,7 +149,7 @@ export default function IdentityFields({
         </div>
 
         <Field label="Name" htmlFor="launch-name">
-          <input
+          <Input
             id="launch-name"
             value={value.name}
             onChange={(e) => set("name", e.target.value)}
@@ -128,10 +160,15 @@ export default function IdentityFields({
         </Field>
 
         <Field label="Ticker" htmlFor="launch-ticker">
-          <input
+          <Input
             id="launch-ticker"
             value={value.ticker}
-            onChange={(e) => set("ticker", e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))}
+            onChange={(e) =>
+              set(
+                "ticker",
+                e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""),
+              )
+            }
             placeholder="GOLDFISH"
             maxLength={12}
             className="field mono bg-transparent outline-none"
@@ -141,18 +178,36 @@ export default function IdentityFields({
 
       <div className="grid gap-3 sm:grid-cols-3">
         <Field label="Website" htmlFor="launch-website">
-          <input id="launch-website" value={value.website} onChange={(e) => set("website", e.target.value)} placeholder="https://" className="field bg-transparent outline-none" />
+          <Input
+            id="launch-website"
+            value={value.website}
+            onChange={(e) => set("website", e.target.value)}
+            placeholder="https://"
+            className="field bg-transparent outline-none"
+          />
         </Field>
         <Field label="X" htmlFor="launch-x">
-          <input id="launch-x" value={value.x} onChange={(e) => set("x", e.target.value)} placeholder="@handle" className="field bg-transparent outline-none" />
+          <Input
+            id="launch-x"
+            value={value.x}
+            onChange={(e) => set("x", e.target.value)}
+            placeholder="@handle"
+            className="field bg-transparent outline-none"
+          />
         </Field>
         <Field label="Telegram" htmlFor="launch-tg">
-          <input id="launch-tg" value={value.telegram} onChange={(e) => set("telegram", e.target.value)} placeholder="t.me/" className="field bg-transparent outline-none" />
+          <Input
+            id="launch-tg"
+            value={value.telegram}
+            onChange={(e) => set("telegram", e.target.value)}
+            placeholder="t.me/"
+            className="field bg-transparent outline-none"
+          />
         </Field>
       </div>
 
       <Field label="Description" htmlFor="launch-desc">
-        <textarea
+        <Textarea
           id="launch-desc"
           value={value.description}
           onChange={(e) => set("description", e.target.value)}
@@ -167,13 +222,19 @@ export default function IdentityFields({
   );
 }
 
-function Field({ label, htmlFor, children }: { label: string; htmlFor: string; children: React.ReactNode }) {
+function Field({
+  label,
+  htmlFor,
+  children,
+}: {
+  label: string;
+  htmlFor: string;
+  children: React.ReactNode;
+}) {
   return (
-    <div className="flex flex-col gap-1.5">
-      <label htmlFor={htmlFor} className="text-xs font-semibold text-muted">
-        {label}
-      </label>
+    <AgenticField>
+      <Label htmlFor={htmlFor}>{label}</Label>
       {children}
-    </div>
+    </AgenticField>
   );
 }

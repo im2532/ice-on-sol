@@ -1,0 +1,306 @@
+/* ==========================================================================
+   STEPPER COMPONENT
+   Source: Figma AGENTIC-DESIGN-SYSTEM v1.2 — node 4001:1105
+   ========================================================================== */
+
+/* --- Stepper Container --- */
+.stepper {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  align-items: flex-start;
+}
+
+/* ==========================================================================
+   STEP (Pill)
+   Variants: completed | active | disabled
+   States: default | hover (completed & disabled only)
+   ========================================================================== */
+.step {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  padding: var(--space-8) var(--space-24) var(--space-8) var(--space-8);
+  border-radius: var(--radius-full);
+  position: relative;
+  transition: border-color 0.15s ease;
+}
+
+/* --- Step: Completed --- */
+.stepCompleted {
+  composes: step;
+  border: 0.5px solid var(--color-border-subtle);
+  background: var(--color-bg-secondary);
+  cursor: pointer;
+}
+
+.stepCompleted::after,
+.stepDisabled::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: transparent;
+  transition: background 0.15s ease;
+}
+
+.stepCompleted:hover {
+  border-color: var(--color-border-medium);
+}
+
+.stepCompleted:focus-visible,
+.stepDisabled:focus-visible {
+  outline: 2px solid var(--color-border-strong);
+  outline-offset: 2px;
+}
+
+.stepCompleted:hover::after {
+  background: var(--color-hover-overlay);
+}
+
+/* --- Step: Active (no hover variant in Figma) --- */
+.stepActive {
+  composes: step;
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-bg-primary);
+}
+
+/* --- Step: Disabled --- */
+.stepDisabled {
+  composes: step;
+  border: 0.5px solid var(--color-border-subtle);
+  background: var(--color-bg-primary);
+  cursor: pointer;
+}
+
+.stepDisabled:hover {
+  border-color: var(--color-border-medium);
+}
+
+.stepDisabled:hover::after {
+  background: var(--color-hover-overlay);
+}
+
+/* Text color darkens from secondary → primary on disabled hover */
+.stepDisabled:hover .stepLabel {
+  color: var(--color-content-primary);
+}
+
+/* --- Step Icon Circle --- */
+.stepIcon {
+  width: var(--icon-32);
+  height: var(--icon-32);
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.stepIconCompleted {
+  composes: stepIcon;
+  background: var(--color-bg-secondary);
+  color: var(--color-content-icon);
+}
+
+.stepIconActive {
+  composes: stepIcon;
+  background: var(--color-bg-primary);
+  color: var(--color-content-primary);
+}
+
+.stepIconDisabled {
+  composes: stepIcon;
+  color: var(--color-content-icon);
+}
+
+/* --- Step Label --- */
+.stepLabel {
+  font-family: var(--font-body);
+  font-size: var(--text-small);
+  line-height: var(--leading-small);
+  letter-spacing: var(--tracking-normal);
+  white-space: nowrap;
+  text-align: center;
+  position: relative;
+  transition: color 0.15s ease;
+}
+
+.stepLabelCompleted {
+  composes: stepLabel;
+  font-weight: var(--weight-regular);
+  color: var(--color-content-primary);
+}
+
+.stepLabelActive {
+  composes: stepLabel;
+  font-weight: var(--weight-medium);
+  color: var(--color-content-primary);
+}
+
+.stepLabelDisabled {
+  composes: stepLabel;
+  font-weight: var(--weight-regular);
+  color: var(--color-content-secondary);
+}
+
+/* ==========================================================================
+   SUBSTEPS WRAPPER
+   ========================================================================== */
+.substepsWrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: var(--space-8) 0 var(--space-8) var(--space-16);
+}
+
+/* ==========================================================================
+   SUBSTEP
+   States: completed | active | disabled
+   ========================================================================== */
+.substep {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  padding: var(--space-4) 0;
+}
+
+/* --- Substep Dot Container --- */
+.substepDot {
+  width: var(--icon-16);
+  height: var(--icon-16);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* Disabled: small gray circle outline */
+.substepDotDisabled {
+  composes: substepDot;
+  position: relative;
+}
+
+.substepDotDisabled::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border: 1.5px solid var(--color-content-secondary);
+  border-radius: var(--radius-full);
+}
+
+/* --- Substep Label --- */
+.substepLabel {
+  font-family: var(--font-label);
+  font-size: var(--text-button);
+  font-weight: var(--weight-regular);
+  line-height: var(--leading-small);
+  letter-spacing: var(--tracking-spacious);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.substepLabelCompleted {
+  composes: substepLabel;
+  color: var(--color-content-success);
+}
+
+.substepLabelActive {
+  composes: substepLabel;
+  background: linear-gradient(to right, var(--color-content-primary) 19.231%, var(--color-content-disabled));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.substepLabelDisabled {
+  composes: substepLabel;
+  color: var(--color-content-secondary);
+}
+
+/* --- Connector (vertical line between completed and active) --- */
+.connector {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--icon-16);
+  height: var(--icon-16);
+}
+
+.connectorLine {
+  width: 1.5px;
+  height: 100%;
+  background: var(--color-content-primary);
+  border-radius: 1px;
+}
+
+/* ==========================================================================
+   PULSATING DOT
+   ========================================================================== */
+.pulsatingDot {
+  position: relative;
+  width: var(--icon-16);
+  height: var(--icon-16);
+  flex-shrink: 0;
+}
+
+.dotCore {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  background: var(--color-content-primary);
+  border-radius: var(--radius-full);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.dotRingOuter {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border: 1px solid var(--color-content-primary);
+  border-radius: var(--radius-full);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  opacity: 0;
+  animation: pulseOuter 2s ease-in-out infinite;
+}
+
+.dotRingInner {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border: 1px solid var(--color-content-primary);
+  border-radius: var(--radius-full);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  opacity: 0;
+  animation: pulseInner 2s ease-in-out 0.3s infinite;
+}
+
+@keyframes pulseOuter {
+  0% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0.4;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(2.2);
+    opacity: 0;
+  }
+}
+
+@keyframes pulseInner {
+  0% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0.3;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(2);
+    opacity: 0;
+  }
+}

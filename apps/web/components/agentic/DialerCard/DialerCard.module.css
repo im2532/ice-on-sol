@@ -1,0 +1,568 @@
+/* ==========================================================================
+   DialerCard — Dialer UI Card Component
+   Source: Figma GENIUS-DESIGN-SYSTEM-V.1 node 8007:10646
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   Card Shell
+   -------------------------------------------------------------------------- */
+.card {
+  position: relative;
+  width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-24);
+  padding: var(--space-24);
+  background: var(--color-bg-primary);
+  border: 0.5px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+  box-shadow:
+    var(--shadow-elevation-1),
+    var(--shadow-inset-bottom);
+}
+
+/* --------------------------------------------------------------------------
+   Header — Avatar, Timer, Name, Status
+   -------------------------------------------------------------------------- */
+.header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-24);
+}
+
+.headerInfo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-16);
+}
+
+/* Single avatar */
+.avatarSingle {
+  width: 64px;
+  height: 64px;
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.avatarSingle img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Avatar group — overlapping stack */
+.avatarGroup {
+  display: flex;
+  align-items: center;
+  padding-right: 8px;
+}
+
+.avatarGroupItem {
+  width: 32px;
+  height: 64px;
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  flex-shrink: 0;
+  margin-right: -8px;
+}
+
+.avatarGroupItem img {
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+}
+
+/* Timer */
+.timer {
+  font-family: var(--font-body);
+  font-size: var(--text-large);
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-regular);
+  letter-spacing: var(--tracking-tight);
+  color: var(--color-content-primary);
+  text-align: center;
+}
+
+/* Caller info block */
+.callerInfo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+  text-align: center;
+  width: 100%;
+}
+
+.callerName {
+  font-family: var(--font-body);
+  font-size: var(--text-regular);
+  font-weight: var(--weight-regular);
+  line-height: var(--leading-regular);
+  color: var(--color-content-primary);
+}
+
+.callStatus {
+  font-family: var(--font-body);
+  font-size: var(--text-tiny);
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-tiny);
+}
+
+.statusOnHold {
+  color: var(--color-content-warning-text);
+}
+
+.statusInProgress {
+  color: var(--color-content-success);
+}
+
+/* --------------------------------------------------------------------------
+   Action Bar — 5 circular buttons
+   -------------------------------------------------------------------------- */
+.actionBar {
+  display: flex;
+  gap: var(--space-4);
+  align-items: flex-start;
+}
+
+.actionButton {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  overflow: hidden;
+  cursor: pointer;
+  border: none;
+  padding: 0;
+  transition:
+    background-color var(--duration-hover) ease,
+    box-shadow var(--duration-hover) ease;
+}
+
+.actionButtonSecondary {
+  composes: actionButton;
+  background: var(--color-button-secondary);
+  border: 0.5px solid var(--color-border-subtle);
+  color: var(--color-content-primary);
+}
+
+.actionButtonPrimary {
+  composes: actionButton;
+  background: var(--color-button-primary);
+  border: 0.5px solid var(--color-border-strong);
+  color: var(--color-content-on-primary);
+}
+
+.actionButtonDestructive {
+  composes: actionButton;
+  background: var(--color-bg-attention);
+  border: none;
+  color: var(--color-content-on-primary);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .actionButtonSecondary:hover {
+    background: var(--color-bg-secondary);
+  }
+
+  .actionButtonPrimary:hover {
+    background: #1a1a1a;
+  }
+
+  .actionButtonDestructive:hover {
+    background: #bf0a0a;
+  }
+}
+
+.actionButtonSecondary:focus-visible,
+.actionButtonPrimary:focus-visible,
+.actionButtonDestructive:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus-ring);
+}
+
+.actionButtonSecondary:active {
+  background: var(--color-bg-tertiary);
+}
+
+.actionButtonPrimary:active {
+  background: #333333;
+}
+
+.actionButtonDestructive:active {
+  background: #a80909;
+}
+
+/* --------------------------------------------------------------------------
+   Divider
+   -------------------------------------------------------------------------- */
+.divider {
+  width: 100%;
+  height: 0;
+  border: none;
+  border-top: 1px solid var(--color-border-subtle);
+  margin: 0;
+}
+
+/* --------------------------------------------------------------------------
+   Search
+   -------------------------------------------------------------------------- */
+.searchContainer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+  width: 100%;
+}
+
+.searchInputWrapper {
+  display: flex;
+  align-items: center;
+  height: 32px;
+  background: var(--color-bg-primary);
+  border: 0.5px solid var(--color-border-subtle);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  transition: border-color var(--duration-hover) ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .searchInputWrapper:hover {
+    border-color: var(--color-border-medium);
+  }
+}
+
+.searchInputWrapper:focus-within {
+  border-color: var(--color-border-medium);
+  box-shadow: var(--shadow-focus-ring);
+}
+
+.searchIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-8);
+  color: var(--color-content-secondary);
+  flex-shrink: 0;
+}
+
+.searchInput {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: var(--font-body);
+  font-size: var(--text-small);
+  font-weight: var(--weight-regular);
+  line-height: var(--leading-small);
+  color: var(--color-content-primary);
+  height: 100%;
+}
+
+.searchInput::placeholder {
+  color: var(--color-content-secondary);
+}
+
+.searchShortcut {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-2);
+  background: var(--color-bg-secondary);
+  border-radius: var(--radius-xs);
+  margin-right: var(--space-8);
+  flex-shrink: 0;
+}
+
+.searchShortcutText {
+  font-family: var(--font-label);
+  font-size: var(--text-super-tiny);
+  font-weight: var(--weight-regular);
+  line-height: var(--leading-buttons);
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--color-content-secondary);
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* --------------------------------------------------------------------------
+   User Card — shared between contacts and participants
+   -------------------------------------------------------------------------- */
+.userList {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.userRow {
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.userCard {
+  flex: 1;
+  display: flex;
+  gap: var(--space-12);
+  align-items: center;
+  padding: var(--space-8);
+  border-radius: var(--radius-md);
+  min-width: 0;
+}
+
+.userAvatar {
+  width: 40px;
+  height: 32px;
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.userAvatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.userAvatarMutedBadge {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 15px;
+  height: 15px;
+  border-radius: var(--radius-full);
+  background: var(--color-bg-primary);
+  border: 0.5px solid var(--color-bg-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-content-primary);
+}
+
+.userInfo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+.userName {
+  font-family: var(--font-body);
+  font-size: var(--text-small);
+  font-weight: var(--weight-regular);
+  line-height: var(--leading-small);
+  color: var(--color-content-primary);
+  white-space: nowrap;
+}
+
+.userRole {
+  font-family: var(--font-body);
+  font-size: var(--text-tiny);
+  font-weight: var(--weight-regular);
+  line-height: var(--leading-tiny);
+  color: var(--color-content-secondary);
+  white-space: nowrap;
+}
+
+/* --------------------------------------------------------------------------
+   Contact "Add to Call" Button
+   -------------------------------------------------------------------------- */
+.addToCallButton {
+  height: 32px;
+  padding: var(--space-8) var(--space-12);
+  background: var(--color-button-secondary);
+  border: 0.5px solid var(--color-border-subtle);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-label);
+  font-size: var(--text-super-tiny);
+  font-weight: var(--weight-regular);
+  line-height: var(--leading-buttons);
+  letter-spacing: var(--tracking-spacious);
+  text-transform: uppercase;
+  color: var(--color-content-primary);
+  transition:
+    background-color var(--duration-hover) ease,
+    box-shadow var(--duration-hover) ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .addToCallButton:hover {
+    background: var(--color-bg-secondary);
+  }
+}
+
+.addToCallButton:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus-ring);
+}
+
+.addToCallButton:active {
+  background: var(--color-bg-tertiary);
+}
+
+/* --------------------------------------------------------------------------
+   Participants Section
+   -------------------------------------------------------------------------- */
+.participantsSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  width: 100%;
+}
+
+.participantsLabel {
+  font-family: var(--font-body);
+  font-size: var(--text-small);
+  font-weight: var(--weight-regular);
+  line-height: var(--leading-small);
+  color: var(--color-content-primary);
+}
+
+.participantActions {
+  display: flex;
+  gap: var(--space-4);
+  align-items: center;
+  flex-shrink: 0;
+}
+
+/* Small pill buttons (Mute / Drop / Unmute) */
+.smallButton {
+  height: 24px;
+  padding: var(--space-8);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  cursor: pointer;
+  white-space: nowrap;
+  font-family: var(--font-label);
+  font-size: var(--text-super-tiny);
+  font-weight: var(--weight-regular);
+  line-height: var(--leading-buttons);
+  letter-spacing: var(--tracking-spacious);
+  text-transform: uppercase;
+  border: none;
+  transition:
+    background-color var(--duration-hover) ease,
+    box-shadow var(--duration-hover) ease;
+}
+
+.muteButton {
+  composes: smallButton;
+  background: var(--color-button-secondary);
+  border: 0.5px solid var(--color-border-subtle);
+  color: var(--color-content-primary);
+}
+
+.unmuteButton {
+  composes: smallButton;
+  background: var(--color-button-primary);
+  border: 0.5px solid var(--color-button-primary);
+  color: var(--color-content-on-primary);
+  letter-spacing: var(--tracking-normal);
+}
+
+.dropButton {
+  composes: smallButton;
+  background: var(--color-button-secondary);
+  border: 0.5px solid var(--color-border-attention);
+  color: var(--color-bg-attention);
+  letter-spacing: var(--tracking-normal);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .muteButton:hover {
+    background: var(--color-bg-secondary);
+  }
+
+  .unmuteButton:hover {
+    background: #1a1a1a;
+  }
+
+  .dropButton:hover {
+    background: var(--color-bg-attention-light);
+  }
+}
+
+.muteButton:focus-visible,
+.unmuteButton:focus-visible,
+.dropButton:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus-ring);
+}
+
+.muteButton:active {
+  background: var(--color-bg-tertiary);
+}
+
+.unmuteButton:active {
+  background: #333333;
+}
+
+.dropButton:active {
+  background: #ffcaca;
+}
+
+/* --------------------------------------------------------------------------
+   Metadata Section — Duration, Contacts, Voicemail, Text Sent
+   -------------------------------------------------------------------------- */
+.metadataSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  align-items: flex-end;
+  justify-content: center;
+  width: 100%;
+}
+
+.metadataRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.metadataLabel {
+  font-family: var(--font-label);
+  font-size: var(--text-button);
+  font-weight: var(--weight-regular);
+  line-height: var(--leading-tiny);
+  letter-spacing: var(--tracking-spacious);
+  text-transform: uppercase;
+  color: var(--color-content-secondary);
+  white-space: nowrap;
+}
+
+.metadataBadge {
+  height: 24px;
+  padding: var(--space-2) var(--space-10);
+  background: var(--color-badge-bg-gray);
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: flex-start;
+  font-family: var(--font-label);
+  font-size: var(--text-tiny);
+  font-weight: var(--weight-regular);
+  line-height: var(--leading-small);
+  letter-spacing: var(--tracking-tight);
+  color: var(--color-badge-label-gray);
+  white-space: nowrap;
+  text-transform: capitalize;
+}

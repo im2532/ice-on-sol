@@ -1,0 +1,23 @@
+/* VirtualScroller — windowed list rendering */
+
+.container {
+  overflow-y: auto;
+  position: relative;
+}
+
+.spacer {
+  position: relative;
+  width: 100%;
+}
+
+.viewport {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  will-change: transform;
+}
+
+.item {
+  width: 100%;
+}
