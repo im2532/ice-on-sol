@@ -8,7 +8,7 @@ ANCHOR_VERSION ?= 0.31.1
 # and avm/anchor activate it automatically on `anchor build`.
 ANCHOR_BUILD := anchor build
 
-.PHONY: bootstrap toolchain deps build idl web-deployments test devnet-deploy init-programs seed breakers ice alt smoke db keeper web fmt
+.PHONY: bootstrap toolchain deps build idl web-deployments test devnet-deploy init-programs seed breakers ice alt smoke transfer-authority db keeper web fmt
 
 ## One-shot dev machine setup (macOS / Linux). Idempotent.
 bootstrap: toolchain deps
@@ -64,6 +64,10 @@ breakers:
 ## Localnet/devnet stand-in for the stonk.fun $ICE launch: ICE mint + DAMM v2 ICE/USDC pool + buyback.initialize
 ice:
 	pnpm exec tsx scripts/create-ice-localnet.ts
+
+## Hands every admin role (+ upgrade authority with UPGRADE=1) to NEW_AUTHORITY (Squads vault). Dry run unless EXECUTE=1.
+transfer-authority:
+	pnpm exec tsx scripts/transfer-authority.ts --to $(NEW_AUTHORITY) $(if $(EXECUTE),--execute,) $(if $(UPGRADE),--upgrade,)
 
 ## Read-only health check of the current cluster deployment (SMOKE_TRADE=1 adds a 1 USDC round-trip)
 smoke:

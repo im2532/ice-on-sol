@@ -9,7 +9,9 @@
  *            max_deviation_bps / deviation_window_secs from the tier
  *
  * Env: RPC_URL, ADMIN_KEYPAIR_PATH, PEG_DESK_PROGRAM_ID, [SOLANA_CLUSTER=devnet], [IDL_DIR=target/idl],
- *      [ONLY=GLD,SLV] (subset), [DRY_RUN=1] (print, don't send), [DISABLE=1] (set every breaker to 0)
+ *      [ONLY=GLD,SLV] (subset), [DRY_RUN=1] (print, don't send), [DISABLE=1] (set every breaker to 0),
+ *      [BREAKER_SCALE_BPS=10000] — scales the daily caps (not the deviation bound). MAINNET_RUNBOOK's guarded
+ *      launch uses 1000 (10% of the tier caps) until the audit is in; raise it in steps afterwards.
  * Usage: pnpm exec tsx scripts/set-breakers.ts
  */
 import { existsSync, readFileSync } from "node:fs";
@@ -38,6 +40,7 @@ async function main(): Promise<void> {
   const only = process.env.ONLY ? new Set(process.env.ONLY.split(",").map((s) => s.trim())) : null;
   const dryRun = process.env.DRY_RUN === "1";
   const disable = process.env.DISABLE === "1";
+  const scaleBps = BigInt(process.env.BREAKER_SCALE_BPS ?? "10000");
 
   const bySymbol = new Map(COMMODITIES.map((c) => [c.symbol, c]));
   let sent = 0;
@@ -50,9 +53,10 @@ async function main(): Promise<void> {
       continue;
     }
     const view = await pegDesk.fetchCommodityView(entry.symbol);
+    const base = breakerCaps(reg.tier, view.supplyCap, reg.params.supplyCapUsd);
     const target = disable
       ? { dailyMintCap: 0n, dailyRedeemCap: 0n, maxDeviationBps: 0, deviationWindowSecs: 0 }
-      : breakerCaps(reg.tier, view.supplyCap, reg.params.supplyCapUsd);
+      : { ...base, dailyMintCap: (base.dailyMintCap * scaleBps) / 10_000n, dailyRedeemCap: (base.dailyRedeemCap * scaleBps) / 10_000n };
     const b = view.breakers;
     const same =
       b.dailyMintCap === target.dailyMintCap &&

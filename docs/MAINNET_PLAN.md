@@ -91,6 +91,8 @@ holders × 96 epochs/day — budget that from the fee split, not the infra line.
 
 ## 7. Mainnet deployment (runbook)
 
+The executable version of this section, with costs and the guarded-launch policy, is **docs/MAINNET_RUNBOOK.md** (12 Sep).
+
 1. Deploy the four programs from the verified build via the multisig; run `anchor keys sync` against mainnet IDs; verify on-chain hash.
 2. `make init-programs` on mainnet (fee_router, distributor, buyback configs, peg_desk global) via multisig.
 3. Register the mainnet USDC mint in the registry; create the commodity mints + Metaplex metadata; seed oracle feeds.
