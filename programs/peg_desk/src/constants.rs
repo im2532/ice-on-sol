@@ -45,6 +45,13 @@ pub const DEFAULT_MIN_INTERVAL: u32 = 0;
 /// Keeper-posted publish_time may be at most this far ahead of the validator clock.
 pub const MAX_FUTURE_SKEW_SECS: i64 = 10;
 
+// ---- circuit breakers ------------------------------------------------------
+/// Length of the rolling mint / redeem window (24 h). Windows are fixed buckets anchored at the
+/// first trade after expiry, not sliding — cheap and good enough to bound damage per day.
+pub const DAILY_WINDOW_SECS: i64 = 86_400;
+/// Upper bound for `Commodity.max_deviation_bps` (100%).
+pub const MAX_DEVIATION_BPS: u16 = 10_000;
+
 // ---- metadata limits (Metaplex) --------------------------------------------
 pub const MAX_NAME_LEN: usize = 32;
 pub const MAX_URI_LEN: usize = 200;

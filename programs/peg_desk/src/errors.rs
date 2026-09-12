@@ -53,4 +53,10 @@ pub enum PegDeskError {
     ZeroAmount,
     #[msg("Oracle price must be positive")]
     NonPositivePrice,
+    #[msg("Daily mint cap exceeded for this commodity")]
+    DailyMintCapExceeded,
+    #[msg("Daily redemption cap exceeded for this commodity")]
+    DailyRedeemCapExceeded,
+    #[msg("Oracle price deviates too far from the last accepted price")]
+    PriceDeviationTooLarge,
 }

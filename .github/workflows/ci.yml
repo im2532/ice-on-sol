@@ -1,0 +1,115 @@
+# ICEmarkets CI — docs/MAINNET_PLAN.md §2.
+#
+#   unit      cargo test (pricing / split math, no validator) + SDK tests (PDA vectors, Meteora layout)
+#   localnet  anchor test — the four programs on a local validator with mainnet Meteora/Pyth/Metaplex clones
+#   devnet    nightly smoke against the live devnet deployment (needs secrets; skipped on forks)
+#
+# Toolchain versions mirror Anchor.toml / Makefile. The Solana download is cached by version.
+name: ci
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  schedule:
+    - cron: "17 4 * * *" # nightly devnet smoke (UTC)
+  workflow_dispatch:
+
+env:
+  ANCHOR_VERSION: "0.31.1"
+  SOLANA_VERSION: "4.2.2"
+  CARGO_TERM_COLOR: always
+
+jobs:
+  unit:
+    name: unit (cargo + sdk)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: cargo test (pricing, split math)
+        run: cargo test --workspace --lib
+      - name: cargo fmt / clippy (advisory until the audit freeze)
+        continue-on-error: true
+        run: |
+          cargo fmt --all -- --check
+          cargo clippy --workspace --all-targets -- -D warnings
+      - uses: pnpm/action-setup@v4
+        with: { version: 9 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - name: registry validate + sdk tests
+        run: |
+          pnpm registry:validate
+          pnpm --filter @icemarkets/sdk test
+      - name: typecheck
+        run: pnpm typecheck
+
+  localnet:
+    name: anchor test (localnet)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with: { key: anchor }
+      - name: Solana ${{ env.SOLANA_VERSION }}
+        id: solana
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/solana
+          key: solana-${{ env.SOLANA_VERSION }}
+      - if: steps.solana.outputs.cache-hit != 'true'
+        run: sh -c "$(curl -sSfL https://release.anza.xyz/v${SOLANA_VERSION}/install)"
+      - run: echo "$HOME/.local/share/solana/install/active_release/bin" >> "$GITHUB_PATH"
+      - name: Anchor ${{ env.ANCHOR_VERSION }}
+        run: |
+          cargo install --git https://github.com/coral-xyz/anchor --tag v${ANCHOR_VERSION} anchor-cli --locked --force
+          anchor --version && solana --version
+      - uses: pnpm/action-setup@v4
+        with: { version: 9 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - name: test wallet
+        run: solana-keygen new --no-bip39-passphrase --silent --outfile ~/.config/solana/id.json
+      - name: fixtures are current
+        run: |
+          python3 tests/fixtures/gen_fixtures.py >/dev/null
+          git diff --exit-code -- tests/fixtures
+      - name: anchor test
+        run: anchor test
+      - name: verifiable build hash (informational)
+        if: github.event_name == 'push'
+        run: |
+          for p in peg_desk fee_router distributor buyback; do
+            echo "$p $(sha256sum target/deploy/$p.so | cut -c1-16)"
+          done
+
+  devnet-smoke:
+    name: devnet smoke (nightly)
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      RPC_URL: ${{ secrets.DEVNET_RPC_URL }}
+      SOLANA_CLUSTER: devnet
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 9 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - name: keys
+        if: env.RPC_URL != ''
+        run: |
+          mkdir -p ~/.config/solana
+          echo '${{ secrets.DEVNET_SMOKE_KEYPAIR }}' > ~/.config/solana/smoke.json
+          echo "ADMIN_KEYPAIR_PATH=$HOME/.config/solana/smoke.json" >> "$GITHUB_ENV"
+      - name: smoke
+        if: env.RPC_URL != ''
+        run: pnpm exec tsx scripts/devnet-smoke.ts

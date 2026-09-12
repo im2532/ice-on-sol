@@ -257,3 +257,22 @@ Recorded after the first build pass so the doc matches the code. These are the d
 - `@icemarkets/registry` resolves to `src/` by default and to `dist/` under the `icemarkets-dist` export condition
   (`node --conditions=icemarkets-dist`, used by the compiled indexer).
 
+
+**peg_desk circuit breakers (v0.5, 2026-09-12 — MAINNET_PLAN §2)**
+- `Commodity` gains, carved from `_reserved` (byte-compatible; all-zero = disabled, so every existing devnet account
+  keeps working unchanged): `daily_mint_cap: u64` (COIN base units), `daily_redeem_cap: u64` (USDC base units),
+  `window_start: i64`, `window_minted: u64`, `window_redeemed: u64`, `max_deviation_bps: u16`,
+  `deviation_window_secs: u32`; `_reserved` shrinks to `[u8; 17]`.
+- `buy` / `buy_exact_out` / `sell` enforce (in `quote`) `PriceDeviationTooLarge` when
+  `|oracle − last_price| / last_price > max_deviation_bps` while `now − last_publish_time ≤ deviation_window_secs`
+  (any oracle kind; an expired or missing anchor re-anchors on the trade), and (after the reserve checks)
+  `DailyMintCapExceeded` / `DailyRedeemCapExceeded` against a fixed 24 h window (`DAILY_WINDOW_SECS`) that rolls
+  forward lazily on the first trade after expiry (both counters reset together).
+- `set_commodity_params` takes four new `Option` fields (`daily_mint_cap`, `daily_redeem_cap`, `max_deviation_bps`
+  ≤ 10 000, `deviation_window_secs`). New admin-only `clear_price_anchor()` sets `last_price = 0` so a legitimate gap
+  (limit-up day) can trade before the window elapses; `sweep_spread_fees` is blocked until the next trade re-anchors.
+- Error codes appended (stable): `DailyMintCapExceeded`, `DailyRedeemCapExceeded`, `PriceDeviationTooLarge`.
+- Defaults per risk tier live in `packages/registry/src/risk.ts` and are applied with `make breakers`
+  (`scripts/set-breakers.ts`); `create_commodity` leaves them at 0.
+- fee_router: `cpi_ext/dbc.rs` `MIGRATE_DAMM_V2_DISCRIMINATOR` (derived from the wrong name) →
+  `MIGRATION_DAMM_V2_DISCRIMINATOR` = sha256("global:migration_damm_v2"); it was never CPI'd, so no behaviour change.

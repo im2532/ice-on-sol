@@ -18,7 +18,7 @@ const disc = (preimage: string): number[] => [...createHash("sha256").update(pre
 const INSTRUCTIONS: { program: string; name: string; note: string }[] = [
   { program: "dbc", name: "claim_trading_fee", note: "fee_router::claim_dbc CPI" },
   { program: "dbc", name: "partner_withdraw_surplus", note: "fee_router::claim_dbc_surplus CPI" },
-  { program: "dbc", name: "migrate_damm_v2", note: "keeper top-level only (not CPI'd)" },
+  { program: "dbc", name: "migration_damm_v2", note: "keeper top-level only (not CPI'd)" },
   { program: "cp_amm", name: "claim_position_fee", note: "fee_router::claim_damm CPI" },
   { program: "cp_amm", name: "swap", note: "buyback::convert_and_burn CPI" },
   { program: "fee_router", name: "withdraw_for_epoch", note: "distributor::open_epoch CPI" },

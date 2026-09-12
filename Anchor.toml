@@ -64,3 +64,30 @@ address = "HDwcJBJXjL9FpJ7UBsYBtaDjsBUhuLCUYoz3zr8SWWaQ"
 # Metaplex Token Metadata
 [[test.validator.clone]]
 address = "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"
+
+# ---- fee_router test fixtures (tests/fixtures/gen_fixtures.py) -----------------------------------
+# Hand-built DBC PoolConfig / VirtualPool / peg_desk Commodity accounts so tests/fee_router.test.ts can
+# exercise register_pool's byte-level validation (incl. the negative paths) without a live launch.
+[[test.validator.account]]
+address = "HEuEEif8uLwwPECyzYbZGWSVuuVcaoDGQmn8o38J62Np"
+filename = "tests/fixtures/dbc_config_ok.json"
+
+[[test.validator.account]]
+address = "7Xke1NsZSYVRjERtMFZUX4xRDKLGyqD6kqPUcfECEg9z"
+filename = "tests/fixtures/dbc_config_bad_claimer.json"
+
+[[test.validator.account]]
+address = "Hpztj6QmXrHWuk7BjJsFvQkV8FDV232mWt6fvj2Q48sF"
+filename = "tests/fixtures/dbc_pool_ok.json"
+
+[[test.validator.account]]
+address = "Cf438MFoPUnhrozwjpEpWNaB4ZizrpDx8TC5Xkiqh3uB"
+filename = "tests/fixtures/dbc_pool_bad_claimer.json"
+
+[[test.validator.account]]
+address = "CauywrraDTx275XqfNmY6qEVPDxra7MUDjEzrnWEre42"
+filename = "tests/fixtures/dbc_pool_wrong_config.json"
+
+[[test.validator.account]]
+address = "Hadz2dBkVJAQ9ouQ39rby2MWYkrhKhqCa3wXz5dvqxvB"
+filename = "tests/fixtures/commodity_gldx.json"

@@ -84,6 +84,10 @@ function params(overrides: Record<string, unknown>) {
     supplyCap: null,
     perTxCap: null,
     pythMinSignatures: null,
+    dailyMintCap: null,
+    dailyRedeemCap: null,
+    maxDeviationBps: null,
+    deviationWindowSecs: null,
     ...overrides,
   };
 }
@@ -505,5 +509,132 @@ describe("peg_desk", () => {
         .rpc(),
       "Unauthorized",
     );
+  });
+
+  // ---- circuit breakers ---------------------------------------------------------------------
+
+  const clearAnchor = (signer: Keypair) =>
+    program.methods
+      .clearPriceAnchor()
+      .accountsPartial({ authority: signer.publicKey, config: configPda, commodity: gldPda })
+      .signers(signer === admin ? [] : [signer])
+      .rpc();
+
+  async function waitForChainPast(t: number): Promise<void> {
+    for (let i = 0; i < 40; i++) {
+      if ((await chainNow()) > t) return;
+      await new Promise((r) => setTimeout(r, 500));
+    }
+    throw new Error(`chain clock did not pass ${t}`);
+  }
+
+  it("breakers are disabled by default and only the admin may set them", async () => {
+    const c = await program.account.commodity.fetch(gldPda);
+    expect(c.dailyMintCap.toNumber()).to.equal(0);
+    expect(c.dailyRedeemCap.toNumber()).to.equal(0);
+    expect(c.maxDeviationBps).to.equal(0);
+    expect(c.deviationWindowSecs).to.equal(0);
+
+    await expectAnchorError(
+      program.methods
+        .setCommodityParams(params({ dailyMintCap: new BN(ONE) }))
+        .accountsPartial({ authority: keeper.publicKey, config: configPda, commodity: gldPda })
+        .signers([keeper])
+        .rpc(),
+      "Unauthorized",
+    );
+    await expectAnchorError(setParams({ maxDeviationBps: 10_001 }), "InvalidParams");
+    await expectAnchorError(clearAnchor(keeper), "Unauthorized");
+  });
+
+  it("daily mint cap bounds minting within the window and is lifted by cap = 0", async () => {
+    await pushPrice(GLD_PRICE);
+    // Earlier tests already minted inside the current 24 h window: cap relative to that.
+    let c = await program.account.commodity.fetch(gldPda);
+    const minted0 = c.windowMinted.toNumber();
+    const windowStart = c.windowStart.toNumber();
+    expect(windowStart).to.be.greaterThan(0);
+    await setParams({ dailyMintCap: new BN(minted0 + ONE) }); // +1 GLD for the rest of the window
+
+    // ask $2,002 → $1,201.20 buys exactly 0.6 GLD
+    await buy(1_201_200_000);
+    c = await program.account.commodity.fetch(gldPda);
+    expect(c.windowMinted.toNumber()).to.equal(minted0 + (6 * ONE) / 10);
+    expect(c.windowStart.toNumber()).to.equal(windowStart);
+
+    // 0.5 more would make 1.1 > cap
+    await expectAnchorError(buy(1_001 * ONE), "DailyMintCapExceeded");
+    // exactly to the cap is fine (0.4 GLD = $800.80)
+    await buy(800_800_000);
+    c = await program.account.commodity.fetch(gldPda);
+    expect(c.windowMinted.toNumber()).to.equal(minted0 + ONE);
+    // even 1 base unit over ($0.002002 → 1 base unit of GLD)
+    await expectAnchorError(buy(2_002), "DailyMintCapExceeded");
+
+    // cap 0 = unlimited; the counter keeps accumulating for observers
+    await setParams({ dailyMintCap: new BN(0) });
+    await buy(2_002 * ONE);
+    c = await program.account.commodity.fetch(gldPda);
+    expect(c.windowMinted.toNumber()).to.equal(minted0 + 2 * ONE);
+  });
+
+  it("daily redemption cap bounds USDC paid out by sell", async () => {
+    await pushPrice(GLD_PRICE);
+    let c = await program.account.commodity.fetch(gldPda);
+    const redeemed0 = c.windowRedeemed.toNumber();
+    await setParams({ dailyRedeemCap: new BN(redeemed0 + 500 * ONE) }); // +$500 for the rest of the window
+
+    // bid $1,998 → 0.1 GLD pays $199.80
+    await sell(ONE / 10);
+    c = await program.account.commodity.fetch(gldPda);
+    expect(c.windowRedeemed.toNumber()).to.equal(redeemed0 + 199_800_000);
+
+    // +$399.60 would be $599.40 > $500
+    await expectAnchorError(sell(ONE / 5), "DailyRedeemCapExceeded");
+    // +$299.70 → $499.50 fits
+    await sell((15 * ONE) / 100);
+    c = await program.account.commodity.fetch(gldPda);
+    expect(c.windowRedeemed.toNumber()).to.equal(redeemed0 + 499_500_000);
+    // buys are not affected by the redeem cap
+    await buy(2_002 * ONE);
+
+    await setParams({ dailyRedeemCap: new BN(0) });
+  });
+
+  it("price-deviation breaker refuses a jump vs the last accepted price while the anchor is fresh", async () => {
+    await pushPrice(GLD_PRICE);
+    await buy(2_002 * ONE); // anchor = $2,000 now
+    await setParams({ maxDeviationBps: 200, deviationWindowSecs: 600 });
+
+    // keeper posts +4% (allowed by max_move_bps = 5%) — trades against it must fail both ways
+    await pushPrice(Math.round(GLD_PRICE * 1.04));
+    await expectAnchorError(buy(2_002 * ONE), "PriceDeviationTooLarge");
+    await expectAnchorError(sell(ONE / 10), "PriceDeviationTooLarge");
+
+    // admin clears the anchor → the next trade re-anchors at $2,080
+    await clearAnchor(admin);
+    await buy(2_082_080_000); // ask $2,082.08 → 1 GLD
+    let c = await program.account.commodity.fetch(gldPda);
+    expect(c.lastPrice.toNumber()).to.equal(Math.round(GLD_PRICE * 1.04));
+
+    // −0.96% from the new anchor is inside 2%
+    await pushPrice(Math.round(GLD_PRICE * 1.03));
+    await buy(200 * ONE);
+    c = await program.account.commodity.fetch(gldPda);
+    expect(c.lastPrice.toNumber()).to.equal(Math.round(GLD_PRICE * 1.03));
+  });
+
+  it("price-deviation anchor expires after deviation_window_secs", async () => {
+    await setParams({ maxDeviationBps: 200, deviationWindowSecs: 1 });
+    const c = await program.account.commodity.fetch(gldPda);
+    // wait until the anchor (last_publish_time) is strictly older than the 1 s window
+    await waitForChainPast(c.lastPublishTime.toNumber() + 1);
+
+    // −2.9% vs the $2,060 anchor would trip a fresh anchor; an expired one re-anchors instead
+    await pushPrice(GLD_PRICE);
+    await buy(2_002 * ONE);
+    expect((await program.account.commodity.fetch(gldPda)).lastPrice.toNumber()).to.equal(GLD_PRICE);
+
+    await setParams({ maxDeviationBps: 0, deviationWindowSecs: 0 });
   });
 });

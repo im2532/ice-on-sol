@@ -78,6 +78,8 @@ struct Quote {
     price: u64,
     publish_time: i64,
     spread_bps: u16,
+    /// Validator clock at quote time (window accounting).
+    now: i64,
 }
 
 fn quote<'info>(
@@ -122,6 +124,20 @@ fn quote<'info>(
         PegDeskError::ConfidenceTooWide
     );
 
+    // Circuit breaker: a jump vs the last accepted price (any oracle kind) is refused while the
+    // anchor is fresh. Protects the reserve from a bad feed print / compromised keeper key.
+    require!(
+        pricing::deviation_ok(
+            op.price,
+            c.last_price,
+            c.last_publish_time,
+            clock.unix_timestamp,
+            c.max_deviation_bps,
+            c.deviation_window_secs,
+        ),
+        PegDeskError::PriceDeviationTooLarge
+    );
+
     let pre_ratio =
         pricing::reserve_ratio_bps(a.reserve_vault.amount, a.coin_mint.supply, op.price);
     let spread_bps = pricing::effective_spread_bps(
@@ -141,6 +157,7 @@ fn quote<'info>(
         price: op.price,
         publish_time: op.publish_time,
         spread_bps,
+        now: clock.unix_timestamp,
     })
 }
 
@@ -175,6 +192,23 @@ fn execute_buy(
         post_ratio >= a.config.reserve_halt_bps as u64,
         PegDeskError::ReserveRatioTooLow
     );
+
+    // Circuit breaker: rolling daily mint cap.
+    let (win_start, win_minted) = pricing::window_add(
+        a.commodity.window_start,
+        a.commodity.window_minted,
+        q.now,
+        DAILY_WINDOW_SECS,
+        a.commodity.daily_mint_cap,
+        coin_out,
+    )
+    .ok_or_else(|| error!(PegDeskError::DailyMintCapExceeded))?;
+    if win_start != a.commodity.window_start {
+        // New window: redemptions restart too.
+        a.commodity.window_redeemed = 0;
+    }
+    a.commodity.window_start = win_start;
+    a.commodity.window_minted = win_minted;
 
     // 1. USDC user → reserve vault.
     token::transfer(
@@ -301,6 +335,22 @@ pub fn handle_sell<'info>(
         usdc_out <= a.reserve_vault.amount,
         PegDeskError::ReserveInsufficient
     );
+
+    // Circuit breaker: rolling daily redemption cap (USDC out).
+    let (win_start, win_redeemed) = pricing::window_add(
+        a.commodity.window_start,
+        a.commodity.window_redeemed,
+        q.now,
+        DAILY_WINDOW_SECS,
+        a.commodity.daily_redeem_cap,
+        usdc_out,
+    )
+    .ok_or_else(|| error!(PegDeskError::DailyRedeemCapExceeded))?;
+    if win_start != a.commodity.window_start {
+        a.commodity.window_minted = 0;
+    }
+    a.commodity.window_start = win_start;
+    a.commodity.window_redeemed = win_redeemed;
 
     // 1. Burn COIN from the user (user signs).
     token::burn(

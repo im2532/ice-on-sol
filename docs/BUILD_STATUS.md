@@ -1,4 +1,27 @@
-# Build status — 11 Sep 2026 (v0.4: FIRST GREEN BUILD)
+# Build status — 12 Sep 2026 (v0.5: FIRST DEVNET MARKET + HARDENING PASS 1)
+
+**v0.5 (12 Sep 2026).** First market launched end to end on devnet: `$BG` / BURGER, tx `5Ye5tS73…CPon` — one transaction
+running `peg_desk.buy_exact_out` → `DBC initialize_virtual_pool` (+ Metaplex metadata) → creator first swap →
+`fee_router.register_pool`. Fixes that made it work (tag `devnet-first-launch`): SDK Associated Token Program constant was a
+mistyped address (broke every ATA derivation); fee_router / distributor configs were never initialised (`make init-programs`);
+launch split into two transactions with per-tx signers and a resumable half-completed state; curve leftover 100k tokens so
+Meteora's builder rounding fits; combined config-and-pool builder; empty `NEXT_PUBLIC_TREASURY` / `data:` image URIs handled.
+Still open from that run: indexer not running (keeper fee cycle won't see `$BG`), `make alt` must be re-run (old ATAs in the
+table), orphan DBC config `4Nmk…` (~0.01 SOL), balances near zero (wallet 0.014, admin 0.028, keeper ~0.09 SOL).
+
+**Hardening pass 1 (MAINNET_PLAN §2, uncompiled in the cloud — run `anchor test` + `pnpm --filter @icemarkets/sdk test` on the Mac):**
+| What | Where |
+|---|---|
+| peg_desk circuit breakers: daily mint / redeem caps (24 h window), price-deviation bound vs last accepted price (any oracle), admin `clear_price_anchor` | `programs/peg_desk/src/{state,constants,errors,pricing}.rs`, `instructions/{trade,commodity}.rs`; CONTRACTS §6 |
+| Per-tier defaults + apply script | `packages/registry/src/risk.ts`, `scripts/set-breakers.ts`, `make breakers` |
+| SDK: `setCommodityParamsIx`, `clearPriceAnchorIx`, `CommodityAccountView.breakers` | `packages/sdk/src/pegDesk.ts` |
+| Rust unit tests: deviation / window math (6), fee split rounding (4) | `pricing.rs`, `fee_router/src/instructions/common.rs` (`split_amounts` extracted) |
+| Localnet: 5 new peg_desk breaker cases; new `fee_router` suite (16: split/keepers/pause, every `register_pool` negative path via hand-built DBC fixtures, PDA-signer-only vault withdrawals, treasury, admin rotation); new `buyback` suite (4) | `tests/{peg_desk,fee_router,buyback}.test.ts`, `tests/fixtures/` (`gen_fixtures.py`, deterministic; wired in `Anchor.toml`) |
+| SDK: every PDA/ATA derivation pinned to independently computed vectors + differential test vs spl-token (complements the devnet-fixture `pda.test.ts` added on the Mac) | `packages/sdk/src/pdaVectors.test.ts` |
+| SDK: Meteora CPI discriminators, account order/flags/args and raw offsets pinned to the installed `@meteora-ag` SDK IDLs (DBC 0.2.1, cp-amm 0.2.4) | `packages/sdk/src/meteoraLayout.test.ts` — found the unused `migrate_damm_v2` constant was derived from the wrong name (real ix: `migration_damm_v2`); fixed |
+| CI: cargo test + SDK tests + typecheck; `anchor test` on a local validator; nightly devnet smoke | `.github/workflows/ci.yml`, `scripts/devnet-smoke.ts` (`make smoke`; `SMOKE_TRADE=1` adds a 1 USDC round-trip) |
+
+After `anchor build` on the Mac: `make breakers` (DRY_RUN=1 first) applies the tier defaults to the 50 seeded devnet coins.
 
 **v0.3.** Product decision: there are no more MVP/v1.1/v2 release phases — everything in this doc and in `docs/ICEMARKETS_SPEC.md` §5 ships in one release. Added the **watches** category (10 coins — SUBMARINER, DAYTONA, GMTMASTER, DATEJUST, ROYALOAK, NAUTILUS, SPEEDMSTR, SANTOS, GSHOCK, TISSOTPRX) and the **WATCHX** index coin to `packages/registry/src/commodities.ts`, relayed like the CS2/TCG coins via `relaySwitchboardPrices` (`watch_*_median3` jobs → `sources/watches.ts` WatchCharts + a Chrono24 stub, `switchboard/jobs/watch-median.json`), with `data/manual-prices.json` seed prices as a bootstrap fallback when fewer than 2 live sources respond. Added **Collector Crypt** (`sources/collectorcrypt.ts`) as an additional price source — a third leg for both `watch_*` and `tcg_*` Switchboard relays via the new `sources/median.ts` `median3` helper (drops nulls, requires ≥2, rejects >25% outliers). Registry is now 93 commodities + 3 index coins (PMX, WATCHX, CS2X).
 

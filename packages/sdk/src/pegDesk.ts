@@ -74,6 +74,19 @@ export interface CommodityAccountView {
   reserveHaltBps: bigint;
   /** Outstanding coin supply (from the mint), for reserve-ratio math. */
   supply: bigint;
+  /** Circuit breakers (state.rs). Caps are base units; 0 = disabled. */
+  breakers: {
+    dailyMintCap: bigint;
+    dailyRedeemCap: bigint;
+    windowStart: bigint;
+    windowMinted: bigint;
+    windowRedeemed: bigint;
+    maxDeviationBps: number;
+    deviationWindowSecs: number;
+    /** Deviation anchor (`last_price`, 1e8) and its publish time; 0 = unanchored. */
+    lastPrice: bigint;
+    lastPublishTime: bigint;
+  };
   /** Composite only: the leg Commodity PDAs, in `legs` order. */
   legs?: PublicKey[];
   /** Composite only: per-leg data needed to price the index client-side and build remaining accounts. */
@@ -203,6 +216,17 @@ export class PegDeskClient {
       reserveWarnBps: big(cfg.reserveWarnBps),
       reserveHaltBps: big(cfg.reserveHaltBps),
       supply: BigInt(supply.value.amount),
+      breakers: {
+        dailyMintCap: big(c.dailyMintCap ?? 0),
+        dailyRedeemCap: big(c.dailyRedeemCap ?? 0),
+        windowStart: big(c.windowStart ?? 0),
+        windowMinted: big(c.windowMinted ?? 0),
+        windowRedeemed: big(c.windowRedeemed ?? 0),
+        maxDeviationBps: Number(c.maxDeviationBps ?? 0),
+        deviationWindowSecs: Number(c.deviationWindowSecs ?? 0),
+        lastPrice: big(c.lastPrice ?? 0),
+        lastPublishTime: big(c.lastPublishTime ?? 0),
+      },
       legs: legCount > 0 ? (c.legs as { commodity: PublicKey }[]).slice(0, legCount).map((l) => l.commodity) : undefined,
       legViews: legCount > 0 ? await this.fetchLegViews((c.legs as { commodity: PublicKey; weightBps: number }[]).slice(0, legCount)) : undefined,
     };
@@ -621,6 +645,72 @@ export class PegDeskClient {
         coinMint: params.coinMint,
         reserveVault: this.reservePda(commodityPda),
         metadata,
+      })
+      .instruction();
+  }
+
+  /**
+   * `set_commodity_params(SetParamsArgs)` — admin. Every field is optional; omitted fields are left
+   * unchanged on-chain. Circuit breakers: `dailyMintCap` (coin base units), `dailyRedeemCap`
+   * (USDC base units), `maxDeviationBps`, `deviationWindowSecs` — 0 disables each one.
+   */
+  async setCommodityParamsIx(params: {
+    admin: PublicKey;
+    symbol: string;
+    sessionKind?: number;
+    feedId?: Buffer;
+    fxFeedId?: Buffer;
+    quoteScale?: number;
+    baseSpreadBps?: number;
+    closedSpreadBps?: number;
+    confMultBps?: number;
+    maxAgeOpenSec?: number;
+    maxAgeClosedSec?: number;
+    supplyCap?: bigint;
+    perTxCap?: bigint;
+    pythMinSignatures?: number;
+    dailyMintCap?: bigint;
+    dailyRedeemCap?: bigint;
+    maxDeviationBps?: number;
+    deviationWindowSecs?: number;
+  }): Promise<TransactionInstruction> {
+    const opt = <T>(v: T | undefined): T | null => (v === undefined ? null : v);
+    const optBn = (v: bigint | undefined) => (v === undefined ? null : new BN(v.toString()));
+    return this.program.methods
+      .setCommodityParams({
+        sessionKind: opt(params.sessionKind),
+        feedId: params.feedId ? Array.from(params.feedId) : null,
+        fxFeedId: params.fxFeedId ? Array.from(params.fxFeedId) : null,
+        quoteScale: opt(params.quoteScale),
+        baseSpreadBps: opt(params.baseSpreadBps),
+        closedSpreadBps: opt(params.closedSpreadBps),
+        confMultBps: opt(params.confMultBps),
+        maxAgeOpen: opt(params.maxAgeOpenSec),
+        maxAgeClosed: opt(params.maxAgeClosedSec),
+        supplyCap: optBn(params.supplyCap),
+        perTxCap: optBn(params.perTxCap),
+        pythMinSignatures: opt(params.pythMinSignatures),
+        dailyMintCap: optBn(params.dailyMintCap),
+        dailyRedeemCap: optBn(params.dailyRedeemCap),
+        maxDeviationBps: opt(params.maxDeviationBps),
+        deviationWindowSecs: opt(params.deviationWindowSecs),
+      })
+      .accountsPartial({
+        authority: params.admin,
+        config: this.configPda(),
+        commodity: this.commodityPda(params.symbol),
+      })
+      .instruction();
+  }
+
+  /** `clear_price_anchor()` — admin; resets the deviation breaker anchor after a legitimate gap. */
+  async clearPriceAnchorIx(params: { admin: PublicKey; symbol: string }): Promise<TransactionInstruction> {
+    return this.program.methods
+      .clearPriceAnchor()
+      .accountsPartial({
+        authority: params.admin,
+        config: this.configPda(),
+        commodity: this.commodityPda(params.symbol),
       })
       .instruction();
   }

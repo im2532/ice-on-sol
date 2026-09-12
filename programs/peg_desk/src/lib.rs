@@ -85,6 +85,11 @@ pub mod peg_desk {
         instructions::commodity::handle_set_status(ctx, status)
     }
 
+    /// Admin: reset the price-deviation breaker anchor (`Commodity.last_price = 0`).
+    pub fn clear_price_anchor(ctx: Context<UpdateCommodity>) -> Result<()> {
+        instructions::commodity::handle_clear_price_anchor(ctx)
+    }
+
     /// remaining_accounts: the leg Commodity accounts, in `legs` order.
     pub fn set_index_legs(ctx: Context<UpdateCommodity>, legs: Vec<IndexLeg>) -> Result<()> {
         instructions::commodity::handle_set_index_legs(ctx, legs)

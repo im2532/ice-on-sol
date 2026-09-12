@@ -166,7 +166,24 @@ pub struct Commodity {
     /// Carved from CONTRACTS.md `_reserved[64]` (byte-compatible): minimum Wormhole signatures
     /// accepted on a partially-verified Pyth update. 0 = require `VerificationLevel::Full`.
     pub pyth_min_signatures: u8,
-    pub _reserved: [u8; 63],
+
+    // ---- circuit breakers (carved from `_reserved`; all-zero == disabled, so accounts created
+    //      before this field set existed keep working unchanged) ----------------------------
+    /// Max COIN minted per rolling `DAILY_WINDOW_SECS` window (base units). 0 = no cap.
+    pub daily_mint_cap: u64,
+    /// Max USDC paid out by `sell` per window (base units). 0 = no cap.
+    pub daily_redeem_cap: u64,
+    /// Start of the current window (unix). Rolled forward lazily by trades.
+    pub window_start: i64,
+    pub window_minted: u64,
+    pub window_redeemed: u64,
+    /// Max |oracle − last_price| / last_price in bps accepted by a trade while the previous
+    /// trade's oracle read is younger than `deviation_window_secs`. 0 = disabled.
+    /// Applies to every oracle kind (KeeperPrice.max_move_bps only bounds keeper posts).
+    pub max_deviation_bps: u16,
+    /// How long `last_price` stays the deviation anchor after `last_publish_time` (secs).
+    pub deviation_window_secs: u32,
+    pub _reserved: [u8; 17],
 }
 
 impl Commodity {

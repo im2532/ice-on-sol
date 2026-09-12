@@ -73,6 +73,15 @@ fn transfer_from_router<'info>(
     )
 }
 
+/// Pure split math: holders and buyback shares round DOWN, protocol takes the remainder (dust).
+/// `None` only if `holders_bps + buyback_bps > 10_000` (checked at config time, so never in practice).
+pub fn split_amounts(amount: u64, holders_bps: u16, buyback_bps: u16) -> Option<(u64, u64, u64)> {
+    let holders = ((amount as u128) * (holders_bps as u128) / (BPS_DENOM as u128)) as u64;
+    let buyback = ((amount as u128) * (buyback_bps as u128) / (BPS_DENOM as u128)) as u64;
+    let protocol = amount.checked_sub(holders)?.checked_sub(buyback)?;
+    Some((holders, buyback, protocol))
+}
+
 /// Internal `split`: moves `amount` of quote COIN from the router receiving ATA into
 /// holder_vault[pool] / buyback_vault[coin] / treasury[coin]. Rounding dust goes to protocol.
 pub fn split<'info>(
@@ -84,11 +93,7 @@ pub fn split<'info>(
     if amount == 0 {
         return Ok(());
     }
-    let holders = ((amount as u128) * (s.holders_bps as u128) / (BPS_DENOM as u128)) as u64;
-    let buyback = ((amount as u128) * (s.buyback_bps as u128) / (BPS_DENOM as u128)) as u64;
-    let protocol = amount
-        .checked_sub(holders)
-        .and_then(|v| v.checked_sub(buyback))
+    let (holders, buyback, protocol) = split_amounts(amount, s.holders_bps, s.buyback_bps)
         .ok_or(error!(RouterError::MathOverflow))?;
 
     transfer_from_router(&s, &s.holder_vault, holders)?;
@@ -119,4 +124,40 @@ pub fn split<'info>(
         protocol
     });
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::split_amounts;
+
+    #[test]
+    fn split_50_25_25_exact() {
+        assert_eq!(split_amounts(1_000_000, 5_000, 2_500), Some((500_000, 250_000, 250_000)));
+    }
+
+    #[test]
+    fn split_dust_goes_to_protocol_and_sums_to_amount() {
+        for amount in [1u64, 3, 7, 9_999, 10_001, 123_456_789, u64::MAX] {
+            for (h, b) in [(5_000u16, 2_500u16), (6_000, 2_000), (3_333, 3_333), (10_000, 0), (0, 0)] {
+                let (hs, bs, ps) = split_amounts(amount, h, b).unwrap();
+                assert_eq!(hs as u128 + bs as u128 + ps as u128, amount as u128, "amount {amount} {h}/{b}");
+                // holders/buyback never exceed their exact share; protocol never below its exact share
+                assert!(hs as u128 * 10_000 <= amount as u128 * h as u128);
+                assert!(bs as u128 * 10_000 <= amount as u128 * b as u128);
+                assert!(ps as u128 * 10_000 >= amount as u128 * (10_000 - h as u128 - b as u128));
+            }
+        }
+    }
+
+    #[test]
+    fn split_tiny_amounts_never_lose_tokens() {
+        // 1 base unit: both rounded shares are 0, protocol keeps it — nothing burns or reverts
+        assert_eq!(split_amounts(1, 5_000, 2_500), Some((0, 0, 1)));
+        assert_eq!(split_amounts(3, 5_000, 2_500), Some((1, 0, 2)));
+    }
+
+    #[test]
+    fn split_over_100_percent_is_none() {
+        assert_eq!(split_amounts(100, 8_000, 3_000), None);
+    }
 }

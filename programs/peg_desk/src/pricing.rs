@@ -210,10 +210,128 @@ pub fn weighted_sum(legs: &[(u64, u16)]) -> Option<u64> {
     to_u64(acc / B)
 }
 
+// ---- circuit breakers -------------------------------------------------------
+
+/// `|price − last| / last` in bps, rounded up. `None` if `last == 0` or on overflow.
+pub fn deviation_bps(price: u64, last: u64) -> Option<u64> {
+    if last == 0 {
+        return None;
+    }
+    let diff = price.abs_diff(last) as u128;
+    to_u64(ceil_div(diff.checked_mul(B)?, last as u128)?)
+}
+
+/// Whether a trade at `price` is allowed by the deviation breaker.
+/// Disabled when `max_deviation_bps == 0`; the anchor is ignored once it is older than
+/// `window_secs` (so a market that gapped over a weekend re-anchors on its first trade) or
+/// when there is no anchor yet (`last_price == 0`).
+pub fn deviation_ok(
+    price: u64,
+    last_price: u64,
+    last_publish_time: i64,
+    now: i64,
+    max_deviation_bps: u16,
+    window_secs: u32,
+) -> bool {
+    if max_deviation_bps == 0 || last_price == 0 {
+        return true;
+    }
+    if now.saturating_sub(last_publish_time) > window_secs as i64 {
+        return true;
+    }
+    match deviation_bps(price, last_price) {
+        Some(d) => d <= max_deviation_bps as u64,
+        None => false,
+    }
+}
+
+/// Rolling-window accounting for the daily caps. Returns the `(window_start, used)` to store
+/// after adding `amount`, or `None` if the cap would be exceeded. `cap == 0` disables the check
+/// but still rolls the window so the counters stay meaningful for observers.
+pub fn window_add(
+    window_start: i64,
+    used: u64,
+    now: i64,
+    window_secs: i64,
+    cap: u64,
+    amount: u64,
+) -> Option<(i64, u64)> {
+    let (start, used) = if now.saturating_sub(window_start) >= window_secs {
+        (now, 0u64)
+    } else {
+        (window_start, used)
+    };
+    let new_used = used.checked_add(amount)?;
+    if cap > 0 && new_used > cap {
+        return None;
+    }
+    Some((start, new_used))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::constants::{STATUS_HALTED, STATUS_OPEN};
+
+    // ---- circuit breakers ----------------------------------------------------
+
+    #[test]
+    fn deviation_bps_rounds_up_and_is_symmetric() {
+        assert_eq!(deviation_bps(102 * USD, 100 * USD), Some(200));
+        assert_eq!(deviation_bps(98 * USD, 100 * USD), Some(200));
+        // 1 unit over 3e8 → 0.0000033 bps → rounds up to 1
+        assert_eq!(deviation_bps(3 * USD + 1, 3 * USD), Some(1));
+        assert_eq!(deviation_bps(5, 0), None);
+        // result does not fit u64 → None (callers treat None as "reject")
+        assert_eq!(deviation_bps(u64::MAX, 1), None);
+        assert!(!deviation_ok(u64::MAX, 1, 1_000, 1_001, 10_000, 60));
+    }
+
+    #[test]
+    fn deviation_disabled_or_unanchored_passes() {
+        assert!(deviation_ok(999 * USD, 100 * USD, 1_000, 1_001, 0, 60));
+        assert!(deviation_ok(999 * USD, 0, 1_000, 1_001, 100, 60));
+    }
+
+    #[test]
+    fn deviation_inside_window_is_bounded() {
+        // +2% with a 1% bound, anchor 10 s old, 60 s window → rejected
+        assert!(!deviation_ok(102 * USD, 100 * USD, 1_000, 1_010, 100, 60));
+        // exactly at the bound passes
+        assert!(deviation_ok(101 * USD, 100 * USD, 1_000, 1_010, 100, 60));
+        // -0.5% passes
+        assert!(deviation_ok(995 * USD / 10, 100 * USD, 1_000, 1_010, 100, 60));
+    }
+
+    #[test]
+    fn deviation_anchor_expires() {
+        // same +2% move but the anchor is 61 s old with a 60 s window → re-anchor, pass
+        assert!(deviation_ok(102 * USD, 100 * USD, 1_000, 1_061, 100, 60));
+        // 60 s old is still inside the window (strict >)
+        assert!(!deviation_ok(102 * USD, 100 * USD, 1_000, 1_060, 100, 60));
+        // clock skew (anchor in the future) never disables the check
+        assert!(!deviation_ok(102 * USD, 100 * USD, 2_000, 1_000, 100, 60));
+    }
+
+    #[test]
+    fn window_add_accumulates_and_caps() {
+        let day = 86_400;
+        let t0 = 1_800_000_000; // a real unix time: a never-traded commodity has window_start == 0
+        // fresh commodity: window_start 0 is "expired", so the first trade opens a window at `now`
+        assert_eq!(window_add(0, 0, t0, day, 100, 60), Some((t0, 60)));
+        // same window: accumulates
+        assert_eq!(window_add(t0, 60, t0 + 500, day, 100, 40), Some((t0, 100)));
+        // one over the cap
+        assert_eq!(window_add(t0, 60, t0 + 500, day, 100, 41), None);
+        // last second of the window still counts against it
+        assert_eq!(window_add(t0, 60, t0 + day - 1, day, 100, 41), None);
+        // window expired: resets and the same amount now fits
+        assert_eq!(window_add(t0, 60, t0 + day, day, 100, 41), Some((t0 + day, 41)));
+        // cap 0 = unlimited, but the window still rolls
+        assert_eq!(window_add(t0, 60, t0 + day, day, 0, u64::MAX / 2), Some((t0 + day, u64::MAX / 2)));
+        // overflow is a rejection, not a wrap
+        assert_eq!(window_add(t0, u64::MAX, t0 + 1, day, 0, 1), None);
+    }
 
     const USD: u64 = PRICE_SCALE; // $1 at 1e8
     const ONE_USDC: u64 = 1_000_000;

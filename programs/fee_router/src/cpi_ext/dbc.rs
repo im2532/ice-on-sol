@@ -9,9 +9,11 @@ use super::{build_ix, ix_data, meta};
 pub const CLAIM_TRADING_FEE_DISCRIMINATOR: [u8; 8] = [8, 236, 89, 49, 152, 125, 177, 81];
 /// sha256("global:partner_withdraw_surplus")[..8] — verify against IDL
 pub const PARTNER_WITHDRAW_SURPLUS_DISCRIMINATOR: [u8; 8] = [168, 173, 72, 100, 201, 98, 38, 92];
-/// sha256("global:migrate_damm_v2")[..8] — verify against IDL. NOT CPI'd (keeper sends it top-level);
-/// kept here so the keeper/SDK and this crate share one source.
-pub const MIGRATE_DAMM_V2_DISCRIMINATOR: [u8; 8] = [240, 234, 220, 49, 150, 233, 1, 60];
+/// sha256("global:migration_damm_v2")[..8] — the DBC instruction is named `migration_damm_v2`
+/// (IDL 0.2.1), not `migrate_damm_v2`; the previous value here was derived from the wrong name.
+/// NOT CPI'd (the keeper sends it top-level via the Meteora SDK); kept as a reference and pinned
+/// by packages/sdk/src/meteoraLayout.test.ts.
+pub const MIGRATION_DAMM_V2_DISCRIMINATOR: [u8; 8] = [156, 169, 230, 103, 53, 228, 80, 64];
 
 /// Accounts for `claim_trading_fee(max_base_amount: u64, max_quote_amount: u64)`.
 /// VERIFY ORDER vs IDL (ClaimTradingFeesCtx).

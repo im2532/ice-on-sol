@@ -197,7 +197,14 @@ pub fn handle_create_commodity(
         c.leg_count = 0;
         c.bump = ctx.bumps.commodity;
         c.pyth_min_signatures = args.pyth_min_signatures;
-        c._reserved = [0u8; 63];
+        c.daily_mint_cap = 0;
+        c.daily_redeem_cap = 0;
+        c.window_start = 0;
+        c.window_minted = 0;
+        c.window_redeemed = 0;
+        c.max_deviation_bps = 0;
+        c.deviation_window_secs = 0;
+        c._reserved = [0u8; 17];
     }
 
     // Metaplex metadata. Mint authority = mint_auth PDA (signs via seeds), update authority = admin.
@@ -271,6 +278,11 @@ pub struct SetParamsArgs {
     pub supply_cap: Option<u64>,
     pub per_tx_cap: Option<u64>,
     pub pyth_min_signatures: Option<u8>,
+    // ---- circuit breakers (0 = disabled) ----
+    pub daily_mint_cap: Option<u64>,
+    pub daily_redeem_cap: Option<u64>,
+    pub max_deviation_bps: Option<u16>,
+    pub deviation_window_secs: Option<u32>,
 }
 
 pub fn handle_set_commodity_params(
@@ -328,6 +340,19 @@ pub fn handle_set_commodity_params(
     if let Some(v) = args.pyth_min_signatures {
         c.pyth_min_signatures = v;
     }
+    if let Some(v) = args.daily_mint_cap {
+        c.daily_mint_cap = v;
+    }
+    if let Some(v) = args.daily_redeem_cap {
+        c.daily_redeem_cap = v;
+    }
+    if let Some(v) = args.max_deviation_bps {
+        require!(v <= MAX_DEVIATION_BPS, PegDeskError::InvalidParams);
+        c.max_deviation_bps = v;
+    }
+    if let Some(v) = args.deviation_window_secs {
+        c.deviation_window_secs = v;
+    }
 
     validate_market_params(
         c.base_spread_bps,
@@ -358,6 +383,17 @@ pub fn handle_set_feed_account(
 }
 
 /// Keeper: Open↔Closed and anything→Halted. Admin: any transition (only admin may leave Halted).
+/// Admin: drop the deviation anchor so the next trade re-anchors at the current oracle price.
+/// Use after a legitimate gap (e.g. a limit-up session) trips `PriceDeviationTooLarge` before
+/// `deviation_window_secs` has elapsed. `last_publish_time` is kept so the monotonic guard holds.
+pub fn handle_clear_price_anchor(ctx: Context<UpdateCommodity>) -> Result<()> {
+    require_admin(&ctx.accounts.config, &ctx.accounts.authority.key())?;
+    let key = ctx.accounts.commodity.key();
+    ctx.accounts.commodity.last_price = 0;
+    emit!(ParamsUpdated { commodity: key });
+    Ok(())
+}
+
 pub fn handle_set_status(ctx: Context<UpdateCommodity>, status: u8) -> Result<()> {
     let who = ctx.accounts.authority.key();
     let admin = is_admin(&ctx.accounts.config, &who);

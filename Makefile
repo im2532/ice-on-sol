@@ -8,7 +8,7 @@ ANCHOR_VERSION ?= 0.31.1
 # and avm/anchor activate it automatically on `anchor build`.
 ANCHOR_BUILD := anchor build
 
-.PHONY: bootstrap toolchain deps build idl web-deployments test devnet-deploy init-programs seed alt db keeper web fmt
+.PHONY: bootstrap toolchain deps build idl web-deployments test devnet-deploy init-programs seed breakers alt smoke db keeper web fmt
 
 ## One-shot dev machine setup (macOS / Linux). Idempotent.
 bootstrap: toolchain deps
@@ -56,6 +56,14 @@ init-programs:
 ## Creates GlobalConfig + all Tier-A commodities on the current cluster
 seed:
 	pnpm exec tsx scripts/seed-commodities.ts
+
+## Applies per-tier circuit breakers (daily mint/redeem caps, price-deviation bound) to every seeded commodity
+breakers:
+	pnpm exec tsx scripts/set-breakers.ts
+
+## Read-only health check of the current cluster deployment (SMOKE_TRADE=1 adds a 1 USDC round-trip)
+smoke:
+	pnpm exec tsx scripts/devnet-smoke.ts
 
 ## Creates/extends the launch Address Lookup Table (after `seed`) and publishes it to the web app
 alt:
