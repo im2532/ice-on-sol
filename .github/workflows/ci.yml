@@ -35,8 +35,7 @@ jobs:
         run: |
           cargo fmt --all -- --check
           cargo clippy --workspace --all-targets -- -D warnings
-      - uses: pnpm/action-setup@v4
-        with: { version: 9 }
+      - uses: pnpm/action-setup@v4 # version from package.json#packageManager
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: pnpm }
       - run: pnpm install --frozen-lockfile
@@ -69,8 +68,7 @@ jobs:
         run: |
           cargo install --git https://github.com/coral-xyz/anchor --tag v${ANCHOR_VERSION} anchor-cli --locked --force
           anchor --version && solana --version
-      - uses: pnpm/action-setup@v4
-        with: { version: 9 }
+      - uses: pnpm/action-setup@v4 # version from package.json#packageManager
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: pnpm }
       - run: pnpm install --frozen-lockfile
@@ -99,8 +97,7 @@ jobs:
       SOLANA_CLUSTER: devnet
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with: { version: 9 }
+      - uses: pnpm/action-setup@v4 # version from package.json#packageManager
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: pnpm }
       - run: pnpm install --frozen-lockfile
