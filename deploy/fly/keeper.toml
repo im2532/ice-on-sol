@@ -1,0 +1,38 @@
+# fly deploy -c deploy/fly/keeper.toml
+# First time: fly apps create icemarkets-keeper && fly secrets set -a icemarkets-keeper \
+#   RPC_URL=... HELIUS_API_KEY=... PYTH_API_KEY=... DATABASE_URL=... KEEPER_KEYPAIR_JSON="$(cat keys/keeper.json)"
+app = "icemarkets-keeper"
+primary_region = "iad"   # close to Helius/Jito US endpoints; change to match your RPC region
+
+[build]
+  dockerfile = "../Dockerfile"
+  # build context = repo root (run `fly deploy` from the repo root)
+
+[env]
+  SOLANA_CLUSTER = "devnet"
+  HEALTHZ_PORT = "8787"
+  LOG_LEVEL = "info"
+
+[processes]
+  keeper = "pnpm --filter @icemarkets/keeper start"
+
+# One keeper only — two would double-post oracle prices and race epochs.
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "1gb"
+  processes = ["keeper"]
+
+[http_service]
+  internal_port = 8787
+  force_https = true
+  auto_stop_machines = "off"     # always on: the payout clock cannot sleep
+  auto_start_machines = true
+  min_machines_running = 1
+  processes = ["keeper"]
+
+  [[http_service.checks]]
+    interval = "30s"
+    timeout = "5s"
+    grace_period = "60s"
+    method = "GET"
+    path = "/healthz"

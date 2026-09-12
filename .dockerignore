@@ -1,0 +1,13 @@
+node_modules
+**/node_modules
+.git
+target
+!target/idl
+.anchor
+apps/web
+apps/web/.next
+docs
+tests
+keys
+*.patch
+.env*

@@ -1,0 +1,56 @@
+# fly deploy -c deploy/fly/indexer.toml
+# First time: fly apps create icemarkets-indexer && fly secrets set -a icemarkets-indexer \
+#   RPC_URL=... DATABASE_URL=... HELIUS_WEBHOOK_AUTH_HEADER=...
+# Then point the Helius webhook at https://icemarkets-indexer.fly.dev/helius (webhook process, port 4001)
+# and apps/web NEXT_PUBLIC_API_URL at https://icemarkets-indexer.fly.dev (api process, port 4000).
+app = "icemarkets-indexer"
+primary_region = "iad"
+
+[build]
+  dockerfile = "../Dockerfile"
+
+[env]
+  SOLANA_CLUSTER = "devnet"
+  PORT = "4000"
+  WEBHOOK_PORT = "4001"
+  LOG_LEVEL = "info"
+
+[processes]
+  api = "pnpm --filter @icemarkets/indexer start"
+  webhook = "pnpm --filter @icemarkets/indexer start:webhook"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
+  processes = ["api", "webhook"]
+
+# Public API for the web app.
+[http_service]
+  internal_port = 4000
+  force_https = true
+  auto_stop_machines = "off"
+  auto_start_machines = true
+  min_machines_running = 1
+  processes = ["api"]
+
+  [[http_service.checks]]
+    interval = "30s"
+    timeout = "5s"
+    grace_period = "30s"
+    method = "GET"
+    path = "/healthz"
+
+# Helius webhook receiver on a second public port (Helius posts to :443 → 4001 via this service).
+[[services]]
+  internal_port = 4001
+  protocol = "tcp"
+  processes = ["webhook"]
+  [[services.ports]]
+    port = 8443
+    handlers = ["tls", "http"]
+  [[services.http_checks]]
+    interval = "30s"
+    timeout = "5s"
+    grace_period = "30s"
+    method = "GET"
+    path = "/healthz"
