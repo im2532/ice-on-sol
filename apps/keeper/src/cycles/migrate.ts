@@ -27,11 +27,13 @@ export async function runMigrateCycle(): Promise<void> {
   const pools = await listUnmigratedPools();
   for (const pool of pools) {
     try {
-      // CHECK vs SDK: getPoolState field names for curve-complete / is_migrated.
+      // VirtualPool (SDK 1.5.x, unwrapped by getPoolState): `isMigrated` u8 and `migrationProgress`
+      // (0 PreBondingCurve, 1 PostBondingCurve = curve filled, 2 LockedVesting, 3 CreatedPool);
+      // `finishCurveTimestamp` is set by the swap that completes the curve.
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const state = (await getPoolState(dbcClient, new PublicKey(pool.dbc_pool))) as any;
-      const isMigrated = Boolean(Number(state?.isMigrated ?? state?.is_migrated ?? 0));
-      const curveComplete = Boolean(state?.curveComplete ?? state?.isCurveComplete ?? false);
+      const isMigrated = Boolean(Number(state?.isMigrated ?? 0));
+      const curveComplete = Number(state?.migrationProgress ?? 0) >= 1 || Number(state?.finishCurveTimestamp ?? 0) > 0;
 
       if (!isMigrated) {
         if (!curveComplete) continue;

@@ -4,6 +4,7 @@
  * `buildLaunchTransactions` path the web uses, for localnet/devnet loop testing.
  *
  *   pnpm exec tsx scripts/launch-market.ts --quote BURGER --name "Big Mac Enjoyer" --symbol BIGMAC [--fee 200] [--buy 1] [--price 5.91]
+ *       [--initial-usd 5000 --migration-usd 35000]   (test-only market-cap overrides for a cheap migration)
  *
  * Env: RPC_URL, SOLANA_CLUSTER, ADMIN_KEYPAIR_PATH (creator + payer; must hold USDC), USDC_MINT_OVERRIDE on
  * localnet, [IDL_DIR]. Reads deployments/<cluster>.json for the launch ALT. Prints the pool + mint and
@@ -67,6 +68,8 @@ async function main(): Promise<void> {
     usdcMint, wsolMint: new PublicKey("So11111111111111111111111111111111111111112"),
     userUsdcAta: sdk.ata(usdcMint, creator.publicKey), userCoinAta: sdk.ata(commodity.coinMint, creator.publicKey),
     treasury: sdk.feeRouter.router(sdk.FEE_ROUTER_PROGRAM_ID)[0], pegDesk, addressLookupTable: alt,
+    initialMarketCapUsd: process.argv.includes("--initial-usd") ? Number(arg("initial-usd")) : undefined,
+    migrationMarketCapUsd: process.argv.includes("--migration-usd") ? Number(arg("migration-usd")) : undefined,
   });
   const sigs: string[] = [];
   for (const [i, tx] of res.transactions.entries()) {

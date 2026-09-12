@@ -9,7 +9,7 @@
  * `{ token, fee, migration, liquidityDistribution, lockedVesting, activationType }` and moves
  * `feeClaimer` / `leftoverReceiver` / `quoteMint` onto `partner.createConfig`.
  */
-import { PublicKey, Connection, TransactionInstruction, Keypair, Commitment } from "@solana/web3.js";
+import { PublicKey, Connection, TransactionInstruction, Keypair, Commitment, ComputeBudgetProgram } from "@solana/web3.js";
 import BN from "bn.js";
 import { PROGRAM_IDS, LAUNCH } from "@icemarkets/registry";
 
@@ -24,6 +24,7 @@ import {
   MigratedCollectFeeMode,
   MigrationFeeOption,
   MigrationOption,
+  SwapMode,
   TokenAuthorityOption,
   TokenDecimal,
   TokenType,
@@ -59,6 +60,10 @@ export interface BuildLaunchConfigParamsInput {
   treasury: PublicKey;
   /** The COIN mint used as this launch's quote token (e.g. GLD, SLV, ...). */
   quoteMint: PublicKey;
+  /** Overrides for LAUNCH.initialMarketCapUsd / migrationMarketCapUsd (localnet/devnet loop tests that
+   *  need a cheap migration; production launches use the registry defaults). */
+  initialMarketCapUsd?: number;
+  migrationMarketCapUsd?: number;
 }
 
 /** Everything `partner.createConfig` needs except the per-launch `config` keypair and `payer`. */
@@ -73,8 +78,8 @@ export function buildLaunchConfigParams(input: BuildLaunchConfigParamsInput): La
   const { coinUsdPrice, feeTierBps, routerPda, treasury, quoteMint } = input;
   if (coinUsdPrice <= 0) throw new Error("buildLaunchConfigParams: coinUsdPrice must be > 0");
 
-  const initialMarketCap = LAUNCH.initialMarketCapUsd / coinUsdPrice; // in COIN units
-  const migrationMarketCap = LAUNCH.migrationMarketCapUsd / coinUsdPrice; // in COIN units
+  const initialMarketCap = (input.initialMarketCapUsd ?? LAUNCH.initialMarketCapUsd) / coinUsdPrice; // in COIN units
+  const migrationMarketCap = (input.migrationMarketCapUsd ?? LAUNCH.migrationMarketCapUsd) / coinUsdPrice; // in COIN units
 
   const configParameters = buildCurveWithTwoSegments({
     initialMarketCap,
@@ -243,20 +248,19 @@ export interface DbcSwapInput {
   minimumAmountOut: BN;
   /** true = swap quote(COIN)->base(MEME); false = base(MEME)->quote(COIN). */
   swapBaseForQuote: boolean;
+  /** Default true for buys: DBC's exact-in `swap` rejects any input larger than what the curve can still
+   *  absorb (InsufficientLiquidity near completion); partial fill takes what fits and refunds the rest. */
+  partialFill?: boolean;
 }
 
 /** `pool.swap` (exact-in). The SDK adds the instructions sysvar itself when the pool's
  *  anti-sniper min-fee flag requires it. */
 export async function swapIx(input: DbcSwapInput): Promise<TransactionInstruction[]> {
   const { client, pool, owner, amountIn, minimumAmountOut, swapBaseForQuote } = input;
-  const tx = await client.pool.swap({
-    pool,
-    owner,
-    amountIn,
-    minimumAmountOut,
-    swapBaseForQuote,
-    referralTokenAccount: null,
-  });
+  const partialFill = input.partialFill ?? !swapBaseForQuote;
+  const tx = partialFill
+    ? await client.pool.swap2({ pool, owner, swapBaseForQuote, referralTokenAccount: null, swapMode: SwapMode.PartialFill, amountIn, minimumAmountOut })
+    : await client.pool.swap({ pool, owner, amountIn, minimumAmountOut, swapBaseForQuote, referralTokenAccount: null });
   return extractIxs(tx);
 }
 
@@ -282,7 +286,7 @@ export interface MigrateToDammV2Result {
 export async function migrateToDammV2Ixs(input: MigrateToDammV2Input): Promise<MigrateToDammV2Result> {
   const { client, pool, payer } = input;
   const res = await client.migration.migrateToDammV2({ pool, payer, dammConfig: input.dammConfig ?? DAMM_V2_MIGRATION_CONFIG });
-  return { ixs: res.transaction.instructions, signers: [res.firstPositionNftKeypair, res.secondPositionNftKeypair] };
+  return { ixs: extractIxs(res.transaction), signers: [res.firstPositionNftKeypair, res.secondPositionNftKeypair] };
 }
 
 /**
@@ -301,8 +305,10 @@ export async function getPoolState(client: DynamicBondingCurveClient, pool: Publ
  * can compose the instructions into their own (versioned, ALT-compiled) transactions.
  */
 function extractIxs(tx: unknown): TransactionInstruction[] {
-  if (Array.isArray(tx)) return tx as TransactionInstruction[];
-  const t = tx as { instructions?: TransactionInstruction[] };
-  if (t?.instructions) return t.instructions;
-  throw new Error("dbc.ts: unrecognized transaction shape returned by SDK");
+  const ixs = Array.isArray(tx) ? (tx as TransactionInstruction[]) : (tx as { instructions?: TransactionInstruction[] })?.instructions;
+  if (!ixs) throw new Error("dbc.ts: unrecognized transaction shape returned by SDK");
+  // The SDK prepends its own ComputeBudget instructions; our callers (launch builder, trade builders,
+  // keeper sendWithPriority) set their own, and a transaction with two SetComputeUnitLimit ixs is
+  // rejected as a duplicate instruction. Strip them here.
+  return ixs.filter((ix) => !ix.programId.equals(ComputeBudgetProgram.programId));
 }

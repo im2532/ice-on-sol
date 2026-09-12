@@ -70,6 +70,10 @@ alt:
 	pnpm exec tsx scripts/create-alt.ts
 	$(MAKE) web-deployments
 
+## Full loop on a fresh local validator (validator + programs + seed + breakers + ALT + db + keeper + indexer + web)
+localnet:
+	scripts/localnet-up.sh
+
 ## Embedded dev Postgres (no system install needed): applies indexer schema + deployments/<cluster>.sql
 db:
 	pnpm exec tsx scripts/dev-postgres.ts

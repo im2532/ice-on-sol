@@ -70,6 +70,9 @@ export interface BuildLaunchTransactionsParams {
   /** Resume a launch whose DBC config transaction already landed: skip the config tx and create the
    *  pool under this existing config (no second config rent). */
   existingConfig?: PublicKey;
+  /** Test-only market-cap overrides (see BuildLaunchConfigParamsInput). */
+  initialMarketCapUsd?: number;
+  migrationMarketCapUsd?: number;
 }
 
 export interface BuildLaunchTransactionsResult {
@@ -117,6 +120,8 @@ export async function buildLaunchTransactions(params: BuildLaunchTransactionsPar
     routerPda,
     treasury: params.treasury,
     quoteMint: params.commodity.coinMint,
+    initialMarketCapUsd: params.initialMarketCapUsd,
+    migrationMarketCapUsd: params.migrationMarketCapUsd,
   });
 
   const dbcClient = makeDbcClient({ connection: params.connection });

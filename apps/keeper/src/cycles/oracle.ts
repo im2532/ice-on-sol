@@ -26,7 +26,7 @@
  */
 import { HermesClient } from "@pythnetwork/hermes-client";
 import { PythSolanaReceiver } from "@pythnetwork/pyth-solana-receiver";
-import { PublicKey } from "@solana/web3.js";
+import { Connection, PublicKey } from "@solana/web3.js";
 import { PegDeskClient, scaleQuote } from "@icemarkets/sdk";
 import { OracleKind, COMMODITIES, bySymbol } from "@icemarkets/registry";
 import { loadConfig } from "../config";
@@ -107,7 +107,10 @@ const MANUAL_FALLBACK_CONF_BPS = 500n; // 5%
  */
 async function relaySwitchboardPrices(pegDesk: PegDeskClient, rows: CommodityRow[]): Promise<void> {
   const keeper = getKeeperKeypair();
-  const nowSec = Math.floor(Date.now() / 1000);
+  // Stamp relays with the CHAIN clock, not the keeper's: peg_desk rejects publish_time more than
+  // MAX_FUTURE_SKEW_SECS (10 s) ahead of Clock::unix_timestamp, and a local/loaded validator's clock can
+  // lag wall time by hours (localnet drifted 10,000 s in one session). Falls back to wall time.
+  const nowSec = await chainNowSec(getConnection());
   for (const row of rows) {
     const entry = bySymbol(row.symbol);
     if (!entry) continue;
@@ -392,4 +395,16 @@ function makeNodeWallet(publicKey: PublicKey) {
     signTransaction: async (tx: unknown) => tx,
     signAllTransactions: async (txs: unknown[]) => txs,
   };
+}
+
+/** On-chain unix time (block time of the latest confirmed slot); wall clock if the RPC cannot provide it. */
+export async function chainNowSec(connection: Connection): Promise<number> {
+  try {
+    const slot = await connection.getSlot("confirmed");
+    const t = await connection.getBlockTime(slot);
+    if (t) return t;
+  } catch {
+    /* fall through */
+  }
+  return Math.floor(Date.now() / 1000);
 }
