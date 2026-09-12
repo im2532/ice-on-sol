@@ -61,14 +61,14 @@ export async function runBuybackCycle(): Promise<void> {
     log.debug("buyback state not initialized; skipping");
     return;
   }
-  if (st.paused) return;
+  if (st.paused) return log.debug("buyback paused; skipping");
   const iceMint: PublicKey = st.iceMint;
   const usdcMint: PublicKey = st.usdcMint;
   const bbAuth = buybackPda.authority(bbId)[0];
   const minIntervalSecs = Number(st.minIntervalSecs);
   const lastCycleTs = Number(st.lastCycleTs.toString());
   const now = Math.floor(Date.now() / 1000);
-  if (now - lastCycleTs < minIntervalSecs) return;
+  if (now - lastCycleTs < minIntervalSecs) return log.debug({ sinceLast: now - lastCycleTs, minIntervalSecs }, "buyback: within min interval; skipping");
 
   const thresholdUsd = envInt("BUYBACK_MIN_USD", 50);
   const slippageBps = envInt("BUYBACK_SLIPPAGE_BPS", 50);
@@ -87,17 +87,24 @@ export async function runBuybackCycle(): Promise<void> {
       views.set(symbol, view);
       const vault = feeRouterPda.buybackVault(frId, view.coinMint)[0];
       const bal = await connection.getTokenAccountBalance(vault).catch(() => null);
-      if (!bal?.value) continue;
+      if (!bal?.value) {
+        log.debug({ symbol, vault: vault.toBase58() }, "buyback: no vault account");
+        continue;
+      }
       const amount = BigInt(bal.value.amount);
       const price = await getLatestPrice(symbol);
-      if (!price) continue;
+      if (!price) {
+        log.debug({ symbol }, "buyback: no db price");
+        continue;
+      }
       const usd = (Number(amount) / 1e6) * (Number(price.price) / 1e8);
+      log.debug({ symbol, vaultCoin: amount.toString(), usd, thresholdUsd }, "buyback: vault evaluated");
       if (usd >= thresholdUsd && (!best || usd > best.usd)) best = { symbol, vault: amount, usd };
     } catch (err) {
       log.warn({ symbol, err: String(err) }, "buyback: could not evaluate vault");
     }
   }
-  if (!best) return;
+  if (!best) return log.debug({ symbols: symbols.length }, "buyback: no vault above threshold");
   const view = views.get(best.symbol)!;
 
   // Size: vault × (1 − buffer), then cap by max_per_cycle_usdc at the Peg Desk bid.
@@ -108,10 +115,10 @@ export async function runBuybackCycle(): Promise<void> {
     const maxCoin = (maxPerCycleUsdc * 100_000_000n) / bid;
     if (coinAmount > maxCoin) coinAmount = maxCoin;
   }
-  if (coinAmount === 0n) return;
+  if (coinAmount === 0n) return log.debug({ symbol: best.symbol, reserveBufferBps: st.reserveBufferBps }, "buyback: sized to zero; skipping");
   const usdcExpected = usdcOutForCoinIn(coinAmount, bid);
   const minUsdcOut = haircutBps(usdcExpected, slippageBps);
-  if (minUsdcOut === 0n) return;
+  if (minUsdcOut === 0n) return log.debug({ symbol: best.symbol }, "buyback: min usdc out is zero; skipping");
 
   // Route USDC → ICE.
   let route: BuybackRoute;
@@ -139,7 +146,7 @@ export async function runBuybackCycle(): Promise<void> {
     return;
   }
   const minIceOut = haircutBps(route.expectedOut, slippageBps);
-  if (minIceOut === 0n) return;
+  if (minIceOut === 0n) return log.debug({ symbol: best.symbol, expectedOut: route.expectedOut.toString(), minUsdcOut: minUsdcOut.toString() }, "buyback: route quotes zero ICE out; skipping");
 
   // Work ATAs for bb_auth (idempotent; keeper pays rent).
   const ataIxs = [

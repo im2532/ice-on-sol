@@ -23,6 +23,8 @@ pub struct ConvertAndBurn<'info> {
     pub bb_auth: UncheckedAccount<'info>,
 
     // ---- mints ----
+    /// `mut`: peg_desk `sell` burns COIN, so the mint must be writable for the CPI to be allowed.
+    #[account(mut)]
     pub coin_mint: Box<InterfaceAccount<'info, Mint>>,
     #[account(address = state.usdc_mint @ BuybackError::InvalidMint)]
     pub usdc_mint: Box<InterfaceAccount<'info, Mint>>,

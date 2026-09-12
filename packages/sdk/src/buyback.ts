@@ -16,6 +16,7 @@ import { TOKEN_PROGRAM_ID, getAssociatedTokenAddressSync } from "@solana/spl-tok
 import BN from "bn.js";
 import { CpAmm } from "@meteora-ag/cp-amm-sdk";
 import { DAMM_V2_PROGRAM_ID } from "./meteora";
+import { quoteDammV2ExactIn } from "./damm";
 import { getQuote, getSwapIxs, resolveAddressLookupTables } from "./jupiter";
 import { buyback as buybackPda, feeRouter as feeRouterPda } from "./pda";
 import type { CommodityAccountView, PegDeskClient } from "./pegDesk";
@@ -87,7 +88,10 @@ export async function buildBuybackRouteViaDamm(
   // The SDK may prepend ATA-creation / compute-budget ixs; the route is the cp-amm instruction itself.
   const swap = tx.instructions.find((ix) => ix.programId.equals(DAMM_V2_PROGRAM_ID));
   if (!swap) throw new Error("cp-amm swap instruction not found in SDK transaction");
-  return { program: DAMM_V2_PROGRAM_ID, keys: swap.keys, data: Buffer.from(swap.data), expectedOut: p.minOut, lookupTables: [] };
+  // Real exact-in quote (fees included) so the caller's slippage haircut yields a meaningful min_ice_out;
+  // `p.minOut` is only the on-chain floor inside the forwarded instruction.
+  const quote = await quoteDammV2ExactIn({ connection, pool: p.pool, inputMint: p.usdcMint, amountIn: p.amountUsdc });
+  return { program: DAMM_V2_PROGRAM_ID, keys: swap.keys, data: Buffer.from(swap.data), expectedOut: quote.amountOut, lookupTables: [] };
 }
 
 /** Accounts + args for `buyback.convert_and_burn` (camelCase of `ConvertAndBurn` in convert_and_burn.rs). */
