@@ -23,7 +23,7 @@ first (OtterSec / Neodyme / Sec3 / Zellic / Halborn; 4–8 weeks lead time).
 
 | Item | SOL | Notes |
 |---|---|---|
-| 4 program deployments (1.74 MB of bytecode, deployed at exact size) | ≈ 12.5 | `solana program deploy --max-len <size>` per program; devnet was 8.7 with older builds. Double it if you deploy with the default 2× buffer. |
+| 4 program deployments, deployed at exact size | 12.4 at `opt-level = 3` (1.78 MB); **measure with `make sizes SOL_USD=<price>`** after the `opt-level = "z"` build | `solana program deploy --max-len <size>` per program. Double it if you deploy with the default 2× buffer. Program rent is a **refundable deposit**: `solana program close` (upgrade authority) returns it, retiring the program id. |
 | 96 commodity mints + Metaplex metadata + `Commodity` accounts + reserve vaults | ≈ 1.2 | ~0.012 SOL each |
 | Program configs, launch ALT, buyback state, ATAs | ≈ 0.3 | |
 | Keeper float (priority fees + payouts) | 3–5 | refill weekly; 96 epochs/day × pools × ceil(holders/20) txs |

@@ -8,7 +8,7 @@ ANCHOR_VERSION ?= 0.31.1
 # and avm/anchor activate it automatically on `anchor build`.
 ANCHOR_BUILD := anchor build
 
-.PHONY: bootstrap toolchain deps build idl web-deployments test devnet-deploy init-programs seed breakers ice alt smoke transfer-authority db keeper web fmt
+.PHONY: bootstrap toolchain deps build idl sizes web-deployments test devnet-deploy init-programs seed breakers ice alt smoke transfer-authority db keeper web fmt
 
 ## One-shot dev machine setup (macOS / Linux). Idempotent.
 bootstrap: toolchain deps
@@ -33,6 +33,18 @@ build:
 ## Copies Anchor IDLs where the web app can fetch them (keeper/scripts read target/idl directly)
 idl:
 	mkdir -p apps/web/public/idl && cp target/idl/*.json apps/web/public/idl/
+
+## Program sizes and mainnet rent (rent-exempt = (bytes + 128) × 6 960 lamports; ProgramData adds 45 bytes).
+## Pass SOL_USD=<price> for a USD column. Uses target/verifiable/*.so when present (the build you deploy).
+sizes:
+	@dir=target/verifiable; [ -d $$dir ] && ls $$dir/*.so >/dev/null 2>&1 || dir=target/deploy; \
+	echo "binaries: $$dir"; total=0; \
+	printf "%-12s %10s %9s %9s\n" program bytes SOL USD; \
+	for f in $$dir/*.so; do \
+	  b=$$(stat -f%z $$f 2>/dev/null || stat -c%s $$f); total=$$((total+b)); \
+	  awk -v n=$$(basename $$f .so) -v b=$$b -v p=$${SOL_USD:-0} 'BEGIN{s=(b+45+128)*6960/1e9; printf "%-12s %10d %9.3f %9.0f\n", n, b, s, s*p}'; \
+	done; \
+	awk -v b=$$total -v p=$${SOL_USD:-0} 'BEGIN{s=(b+4*(45+128))*6960/1e9; printf "%-12s %10d %9.3f %9.0f\n", "TOTAL", b, s, s*p}'
 
 ## Publishes deployments/<cluster>.json (launch ALT address) to the web app (/deployments/<cluster>.json)
 web-deployments:

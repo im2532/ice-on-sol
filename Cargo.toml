@@ -26,7 +26,11 @@ pyth-solana-receiver-sdk = "0.6.1"
 overflow-checks = true
 lto = "fat"
 codegen-units = 1
-opt-level = 3
+# Size over speed: mainnet program rent is ≈ 6.96 SOL/MB, so bytecode is the single largest go-live cost
+# (MAINNET_RUNBOOK §1). "z" trades some compute units for a smaller .so — `make sizes` after `anchor build`
+# prints each program's size and rent; `anchor test` must still pass under the same CU limits (buyback
+# convert_and_burn runs at 600k). Set OPT_LEVEL back to 3 here if a test trips a CU limit.
+opt-level = "z"
 incremental = false
 
 [profile.release.build-override]
