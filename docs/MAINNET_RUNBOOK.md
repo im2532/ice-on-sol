@@ -34,6 +34,20 @@ Infra ≈ $90/month (MAINNET_PLAN §6a). The `$ICE` launch on stonk.fun costs �
 
 ## 2. Prerequisites (yours; nothing below runs without them)
 
+**Mainnet addresses (set 12 Sep 2026; public keys only — never commit keypairs or API keys):**
+
+| Role | Address |
+|---|---|
+| Deploy / init admin (hot, retired after `transfer-authority`) | `4s7JvFDSt8ax5piX6CPKLG7u4fNDMkJxghopL7xYVgkq` |
+| Keeper (Fly secret `KEEPER_KEYPAIR_JSON`) | `CZjcnfnUT3oQdvJoYnahwG8dKMN1KSXqZiZ299VUmazH` |
+| Squads vault "IceMarkets" 2-of-3 = `ADMIN_MULTISIG` = `TREASURY_PUBKEY` | `BHzGnjM3Ltev3EwHveBSvkV66CSgV9bR72V84NRxPgdz` |
+| Squads members | `CfCHiSGfvrkfYxTR65Eyccj8b9T9U9ADxNz78tjArsnF` · `EVwHDdCMDaFkPa5TYhxaZFLJorDqjsyGUQwWBvzLvzka` · `4s7JvFDSt8ax5piX6CPKLG7u4fNDMkJxghopL7xYVgkq` (swap the deploy key for a cold key after launch) |
+| peg_desk `GlobalConfig` PDA (account 2 of the `accept_admin` proposal) | `9E4VJpHEjkUgoNCMkwLDt5jzUVgD7jsvjU4myP6KdjRJ` |
+
+Vault round-trip tested (0.1 SOL in from the admin key, back out via a 2-of-3 proposal).
+`accept_admin` proposal: program `6jMv…rqQN`, data `702a2d5a74b50daa`, accounts = vault (signer) + config PDA (writable).
+
+
 1. **Wallets.** `keys/mainnet-admin.json` (deploy + seed; 20 SOL), `keys/mainnet-keeper.json` (5 SOL). Both fresh, generated offline, never used on devnet.
 2. **Squads vault** (app.squads.so): 2-of-3 minimum with keys on separate devices. Its vault address is `ADMIN_MULTISIG` and `TREASURY_PUBKEY`.
 3. **Helius mainnet** Developer plan: one key for keeper/indexer/Vercel server-side (`RPC_URL`), a second key domain-restricted to the Vercel domain (`NEXT_PUBLIC_RPC_URL`). Mainnet webhook created after the indexer is up.
