@@ -285,9 +285,15 @@ export async function migrateToDammV2Ixs(input: MigrateToDammV2Input): Promise<M
   return { ixs: res.transaction.instructions, signers: [res.firstPositionNftKeypair, res.secondPositionNftKeypair] };
 }
 
-/** `state.getPool` → the decoded `VirtualPool` account (`isMigrated`, reserves, partner fee fields, ...). */
+/**
+ * `state.getPool` → the decoded `VirtualPool` fields (`isMigrated`, reserves, `partnerQuoteFee`, ...).
+ * SDK 1.5.x returns the account wrapped as `{ poolState: {...} }` (the IDL nests the struct); unwrap so
+ * callers (keeper fees/migrate cycles) read the fields directly.
+ */
 export async function getPoolState(client: DynamicBondingCurveClient, pool: PublicKey) {
-  return client.state.getPool(pool);
+  const raw = (await client.state.getPool(pool)) as unknown as { poolState?: Record<string, unknown> } | null;
+  if (!raw) return null;
+  return (raw.poolState ?? raw) as Record<string, unknown>;
 }
 
 /**

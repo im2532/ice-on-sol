@@ -3,6 +3,7 @@
  * One-time program configs on the current cluster (idempotent: skips accounts that already exist):
  *   fee_router.initialize_router  — 5000/2500/2500 split (CONTRACTS §2), program ids from .env
  *   distributor.initialize        — fee_router id, max_push_per_epoch_bps 10000
+ *   set_keepers on both           — from KEEPER_PUBKEYS (idempotent)
  * buyback.initialize needs the $ICE mint + ICE/GLD DAMM pool (not created yet) — run separately later.
  * Env: RPC_URL, ADMIN_KEYPAIR_PATH, *_PROGRAM_ID (as written by scripts/write-program-ids.ts), [IDL_DIR].
  * Run: `pnpm exec tsx scripts/init-programs.ts` (with .env exported; `make init-programs`).
@@ -62,6 +63,32 @@ async function main(): Promise<void> {
     console.log(`distributor initialize -> ${distConfig.toBase58()} (${sig})`);
   }
   console.log("buyback.initialize: skipped (needs $ICE mint + ICE/GLD pool)");
+
+  // Keepers: fee_router + distributor mirror peg_desk's `set_keepers` (seed-commodities.ts does peg_desk).
+  // Without this the keeper's fee/payout cycles fail with Unauthorized (claims are permissionless only
+  // after the first 900 s window; open_epoch never is).
+  const keepers = (process.env.KEEPER_PUBKEYS ?? "").split(",").map((s) => s.trim()).filter(Boolean).map((s) => new PublicKey(s));
+  if (keepers.length === 0) {
+    console.log("KEEPER_PUBKEYS unset — keepers not registered on fee_router / distributor");
+    return;
+  }
+  const same = (onchain: { keepers: PublicKey[]; keeperCount: number }) => {
+    const cur = onchain.keepers.slice(0, onchain.keeperCount).map((k) => k.toBase58()).sort();
+    const want = keepers.map((k) => k.toBase58()).sort();
+    return cur.length === want.length && cur.every((k, i) => k === want[i]);
+  };
+  const rc = (await (feeRouter.account as any).routerConfig.fetch(router)) as { keepers: PublicKey[]; keeperCount: number };
+  if (same(rc)) console.log(`fee_router keepers already ${keepers.length} — skipped`);
+  else {
+    const sig = await (feeRouter.methods as any).setKeepers(keepers).accountsPartial({ admin: admin.publicKey, config: router }).rpc();
+    console.log(`fee_router set_keepers (${keepers.length}) ${sig}`);
+  }
+  const dc = (await (distributor.account as any).distConfig.fetch(distConfig)) as { keepers: PublicKey[]; keeperCount: number };
+  if (same(dc)) console.log(`distributor keepers already ${keepers.length} — skipped`);
+  else {
+    const sig = await (distributor.methods as any).setKeepers(keepers).accountsPartial({ admin: admin.publicKey, distConfig }).rpc();
+    console.log(`distributor set_keepers (${keepers.length}) ${sig}`);
+  }
 }
 
 main().catch((err) => {

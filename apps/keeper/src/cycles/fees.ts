@@ -21,7 +21,7 @@ import { childLogger } from "../logger";
 
 const log = childLogger("fees");
 
-const CLAIM_THRESHOLD_USD = 100;
+const CLAIM_THRESHOLD_USD = Number(process.env.FEE_MIN_CLAIM_USD ?? 100); // env FEE_MIN_CLAIM_USD (default $100; lower on localnet/devnet)
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const pk = (v: any): PublicKey | null => (v ? (v instanceof PublicKey ? v : new PublicKey(v.toString())) : null);
