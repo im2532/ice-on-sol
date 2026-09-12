@@ -4,14 +4,16 @@
     "name": "buyback",
     "version": "0.1.0",
     "spec": "0.1.0",
-    "description": "ICEmarkets buyback: pulls GLD from fee_router buyback vault, swaps GLD->ICEmarkets on DAMM v2, burns ICEmarkets",
+    "description": "ICEmarkets buyback: pulls COIN from the fee_router buyback vault, sells it at the Peg Desk for USDC, swaps USDC->ICE via a forwarded route (Jupiter), burns ICE",
     "repository": "https://github.com/icemarkets-exchange/icemarkets"
   },
   "instructions": [
     {
       "name": "convert_and_burn",
       "docs": [
-        "Keeper. `amount` is capped by max_per_cycle and the reserve buffer."
+        "Keeper. COIN → USDC (peg_desk sell CPI) → ICE (forwarded swap route CPI, `remaining_accounts` =",
+        "the route's accounts) → burn. `coin_amount` is capped by the vault buffer; `usdc_out` by",
+        "`max_per_cycle_usdc`; the executed ICE/USDC rate by the anchored breaker (CONTRACTS §4a)."
       ],
       "discriminator": [
         91,
@@ -68,27 +70,21 @@
           }
         },
         {
-          "name": "fee_router_program"
-        },
-        {
-          "name": "router_config"
-        },
-        {
-          "name": "buyback_vault",
+          "name": "coin_mint",
           "docs": [
-            "fee_router buyback_vault[GLD] — seeds validated by fee_router; read here for the buffer."
+            "`mut`: peg_desk `sell` burns COIN, so the mint must be writable for the CPI to be allowed."
           ],
           "writable": true
         },
         {
-          "name": "gld_mint"
+          "name": "usdc_mint"
         },
         {
           "name": "ice_mint",
           "writable": true
         },
         {
-          "name": "bb_gld",
+          "name": "bb_coin",
           "writable": true,
           "pda": {
             "seeds": [
@@ -98,11 +94,11 @@
               },
               {
                 "kind": "account",
-                "path": "gld_token_program"
+                "path": "token_program"
               },
               {
                 "kind": "account",
-                "path": "gld_mint"
+                "path": "coin_mint"
               }
             ],
             "program": {
@@ -145,7 +141,64 @@
           }
         },
         {
-          "name": "bb_icemarkets",
+          "name": "bb_usdc",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "bb_auth"
+              },
+              {
+                "kind": "account",
+                "path": "token_program"
+              },
+              {
+                "kind": "account",
+                "path": "usdc_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "bb_ice",
           "writable": true,
           "pda": {
             "seeds": [
@@ -202,28 +255,49 @@
           }
         },
         {
-          "name": "damm_pool_authority"
+          "name": "fee_router_program"
         },
         {
-          "name": "damm_pool",
+          "name": "router_config"
+        },
+        {
+          "name": "buyback_vault",
+          "docs": [
+            "fee_router buyback_vault[coin] — seeds validated by fee_router; read here for the buffer."
+          ],
           "writable": true
         },
         {
-          "name": "damm_token_a_vault",
+          "name": "peg_desk_program"
+        },
+        {
+          "name": "peg_config"
+        },
+        {
+          "name": "commodity",
           "writable": true
         },
         {
-          "name": "damm_token_b_vault",
+          "name": "mint_auth"
+        },
+        {
+          "name": "reserve_vault",
           "writable": true
         },
         {
-          "name": "damm_event_authority"
+          "name": "price_feed"
         },
         {
-          "name": "damm_program"
+          "name": "fx_feed"
         },
         {
-          "name": "gld_token_program"
+          "name": "keeper_price"
+        },
+        {
+          "name": "swap_program"
+        },
+        {
+          "name": "token_program"
         },
         {
           "name": "ice_token_program"
@@ -231,7 +305,11 @@
       ],
       "args": [
         {
-          "name": "amount",
+          "name": "coin_amount",
+          "type": "u64"
+        },
+        {
+          "name": "min_usdc_out",
           "type": "u64"
         },
         {
@@ -239,8 +317,8 @@
           "type": "u64"
         },
         {
-          "name": "gld_is_token_a",
-          "type": "bool"
+          "name": "route_data",
+          "type": "bytes"
         }
       ]
     },
@@ -305,12 +383,12 @@
           "name": "ice_mint"
         },
         {
-          "name": "gld_mint"
+          "name": "usdc_mint"
         },
         {
-          "name": "bb_gld",
+          "name": "bb_usdc",
           "docs": [
-            "Work account: GLD pulled from fee_router lands here, then is swapped."
+            "Work account: USDC from the Peg Desk sell lands here, then is swapped."
           ],
           "writable": true,
           "pda": {
@@ -321,11 +399,11 @@
               },
               {
                 "kind": "account",
-                "path": "gld_token_program"
+                "path": "usdc_token_program"
               },
               {
                 "kind": "account",
-                "path": "gld_mint"
+                "path": "usdc_mint"
               }
             ],
             "program": {
@@ -368,9 +446,9 @@
           }
         },
         {
-          "name": "bb_icemarkets",
+          "name": "bb_ice",
           "docs": [
-            "Work account: ICEmarkets bought lands here, then is burned."
+            "Work account: ICE bought lands here, then is burned."
           ],
           "writable": true,
           "pda": {
@@ -428,7 +506,7 @@
           }
         },
         {
-          "name": "gld_token_program"
+          "name": "usdc_token_program"
         },
         {
           "name": "ice_token_program"
@@ -577,8 +655,8 @@
     },
     {
       "code": 6005,
-      "name": "UnsupportedCoin",
-      "msg": "Only the GLD path is supported in MVP"
+      "name": "InvalidMint",
+      "msg": "Invalid mint for this operation"
     },
     {
       "code": 6006,
@@ -587,8 +665,8 @@
     },
     {
       "code": 6007,
-      "name": "InvalidPool",
-      "msg": "Invalid DAMM v2 pool"
+      "name": "RouteTooLong",
+      "msg": "Route data too long"
     },
     {
       "code": 6008,
@@ -597,11 +675,36 @@
     },
     {
       "code": 6009,
+      "name": "RateBelowAnchor",
+      "msg": "Swap rate below the anchored rate by more than max_deviation_bps"
+    },
+    {
+      "code": 6010,
       "name": "WithdrawMismatch",
       "msg": "fee_router did not deliver the requested amount"
     },
     {
-      "code": 6010,
+      "code": 6011,
+      "name": "SellBelowMinimum",
+      "msg": "peg_desk sell returned less USDC than min_usdc_out"
+    },
+    {
+      "code": 6012,
+      "name": "UsdcOverspent",
+      "msg": "Swap consumed more USDC than the sell produced"
+    },
+    {
+      "code": 6013,
+      "name": "TooSoon",
+      "msg": "Cycle too soon (min_interval_secs)"
+    },
+    {
+      "code": 6014,
+      "name": "CycleCapExceeded",
+      "msg": "USDC out exceeds max_per_cycle_usdc"
+    },
+    {
+      "code": 6015,
       "name": "MathOverflow",
       "msg": "Math overflow"
     }
@@ -621,11 +724,22 @@
             "type": "u64"
           },
           {
-            "name": "gld_amount",
+            "name": "usdc_out",
             "type": "u64"
           },
           {
             "name": "ice_burned",
+            "type": "u64"
+          },
+          {
+            "name": "rate",
+            "docs": [
+              "ICE base units per 1 USDC on this cycle, and the anchor after it moved."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "anchor",
             "type": "u64"
           }
         ]
@@ -641,7 +755,7 @@
             "type": "pubkey"
           },
           {
-            "name": "ice_pool",
+            "name": "swap_program",
             "type": "pubkey"
           },
           {
@@ -649,7 +763,23 @@
             "type": "u16"
           },
           {
-            "name": "max_per_cycle",
+            "name": "max_per_cycle_usdc",
+            "type": "u64"
+          },
+          {
+            "name": "max_deviation_bps",
+            "type": "u16"
+          },
+          {
+            "name": "anchor_move_bps",
+            "type": "u16"
+          },
+          {
+            "name": "min_interval_secs",
+            "type": "u32"
+          },
+          {
+            "name": "ice_per_usdc_anchor",
             "type": "u64"
           },
           {
@@ -666,7 +796,8 @@
     {
       "name": "BuybackState",
       "docs": [
-        "PDA[\"buyback\"]"
+        "PDA[\"buyback\"] — v2 layout (CONTRACTS §4a). The v1 (ICE/GLD DAMM) layout was never initialised on",
+        "devnet or mainnet, so this is a clean replacement rather than a migration."
       ],
       "type": {
         "kind": "struct",
@@ -690,6 +821,20 @@
           },
           {
             "name": "fee_router",
+            "docs": [
+              "Programs the CPIs are allowed to target."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "peg_desk",
+            "type": "pubkey"
+          },
+          {
+            "name": "swap_program",
+            "docs": [
+              "Swap router (Jupiter v6 on mainnet; any AMM program on localnet — see `route` in convert_and_burn)."
+            ],
             "type": "pubkey"
           },
           {
@@ -697,36 +842,62 @@
             "type": "pubkey"
           },
           {
-            "name": "ice_pool",
-            "docs": [
-              "DAMM v2 ICE/GLD pool."
-            ],
-            "type": "pubkey"
-          },
-          {
-            "name": "gld_mint",
+            "name": "usdc_mint",
             "type": "pubkey"
           },
           {
             "name": "reserve_buffer_bps",
             "docs": [
-              "Share of buyback_vault[GLD] left untouched each cycle (dust / rounding / fee buffer). Default 200."
+              "Share of a coin's buyback vault left untouched each cycle (dust / rounding). Default 200."
             ],
             "type": "u16"
           },
           {
-            "name": "max_per_cycle",
+            "name": "max_per_cycle_usdc",
             "docs": [
-              "Max GLD (base units) converted per `convert_and_burn` call."
+              "Max USDC (base units) converted per `convert_and_burn` call. 0 = unlimited."
             ],
             "type": "u64"
+          },
+          {
+            "name": "min_interval_secs",
+            "docs": [
+              "Min seconds between two cycles (any coin). Bounds how fast a bad keeper can drain the vaults."
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "last_cycle_ts",
+            "type": "i64"
+          },
+          {
+            "name": "ice_per_usdc_anchor",
+            "docs": [
+              "Anchor for the swap-rate breaker: ICE base units received per 1 USDC (1e6 base units) on the",
+              "last accepted cycle. 0 = unset (first cycle sets it; admin can set it explicitly)."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "max_deviation_bps",
+            "docs": [
+              "A cycle must deliver ≥ anchor × (1 − max_deviation_bps) ICE per USDC."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "anchor_move_bps",
+            "docs": [
+              "The anchor moves at most this many bps per cycle towards the executed rate (in either direction)."
+            ],
+            "type": "u16"
           },
           {
             "name": "paused",
             "type": "bool"
           },
           {
-            "name": "total_gld_in",
+            "name": "total_usdc_out",
             "type": "u64"
           },
           {
@@ -763,9 +934,13 @@
             "type": "pubkey"
           },
           {
-            "name": "ice_pool",
+            "name": "peg_desk",
+            "type": "pubkey"
+          },
+          {
+            "name": "swap_program",
             "docs": [
-              "DAMM v2 ICE/GLD pool."
+              "Jupiter v6 on mainnet/devnet; any AMM program on localnet."
             ],
             "type": "pubkey"
           },
@@ -774,7 +949,29 @@
             "type": "u16"
           },
           {
-            "name": "max_per_cycle",
+            "name": "max_per_cycle_usdc",
+            "docs": [
+              "0 = unlimited."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "max_deviation_bps",
+            "type": "u16"
+          },
+          {
+            "name": "anchor_move_bps",
+            "type": "u16"
+          },
+          {
+            "name": "min_interval_secs",
+            "type": "u32"
+          },
+          {
+            "name": "ice_per_usdc_anchor",
+            "docs": [
+              "0 = let the first cycle set it."
+            ],
             "type": "u64"
           }
         ]
@@ -786,13 +983,19 @@
         "kind": "struct",
         "fields": [
           {
-            "name": "ice_pool",
+            "name": "fee_router",
             "type": {
               "option": "pubkey"
             }
           },
           {
-            "name": "fee_router",
+            "name": "peg_desk",
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "swap_program",
             "type": {
               "option": "pubkey"
             }
@@ -804,7 +1007,34 @@
             }
           },
           {
-            "name": "max_per_cycle",
+            "name": "max_per_cycle_usdc",
+            "type": {
+              "option": "u64"
+            }
+          },
+          {
+            "name": "max_deviation_bps",
+            "type": {
+              "option": "u16"
+            }
+          },
+          {
+            "name": "anchor_move_bps",
+            "type": {
+              "option": "u16"
+            }
+          },
+          {
+            "name": "min_interval_secs",
+            "type": {
+              "option": "u32"
+            }
+          },
+          {
+            "name": "ice_per_usdc_anchor",
+            "docs": [
+              "Admin override of the rate anchor (e.g. after a genuine ICE repricing)."
+            ],
             "type": {
               "option": "u64"
             }

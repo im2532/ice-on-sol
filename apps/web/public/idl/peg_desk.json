@@ -1416,6 +1416,56 @@
       ]
     },
     {
+      "name": "set_redeem_cap_exempt",
+      "docs": [
+        "Admin: the buyback program's bb_auth PDA (or Pubkey::default() for nobody) bypasses daily_redeem_cap."
+      ],
+      "discriminator": [
+        215,
+        14,
+        212,
+        58,
+        252,
+        129,
+        196,
+        107
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "exempt",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
       "name": "set_status",
       "discriminator": [
         181,
@@ -2407,11 +2457,20 @@
             "type": "u8"
           },
           {
+            "name": "redeem_cap_exempt",
+            "docs": [
+              "Carved from `_reserved` (byte-compatible; default = Pubkey::default() = nobody): a `sell`",
+              "signer exempt from `Commodity.daily_redeem_cap` — the buyback program's `bb_auth` PDA, whose",
+              "volume is already bounded by `BuybackState.max_per_cycle_usdc`."
+            ],
+            "type": "pubkey"
+          },
+          {
             "name": "_reserved",
             "type": {
               "array": [
                 "u8",
-                64
+                32
               ]
             }
           }
