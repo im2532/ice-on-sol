@@ -43,6 +43,8 @@ import { median3, type SourceReading } from "../sources/median";
 
 const log = childLogger("oracle");
 
+/** Feed ids Hermes rejected for this API key (403 not entitled / 400 unknown); skipped until restart. */
+const rejectedFeeds = new Set<string>();
 const FEED_BATCH_SIZE = 5;
 const DEVIATION_TRIGGER_BPS = 10; // 0.1%
 
@@ -245,19 +247,39 @@ async function runPythPullBatch(
     .map((r) => ({ row: r, entry: bySymbol(r.symbol) }))
     .filter((x): x is { row: CommodityRow; entry: NonNullable<ReturnType<typeof bySymbol>> } => !!x.entry?.oracle.feedId);
 
-  for (let i = 0; i < withFeedIds.length; i += FEED_BATCH_SIZE) {
-    const batch = withFeedIds.slice(i, i + FEED_BATCH_SIZE);
-    const feedIds = batch.map((x) => `0x${x.entry.oracle.feedId}`);
+  const eligible = withFeedIds.filter((x) => !rejectedFeeds.has(x.entry.oracle.feedId!));
+  for (let i = 0; i < eligible.length; i += FEED_BATCH_SIZE) {
+    let batch = eligible.slice(i, i + FEED_BATCH_SIZE);
+    let feedIds = batch.map((x) => `0x${x.entry.oracle.feedId}`);
 
     let updates: Awaited<ReturnType<HermesClient["getLatestPriceUpdates"]>>;
     try {
-      // CHECK vs SDK: getLatestPriceUpdates(feedIds, { encoding: "base64" }) return shape —
-      // assumed to carry `.binary.data` (array of hex/base64 VAA-wrapped update blobs) and
-      // `.parsed` (per-feed price/conf/publish_time) alongside it.
       updates = await hermes.getLatestPriceUpdates(feedIds, { encoding: "base64" } as any);
     } catch (err) {
-      log.error({ err: String(err), feedIds }, "hermes.getLatestPriceUpdates failed");
-      continue;
+      // Hermes rejects a whole batch when ANY id is not entitled on the API key (403) or unknown (400),
+      // which would silence every Pyth push. Find the offenders one by one, drop them for the rest of this
+      // process, and retry the batch without them.
+      log.warn({ err: String(err).slice(0, 160), feeds: feedIds.length }, "hermes batch failed; probing feeds individually");
+      const ok: typeof batch = [];
+      for (const item of batch) {
+        const id = item.entry.oracle.feedId!;
+        try {
+          await hermes.getLatestPriceUpdates([`0x${id}`], { encoding: "base64" } as any);
+          ok.push(item);
+        } catch (e2) {
+          rejectedFeeds.add(id);
+          log.error({ symbol: item.row.symbol, feedId: id, err: String(e2).slice(0, 160) }, "hermes rejects this feed (entitlement/unknown id); skipping until restart");
+        }
+      }
+      if (ok.length === 0) continue;
+      batch = ok;
+      feedIds = batch.map((x) => `0x${x.entry.oracle.feedId}`);
+      try {
+        updates = await hermes.getLatestPriceUpdates(feedIds, { encoding: "base64" } as any);
+      } catch (e3) {
+        log.error({ err: String(e3).slice(0, 160), feedIds }, "hermes.getLatestPriceUpdates failed after pruning");
+        continue;
+      }
     }
 
     // Decide, per commodity in this batch, whether the reading is worth posting (deviation

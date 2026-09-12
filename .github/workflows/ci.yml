@@ -113,3 +113,34 @@ jobs:
       - name: smoke
         if: env.RPC_URL != ''
         run: pnpm exec tsx scripts/devnet-smoke.ts
+
+  verifiable:
+    name: verifiable build (artifacts for mainnet deploy + solana-verify)
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Solana ${{ env.SOLANA_VERSION }}
+        run: |
+          sh -c "$(curl -sSfL https://release.anza.xyz/v${SOLANA_VERSION}/install)"
+          echo "$HOME/.local/share/solana/install/active_release/bin" >> "$GITHUB_PATH"
+      - name: Anchor ${{ env.ANCHOR_VERSION }}
+        run: cargo install --git https://github.com/coral-xyz/anchor --tag v${ANCHOR_VERSION} anchor-cli --locked --force
+      # `anchor build --verifiable` runs the build inside the pinned solana-verifiable-build Docker image so the
+      # bytes are reproducible; the runner has Docker. Output: target/verifiable/*.so
+      - name: anchor build --verifiable
+        run: anchor build --verifiable
+      - name: sizes + sha256 (the hashes to publish; `solana-verify` compares against these)
+        run: |
+          for p in peg_desk fee_router distributor buyback; do
+            printf "%-12s %9s bytes  sha256 %s\n" "$p" "$(stat -c %s target/verifiable/$p.so)" "$(sha256sum target/verifiable/$p.so | cut -c1-64)"
+          done | tee target/verifiable/HASHES.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: verifiable-programs-${{ github.sha }}
+          path: |
+            target/verifiable/*.so
+            target/verifiable/HASHES.txt
+          retention-days: 90

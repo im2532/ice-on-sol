@@ -240,22 +240,23 @@ async function resolveSeedPrices(targets: Commodity[], feedIds: Map<string, stri
     const override = process.env[`SEED_PRICE_${c.symbol}`];
     if (override) out.set(c.symbol, BigInt(Math.round(Number(override) * 1e8)));
   }
-  // PythPull: Hermes latest parsed prices, scaled exactly like pricing.rs scale_quote.
+  // PythPull: Hermes latest parsed prices, scaled exactly like pricing.rs scale_quote. One request per feed:
+  // Hermes rejects a whole batch when any id is not entitled on the API key (403) or unknown (400).
   const pyth = targets.filter((c) => c.oracle.kind === OracleKind.PythPull && feedIds.has(c.symbol) && !out.has(c.symbol));
-  for (let i = 0; i < pyth.length; i += 20) {
-    const batch = pyth.slice(i, i + 20);
-    const qs = batch.map((c) => `ids[]=${feedIds.get(c.symbol)}`).join("&");
+  for (const c of pyth) {
+    const id = feedIds.get(c.symbol)!;
+    if (c.oracle.quote === "EUR") continue; // EUR needs fx; use SEED_PRICE_<SYM>
     try {
-      const res = await fetch(`${HERMES_URL}/v2/updates/price/latest?${qs}&parsed=true`, { headers: HERMES_HEADERS });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const body = (await res.json()) as { parsed: { id: string; price: { price: string; expo: number } }[] };
-      for (const c of batch) {
-        const p = body.parsed.find((x) => x.id.replace(/^0x/, "") === feedIds.get(c.symbol));
-        if (!p || c.oracle.quote === "EUR") continue; // EUR needs fx; use SEED_PRICE_<SYM>
-        out.set(c.symbol, scaleQuote(BigInt(p.price.price), p.price.expo, c.oracle.quote === "USc" ? 1 : 0));
+      const res = await fetch(`${HERMES_URL}/v2/updates/price/latest?ids[]=${id}&parsed=true`, { headers: HERMES_HEADERS });
+      if (!res.ok) {
+        console.warn(`  ! Hermes ${res.status} for ${c.symbol} (${id.slice(0, 12)}…): ${(await res.text()).slice(0, 110)}`);
+        continue;
       }
+      const body = (await res.json()) as { parsed: { id: string; price: { price: string; expo: number } }[] };
+      const p = body.parsed.find((x) => x.id.replace(/^0x/, "") === id);
+      if (p) out.set(c.symbol, scaleQuote(BigInt(p.price.price), p.price.expo, c.oracle.quote === "USc" ? 1 : 0));
     } catch (err) {
-      console.warn(`  ! Hermes price fetch failed: ${String(err)}`);
+      console.warn(`  ! Hermes price fetch failed for ${c.symbol}: ${String(err)}`);
     }
   }
   // KeeperSigned and Switchboard (relayed by the keeper as KeeperSigned until the on-demand feeds exist):
