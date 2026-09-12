@@ -31,7 +31,7 @@ interface FixtureKeys {
   other: string;
   accounts: Record<string, string>;
 }
-const fixtures = JSON.parse(readFileSync(path.join(__dirname, "fixtures", "keys.json"), "utf8")) as FixtureKeys;
+const fixtures = JSON.parse(readFileSync(path.join(process.cwd(), "tests", "fixtures", "keys.json"), "utf8")) as FixtureKeys;
 
 const SEED = {
   router: Buffer.from("router"),

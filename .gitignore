@@ -17,3 +17,7 @@ apps/web/tsconfig.tsbuildinfo
 
 # scripts/dev-postgres.ts data dir (embedded dev Postgres)
 .pgdata/
+
+# localnet deployments are per-ledger (anchor localnet resets); devnet/mainnet ones are committed
+deployments/localnet.json
+deployments/localnet.sql

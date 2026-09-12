@@ -22,7 +22,22 @@ async function main(): Promise<void> {
   const pg = new EmbeddedPostgres({ databaseDir: dataDir, user, password, port, persistent: true });
   if (fresh) await pg.initialise();
   await pg.start();
-  if (fresh) await pg.createDatabase(dbName);
+  // Create the database named in DATABASE_URL if it does not exist yet (one server, one db per cluster:
+  // e.g. icemarkets for devnet, icemarkets_local for localnet).
+  // RESET_DB=1 drops it first (localnet ledgers are ephemeral; stale pool/mint rows would confuse the keeper).
+  if (process.env.RESET_DB === "1") {
+    try {
+      await pg.dropDatabase(dbName);
+      console.log(`dropped database ${dbName} (RESET_DB=1)`);
+    } catch (err) {
+      if (!/does not exist/.test(String(err))) throw err;
+    }
+  }
+  try {
+    await pg.createDatabase(dbName);
+  } catch (err) {
+    if (!/already exists/.test(String(err))) throw err;
+  }
   console.log(`postgres up: ${user}@localhost:${port}/${dbName} (data: ${dataDir})`);
 
   const client = pg.getPgClient(dbName);
