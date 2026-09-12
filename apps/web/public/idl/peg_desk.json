@@ -1,0 +1,2795 @@
+{
+  "address": "6jMv6pdi3nB4RRmJSojDy2cHRLMgKNM3ZEeJFngWrqQN",
+  "metadata": {
+    "name": "peg_desk",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "ICEmarkets Peg Desk: mints/burns commodity coins against a USDC reserve at oracle price +/- dynamic spread",
+    "repository": "https://github.com/icemarkets-exchange/icemarkets"
+  },
+  "instructions": [
+    {
+      "name": "accept_admin",
+      "discriminator": [
+        112,
+        42,
+        45,
+        90,
+        116,
+        181,
+        13,
+        170
+      ],
+      "accounts": [
+        {
+          "name": "pending_admin",
+          "signer": true
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "buy",
+      "docs": [
+        "remaining_accounts (Composite only): [leg Commodity, leg price source] × leg_count."
+      ],
+      "discriminator": [
+        102,
+        6,
+        61,
+        18,
+        1,
+        218,
+        235,
+        234
+      ],
+      "accounts": [
+        {
+          "name": "user",
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "commodity",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  109,
+                  100,
+                  116,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "commodity.symbol",
+                "account": "Commodity"
+              }
+            ]
+          }
+        },
+        {
+          "name": "coin_mint",
+          "writable": true,
+          "relations": [
+            "commodity"
+          ]
+        },
+        {
+          "name": "mint_auth",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  105,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "reserve_vault",
+          "writable": true,
+          "relations": [
+            "commodity"
+          ]
+        },
+        {
+          "name": "user_usdc",
+          "writable": true
+        },
+        {
+          "name": "user_coin",
+          "writable": true
+        },
+        {
+          "name": "price_feed",
+          "docs": [
+            "Switchboard → stand-in KeeperPrice at commodity.feed_account. Validated in oracle.rs."
+          ],
+          "optional": true
+        },
+        {
+          "name": "fx_feed",
+          "optional": true
+        },
+        {
+          "name": "keeper_price",
+          "docs": [
+            "field checked in oracle.rs)."
+          ],
+          "optional": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": [
+        {
+          "name": "usdc_in",
+          "type": "u64"
+        },
+        {
+          "name": "min_coin_out",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "buy_exact_out",
+      "discriminator": [
+        24,
+        211,
+        116,
+        40,
+        105,
+        3,
+        153,
+        56
+      ],
+      "accounts": [
+        {
+          "name": "user",
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "commodity",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  109,
+                  100,
+                  116,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "commodity.symbol",
+                "account": "Commodity"
+              }
+            ]
+          }
+        },
+        {
+          "name": "coin_mint",
+          "writable": true,
+          "relations": [
+            "commodity"
+          ]
+        },
+        {
+          "name": "mint_auth",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  105,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "reserve_vault",
+          "writable": true,
+          "relations": [
+            "commodity"
+          ]
+        },
+        {
+          "name": "user_usdc",
+          "writable": true
+        },
+        {
+          "name": "user_coin",
+          "writable": true
+        },
+        {
+          "name": "price_feed",
+          "docs": [
+            "Switchboard → stand-in KeeperPrice at commodity.feed_account. Validated in oracle.rs."
+          ],
+          "optional": true
+        },
+        {
+          "name": "fx_feed",
+          "optional": true
+        },
+        {
+          "name": "keeper_price",
+          "docs": [
+            "field checked in oracle.rs)."
+          ],
+          "optional": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": [
+        {
+          "name": "coin_out",
+          "type": "u64"
+        },
+        {
+          "name": "max_usdc_in",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "clear_price_anchor",
+      "docs": [
+        "Admin: reset the price-deviation breaker anchor (`Commodity.last_price = 0`)."
+      ],
+      "discriminator": [
+        57,
+        136,
+        211,
+        79,
+        150,
+        123,
+        127,
+        61
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "docs": [
+            "Admin (or keeper where the instruction allows it)."
+          ],
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "commodity",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  109,
+                  100,
+                  116,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "commodity.symbol",
+                "account": "Commodity"
+              }
+            ]
+          }
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "create_commodity",
+      "discriminator": [
+        203,
+        70,
+        17,
+        202,
+        67,
+        116,
+        156,
+        183
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "admin",
+          "docs": [
+            "Must be `config.admin`; becomes Metaplex update authority."
+          ],
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "mint_auth",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  105,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "reserve_mint",
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "token_metadata_program",
+          "address": "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "rent",
+          "address": "SysvarRent111111111111111111111111111111111"
+        },
+        {
+          "name": "commodity",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  109,
+                  100,
+                  116,
+                  121
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "args.symbol"
+              }
+            ]
+          }
+        },
+        {
+          "name": "coin_mint",
+          "docs": [
+            "Fresh keypair (signs the tx). Freeze authority is left as None."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "reserve_vault",
+          "docs": [
+            "USDC vault, PDA `[\"reserve\", commodity]`, authority = commodity PDA."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  115,
+                  101,
+                  114,
+                  118,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "commodity"
+              }
+            ]
+          }
+        },
+        {
+          "name": "metadata",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  101,
+                  116,
+                  97,
+                  100,
+                  97,
+                  116,
+                  97
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "token_metadata_program"
+              },
+              {
+                "kind": "account",
+                "path": "coin_mint"
+              }
+            ],
+            "program": {
+              "kind": "account",
+              "path": "token_metadata_program"
+            }
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "CreateCommodityArgs"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "deposit_reserve",
+      "discriminator": [
+        187,
+        75,
+        224,
+        96,
+        122,
+        233,
+        220,
+        121
+      ],
+      "accounts": [
+        {
+          "name": "depositor",
+          "signer": true
+        },
+        {
+          "name": "commodity",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  109,
+                  100,
+                  116,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "commodity.symbol",
+                "account": "Commodity"
+              }
+            ]
+          }
+        },
+        {
+          "name": "reserve_vault",
+          "writable": true,
+          "relations": [
+            "commodity"
+          ]
+        },
+        {
+          "name": "from",
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "initialize_config",
+      "discriminator": [
+        208,
+        127,
+        21,
+        1,
+        194,
+        190,
+        196,
+        70
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "docs": [
+            "Pays rent and becomes `admin`."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "reserve_mint",
+          "docs": [
+            "USDC."
+          ]
+        },
+        {
+          "name": "treasury"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "max_conf_bps",
+          "type": "u16"
+        },
+        {
+          "name": "reserve_warn_bps",
+          "type": "u16"
+        },
+        {
+          "name": "reserve_halt_bps",
+          "type": "u16"
+        }
+      ]
+    },
+    {
+      "name": "keeper_update_price",
+      "discriminator": [
+        198,
+        56,
+        36,
+        96,
+        55,
+        110,
+        161,
+        102
+      ],
+      "accounts": [
+        {
+          "name": "keeper",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "commodity",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  109,
+                  100,
+                  116,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "commodity.symbol",
+                "account": "Commodity"
+              }
+            ]
+          }
+        },
+        {
+          "name": "keeper_price",
+          "docs": [
+            "Created on first update with DEFAULT_MAX_MOVE_BPS / DEFAULT_MIN_INTERVAL."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  107,
+                  112
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "commodity"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "price",
+          "type": "u64"
+        },
+        {
+          "name": "conf",
+          "type": "u64"
+        },
+        {
+          "name": "publish_time",
+          "type": "i64"
+        },
+        {
+          "name": "source_hash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "propose_admin",
+      "discriminator": [
+        121,
+        214,
+        199,
+        212,
+        87,
+        39,
+        117,
+        234
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "new_admin",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "sell",
+      "discriminator": [
+        51,
+        230,
+        133,
+        164,
+        1,
+        127,
+        131,
+        173
+      ],
+      "accounts": [
+        {
+          "name": "user",
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "commodity",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  109,
+                  100,
+                  116,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "commodity.symbol",
+                "account": "Commodity"
+              }
+            ]
+          }
+        },
+        {
+          "name": "coin_mint",
+          "writable": true,
+          "relations": [
+            "commodity"
+          ]
+        },
+        {
+          "name": "mint_auth",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  105,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "reserve_vault",
+          "writable": true,
+          "relations": [
+            "commodity"
+          ]
+        },
+        {
+          "name": "user_usdc",
+          "writable": true
+        },
+        {
+          "name": "user_coin",
+          "writable": true
+        },
+        {
+          "name": "price_feed",
+          "docs": [
+            "Switchboard → stand-in KeeperPrice at commodity.feed_account. Validated in oracle.rs."
+          ],
+          "optional": true
+        },
+        {
+          "name": "fx_feed",
+          "optional": true
+        },
+        {
+          "name": "keeper_price",
+          "docs": [
+            "field checked in oracle.rs)."
+          ],
+          "optional": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": [
+        {
+          "name": "coin_in",
+          "type": "u64"
+        },
+        {
+          "name": "min_usdc_out",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "set_commodity_params",
+      "discriminator": [
+        37,
+        4,
+        236,
+        199,
+        207,
+        234,
+        75,
+        6
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "docs": [
+            "Admin (or keeper where the instruction allows it)."
+          ],
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "commodity",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  109,
+                  100,
+                  116,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "commodity.symbol",
+                "account": "Commodity"
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "SetParamsArgs"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "set_feed_account",
+      "discriminator": [
+        14,
+        43,
+        174,
+        92,
+        247,
+        121,
+        18,
+        237
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "docs": [
+            "Admin (or keeper where the instruction allows it)."
+          ],
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "commodity",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  109,
+                  100,
+                  116,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "commodity.symbol",
+                "account": "Commodity"
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "feed_account",
+          "type": "pubkey"
+        },
+        {
+          "name": "fx_feed_account",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "set_global_pause",
+      "discriminator": [
+        32,
+        234,
+        28,
+        216,
+        67,
+        76,
+        116,
+        231
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "docs": [
+            "Admin or keeper. Keepers may only pause."
+          ],
+          "signer": true
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "paused",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "set_index_legs",
+      "docs": [
+        "remaining_accounts: the leg Commodity accounts, in `legs` order."
+      ],
+      "discriminator": [
+        142,
+        131,
+        13,
+        142,
+        137,
+        216,
+        118,
+        177
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "docs": [
+            "Admin (or keeper where the instruction allows it)."
+          ],
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "commodity",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  109,
+                  100,
+                  116,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "commodity.symbol",
+                "account": "Commodity"
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "legs",
+          "type": {
+            "vec": {
+              "defined": {
+                "name": "IndexLeg"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "set_keeper_bounds",
+      "docs": [
+        "Addition to CONTRACTS.md: admin sets KeeperPrice.max_move_bps / min_interval."
+      ],
+      "discriminator": [
+        21,
+        134,
+        159,
+        6,
+        125,
+        6,
+        115,
+        179
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "commodity",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  109,
+                  100,
+                  116,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "commodity.symbol",
+                "account": "Commodity"
+              }
+            ]
+          }
+        },
+        {
+          "name": "keeper_price",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  107,
+                  112
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "commodity"
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "max_move_bps",
+          "type": "u16"
+        },
+        {
+          "name": "min_interval",
+          "type": "u32"
+        }
+      ]
+    },
+    {
+      "name": "set_keepers",
+      "discriminator": [
+        135,
+        123,
+        16,
+        243,
+        252,
+        182,
+        46,
+        169
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "keepers",
+          "type": {
+            "vec": "pubkey"
+          }
+        }
+      ]
+    },
+    {
+      "name": "set_status",
+      "discriminator": [
+        181,
+        184,
+        224,
+        203,
+        193,
+        29,
+        177,
+        224
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "docs": [
+            "Admin (or keeper where the instruction allows it)."
+          ],
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "commodity",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  109,
+                  100,
+                  116,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "commodity.symbol",
+                "account": "Commodity"
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "status",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "sweep_spread_fees",
+      "discriminator": [
+        138,
+        183,
+        214,
+        139,
+        123,
+        160,
+        118,
+        101
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "docs": [
+            "Keeper (admin also accepted)."
+          ],
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "commodity",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  109,
+                  100,
+                  116,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "commodity.symbol",
+                "account": "Commodity"
+              }
+            ]
+          }
+        },
+        {
+          "name": "coin_mint",
+          "docs": [
+            "Needed for outstanding supply in the reserve-ratio check."
+          ],
+          "relations": [
+            "commodity"
+          ]
+        },
+        {
+          "name": "reserve_vault",
+          "writable": true,
+          "relations": [
+            "commodity"
+          ]
+        },
+        {
+          "name": "treasury_usdc",
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "Commodity",
+      "discriminator": [
+        189,
+        251,
+        91,
+        179,
+        80,
+        252,
+        160,
+        114
+      ]
+    },
+    {
+      "name": "GlobalConfig",
+      "discriminator": [
+        149,
+        8,
+        156,
+        202,
+        160,
+        252,
+        176,
+        217
+      ]
+    },
+    {
+      "name": "KeeperPrice",
+      "discriminator": [
+        171,
+        73,
+        94,
+        178,
+        237,
+        17,
+        118,
+        98
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "AdminChanged",
+      "discriminator": [
+        232,
+        34,
+        31,
+        226,
+        62,
+        18,
+        19,
+        114
+      ]
+    },
+    {
+      "name": "AdminProposed",
+      "discriminator": [
+        129,
+        249,
+        226,
+        227,
+        199,
+        82,
+        110,
+        243
+      ]
+    },
+    {
+      "name": "CommodityCreated",
+      "discriminator": [
+        165,
+        146,
+        167,
+        157,
+        91,
+        114,
+        250,
+        80
+      ]
+    },
+    {
+      "name": "ConfigInitialized",
+      "discriminator": [
+        181,
+        49,
+        200,
+        156,
+        19,
+        167,
+        178,
+        91
+      ]
+    },
+    {
+      "name": "GlobalPauseSet",
+      "discriminator": [
+        62,
+        169,
+        2,
+        80,
+        213,
+        238,
+        159,
+        57
+      ]
+    },
+    {
+      "name": "KeepersSet",
+      "discriminator": [
+        25,
+        180,
+        116,
+        180,
+        247,
+        137,
+        20,
+        144
+      ]
+    },
+    {
+      "name": "ParamsUpdated",
+      "discriminator": [
+        2,
+        163,
+        138,
+        99,
+        135,
+        11,
+        136,
+        169
+      ]
+    },
+    {
+      "name": "PriceUpdated",
+      "discriminator": [
+        154,
+        72,
+        87,
+        150,
+        246,
+        230,
+        23,
+        217
+      ]
+    },
+    {
+      "name": "ReserveAlert",
+      "discriminator": [
+        144,
+        186,
+        98,
+        103,
+        204,
+        239,
+        246,
+        140
+      ]
+    },
+    {
+      "name": "ReserveDeposited",
+      "discriminator": [
+        97,
+        31,
+        143,
+        158,
+        209,
+        4,
+        254,
+        91
+      ]
+    },
+    {
+      "name": "SpreadFeesSwept",
+      "discriminator": [
+        233,
+        149,
+        85,
+        237,
+        29,
+        180,
+        222,
+        47
+      ]
+    },
+    {
+      "name": "StatusChanged",
+      "discriminator": [
+        146,
+        235,
+        222,
+        125,
+        145,
+        246,
+        34,
+        240
+      ]
+    },
+    {
+      "name": "Trade",
+      "discriminator": [
+        24,
+        254,
+        218,
+        152,
+        253,
+        43,
+        18,
+        81
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "Paused",
+      "msg": "Protocol is paused"
+    },
+    {
+      "code": 6001,
+      "name": "MarketClosed",
+      "msg": "Market is closed (sell-only)"
+    },
+    {
+      "code": 6002,
+      "name": "MarketHalted",
+      "msg": "Market is halted"
+    },
+    {
+      "code": 6003,
+      "name": "StaleOracle",
+      "msg": "Oracle price is stale"
+    },
+    {
+      "code": 6004,
+      "name": "OracleNotMonotonic",
+      "msg": "Oracle publish time went backwards"
+    },
+    {
+      "code": 6005,
+      "name": "ConfidenceTooWide",
+      "msg": "Oracle confidence interval too wide"
+    },
+    {
+      "code": 6006,
+      "name": "SlippageExceeded",
+      "msg": "Slippage limit exceeded"
+    },
+    {
+      "code": 6007,
+      "name": "PerTxCapExceeded",
+      "msg": "Per-transaction cap exceeded"
+    },
+    {
+      "code": 6008,
+      "name": "SupplyCapExceeded",
+      "msg": "Supply cap exceeded"
+    },
+    {
+      "code": 6009,
+      "name": "ReserveInsufficient",
+      "msg": "Reserve vault cannot cover this redemption"
+    },
+    {
+      "code": 6010,
+      "name": "ReserveRatioTooLow",
+      "msg": "Reserve ratio too low"
+    },
+    {
+      "code": 6011,
+      "name": "InvalidOracleKind",
+      "msg": "Invalid oracle kind for this operation"
+    },
+    {
+      "code": 6012,
+      "name": "InvalidFeed",
+      "msg": "Invalid or mismatched price feed account"
+    },
+    {
+      "code": 6013,
+      "name": "MoveTooLarge",
+      "msg": "Keeper price move exceeds max_move_bps"
+    },
+    {
+      "code": 6014,
+      "name": "TooSoon",
+      "msg": "Keeper price update too soon"
+    },
+    {
+      "code": 6015,
+      "name": "Unauthorized",
+      "msg": "Unauthorized"
+    },
+    {
+      "code": 6016,
+      "name": "MathOverflow",
+      "msg": "Math overflow"
+    },
+    {
+      "code": 6017,
+      "name": "InvalidLegs",
+      "msg": "Invalid index legs"
+    },
+    {
+      "code": 6018,
+      "name": "InvalidSymbol",
+      "msg": "Invalid symbol"
+    },
+    {
+      "code": 6019,
+      "name": "InvalidParams",
+      "msg": "Invalid parameter"
+    },
+    {
+      "code": 6020,
+      "name": "TooManyKeepers",
+      "msg": "Too many keepers"
+    },
+    {
+      "code": 6021,
+      "name": "InvalidStatus",
+      "msg": "Invalid status or status transition"
+    },
+    {
+      "code": 6022,
+      "name": "ZeroAmount",
+      "msg": "Amount must be greater than zero"
+    },
+    {
+      "code": 6023,
+      "name": "NonPositivePrice",
+      "msg": "Oracle price must be positive"
+    },
+    {
+      "code": 6024,
+      "name": "DailyMintCapExceeded",
+      "msg": "Daily mint cap exceeded for this commodity"
+    },
+    {
+      "code": 6025,
+      "name": "DailyRedeemCapExceeded",
+      "msg": "Daily redemption cap exceeded for this commodity"
+    },
+    {
+      "code": 6026,
+      "name": "PriceDeviationTooLarge",
+      "msg": "Oracle price deviates too far from the last accepted price"
+    }
+  ],
+  "types": [
+    {
+      "name": "AdminChanged",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "old_admin",
+            "type": "pubkey"
+          },
+          {
+            "name": "new_admin",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "AdminProposed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "current",
+            "type": "pubkey"
+          },
+          {
+            "name": "pending",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Commodity",
+      "docs": [
+        "PDA `[\"cmdty\", symbol[12]]`."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "symbol",
+            "type": {
+              "array": [
+                "u8",
+                12
+              ]
+            }
+          },
+          {
+            "name": "coin_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "decimals",
+            "docs": [
+              "Always COIN_DECIMALS (6)."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "oracle_kind",
+            "type": "u8"
+          },
+          {
+            "name": "session_kind",
+            "type": "u8"
+          },
+          {
+            "name": "status",
+            "type": "u8"
+          },
+          {
+            "name": "feed_id",
+            "docs": [
+              "Pyth feed id (or Switchboard feed pubkey bytes)."
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "feed_account",
+            "docs": [
+              "PythPull: PriceUpdateV2 account posted by keeper; Switchboard: quote account."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "fx_feed_id",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "fx_feed_account",
+            "type": "pubkey"
+          },
+          {
+            "name": "quote_scale",
+            "docs": [
+              "0 = USD, 1 = US cents (÷100), 2 = EUR (× fx)."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "base_spread_bps",
+            "type": "u16"
+          },
+          {
+            "name": "closed_spread_bps",
+            "type": "u16"
+          },
+          {
+            "name": "conf_mult_bps",
+            "type": "u16"
+          },
+          {
+            "name": "max_age_open",
+            "type": "u32"
+          },
+          {
+            "name": "max_age_closed",
+            "type": "u32"
+          },
+          {
+            "name": "supply_cap",
+            "docs": [
+              "Coin base units."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "per_tx_cap",
+            "docs": [
+              "Coin base units."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "last_publish_time",
+            "docs": [
+              "Last accepted oracle publish time (monotonic guard)."
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "last_price",
+            "type": "u64"
+          },
+          {
+            "name": "reserve_vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "hedge_vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "reserve_balance_cached",
+            "type": "u64"
+          },
+          {
+            "name": "legs",
+            "type": {
+              "array": [
+                {
+                  "defined": {
+                    "name": "IndexLeg"
+                  }
+                },
+                5
+              ]
+            }
+          },
+          {
+            "name": "leg_count",
+            "type": "u8"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "pyth_min_signatures",
+            "docs": [
+              "Carved from CONTRACTS.md `_reserved[64]` (byte-compatible): minimum Wormhole signatures",
+              "accepted on a partially-verified Pyth update. 0 = require `VerificationLevel::Full`."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "daily_mint_cap",
+            "docs": [
+              "Max COIN minted per rolling `DAILY_WINDOW_SECS` window (base units). 0 = no cap."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "daily_redeem_cap",
+            "docs": [
+              "Max USDC paid out by `sell` per window (base units). 0 = no cap."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "window_start",
+            "docs": [
+              "Start of the current window (unix). Rolled forward lazily by trades."
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "window_minted",
+            "type": "u64"
+          },
+          {
+            "name": "window_redeemed",
+            "type": "u64"
+          },
+          {
+            "name": "max_deviation_bps",
+            "docs": [
+              "Max |oracle − last_price| / last_price in bps accepted by a trade while the previous",
+              "trade's oracle read is younger than `deviation_window_secs`. 0 = disabled.",
+              "Applies to every oracle kind (KeeperPrice.max_move_bps only bounds keeper posts)."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "deviation_window_secs",
+            "docs": [
+              "How long `last_price` stays the deviation anchor after `last_publish_time` (secs)."
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "_reserved",
+            "type": {
+              "array": [
+                "u8",
+                17
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "CommodityCreated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "commodity",
+            "type": "pubkey"
+          },
+          {
+            "name": "symbol",
+            "type": {
+              "array": [
+                "u8",
+                12
+              ]
+            }
+          },
+          {
+            "name": "mint",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ConfigInitialized",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "admin",
+            "type": "pubkey"
+          },
+          {
+            "name": "reserve_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "treasury",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CreateCommodityArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "symbol",
+            "docs": [
+              "ASCII A-Z0-9, right-padded with 0u8 to 12 bytes."
+            ],
+            "type": {
+              "array": [
+                "u8",
+                12
+              ]
+            }
+          },
+          {
+            "name": "oracle_kind",
+            "type": "u8"
+          },
+          {
+            "name": "session_kind",
+            "type": "u8"
+          },
+          {
+            "name": "feed_id",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "feed_account",
+            "docs": [
+              "PythPull: PriceUpdateV2 account; Switchboard (stand-in): KeeperPrice PDA; else default."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "fx_feed_id",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "fx_feed_account",
+            "type": "pubkey"
+          },
+          {
+            "name": "quote_scale",
+            "type": "u8"
+          },
+          {
+            "name": "base_spread_bps",
+            "type": "u16"
+          },
+          {
+            "name": "closed_spread_bps",
+            "type": "u16"
+          },
+          {
+            "name": "conf_mult_bps",
+            "type": "u16"
+          },
+          {
+            "name": "max_age_open",
+            "type": "u32"
+          },
+          {
+            "name": "max_age_closed",
+            "type": "u32"
+          },
+          {
+            "name": "supply_cap",
+            "type": "u64"
+          },
+          {
+            "name": "per_tx_cap",
+            "type": "u64"
+          },
+          {
+            "name": "pyth_min_signatures",
+            "docs": [
+              "0 = require fully verified Pyth updates."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "name",
+            "docs": [
+              "Metaplex name (≤ 32 bytes) and uri (≤ 200 bytes)."
+            ],
+            "type": "string"
+          },
+          {
+            "name": "uri",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "name": "GlobalConfig",
+      "docs": [
+        "PDA `[\"config\"]`."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "admin",
+            "type": "pubkey"
+          },
+          {
+            "name": "pending_admin",
+            "type": "pubkey"
+          },
+          {
+            "name": "keepers",
+            "type": {
+              "array": [
+                "pubkey",
+                8
+              ]
+            }
+          },
+          {
+            "name": "keeper_count",
+            "type": "u8"
+          },
+          {
+            "name": "treasury",
+            "docs": [
+              "Owner of the USDC token account that receives swept spread fees."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "reserve_mint",
+            "docs": [
+              "USDC mint."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "global_pause",
+            "type": "bool"
+          },
+          {
+            "name": "max_conf_bps",
+            "docs": [
+              "Reject oracle if conf / price > this (default 200)."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "reserve_warn_bps",
+            "docs": [
+              "Default 10_200: below this spreads double and sweeps are refused."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "reserve_halt_bps",
+            "docs": [
+              "Default 9_800: buys revert if the post-trade ratio is below this."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "_reserved",
+            "type": {
+              "array": [
+                "u8",
+                64
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "GlobalPauseSet",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "paused",
+            "type": "bool"
+          },
+          {
+            "name": "by",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "IndexLeg",
+      "docs": [
+        "One leg of a Composite (index) coin.",
+        "",
+        "CONTRACTS.md declares this `#[zero_copy]`; it is Borsh here because it lives inside a Borsh",
+        "`#[account]`. The byte layout is identical (32 + 2 + 6 = 40 bytes, no padding)."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "commodity",
+            "type": "pubkey"
+          },
+          {
+            "name": "weight_bps",
+            "type": "u16"
+          },
+          {
+            "name": "_pad",
+            "type": {
+              "array": [
+                "u8",
+                6
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "KeeperPrice",
+      "docs": [
+        "PDA `[\"kp\", commodity]`. Prices here are already USD at 1e8 (quote_scale is not applied)."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "commodity",
+            "type": "pubkey"
+          },
+          {
+            "name": "price",
+            "type": "u64"
+          },
+          {
+            "name": "conf",
+            "type": "u64"
+          },
+          {
+            "name": "publish_time",
+            "type": "i64"
+          },
+          {
+            "name": "source_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "max_move_bps",
+            "type": "u16"
+          },
+          {
+            "name": "min_interval",
+            "type": "u32"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "KeepersSet",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "keepers",
+            "type": {
+              "vec": "pubkey"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "ParamsUpdated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "commodity",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PriceUpdated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "commodity",
+            "type": "pubkey"
+          },
+          {
+            "name": "price",
+            "type": "u64"
+          },
+          {
+            "name": "conf",
+            "type": "u64"
+          },
+          {
+            "name": "publish_time",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ReserveAlert",
+      "docs": [
+        "ratio_bps is u64 because an over-collateralised reserve can exceed u16::MAX bps."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "commodity",
+            "type": "pubkey"
+          },
+          {
+            "name": "ratio_bps",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ReserveDeposited",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "commodity",
+            "type": "pubkey"
+          },
+          {
+            "name": "from",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SetParamsArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "session_kind",
+            "type": {
+              "option": "u8"
+            }
+          },
+          {
+            "name": "feed_id",
+            "type": {
+              "option": {
+                "array": [
+                  "u8",
+                  32
+                ]
+              }
+            }
+          },
+          {
+            "name": "fx_feed_id",
+            "type": {
+              "option": {
+                "array": [
+                  "u8",
+                  32
+                ]
+              }
+            }
+          },
+          {
+            "name": "quote_scale",
+            "type": {
+              "option": "u8"
+            }
+          },
+          {
+            "name": "base_spread_bps",
+            "type": {
+              "option": "u16"
+            }
+          },
+          {
+            "name": "closed_spread_bps",
+            "type": {
+              "option": "u16"
+            }
+          },
+          {
+            "name": "conf_mult_bps",
+            "type": {
+              "option": "u16"
+            }
+          },
+          {
+            "name": "max_age_open",
+            "type": {
+              "option": "u32"
+            }
+          },
+          {
+            "name": "max_age_closed",
+            "type": {
+              "option": "u32"
+            }
+          },
+          {
+            "name": "supply_cap",
+            "type": {
+              "option": "u64"
+            }
+          },
+          {
+            "name": "per_tx_cap",
+            "type": {
+              "option": "u64"
+            }
+          },
+          {
+            "name": "pyth_min_signatures",
+            "type": {
+              "option": "u8"
+            }
+          },
+          {
+            "name": "daily_mint_cap",
+            "type": {
+              "option": "u64"
+            }
+          },
+          {
+            "name": "daily_redeem_cap",
+            "type": {
+              "option": "u64"
+            }
+          },
+          {
+            "name": "max_deviation_bps",
+            "type": {
+              "option": "u16"
+            }
+          },
+          {
+            "name": "deviation_window_secs",
+            "type": {
+              "option": "u32"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "SpreadFeesSwept",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "commodity",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "treasury_usdc",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "StatusChanged",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "commodity",
+            "type": "pubkey"
+          },
+          {
+            "name": "status",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Trade",
+      "docs": [
+        "side: 0 = buy, 1 = sell. `price` is the oracle mid (1e8), `spread_bps` the effective spread."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "commodity",
+            "type": "pubkey"
+          },
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "side",
+            "type": "u8"
+          },
+          {
+            "name": "usdc",
+            "type": "u64"
+          },
+          {
+            "name": "coin",
+            "type": "u64"
+          },
+          {
+            "name": "price",
+            "type": "u64"
+          },
+          {
+            "name": "spread_bps",
+            "type": "u16"
+          }
+        ]
+      }
+    }
+  ]
+}

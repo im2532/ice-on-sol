@@ -61,6 +61,31 @@ Run a public bug bounty (Immunefi) from mainnet day one.
 - Web: Vercel (or similar), Sentry, uptime monitor, mainnet cluster config, geo-restriction list enforced at the edge.
 - Secrets: keeper key in a KMS/secret manager, never in `.env` on a laptop.
 
+### 6a. Hosting decision (12 Sep 2026 prices)
+
+What runs where — one deployable per box, nothing shares a process with the keeper:
+
+| Piece | Host | Why | ≈ $/mo |
+|---|---|---|---|
+| Web (Next.js) | Vercel Pro | Hobby forbids commercial use; Pro adds flat-rate CDN + spike protection | 20 |
+| Keeper (long-running, hot wallet) | Fly.io machine, shared-cpu-1x / 1 GB, always on | per-second billing, secrets built in, no base fee; ~$5.70 for the machine | 6–12 |
+| Indexer (Fastify webhook receiver + backfill) | Fly.io machine, same size | same | 6 |
+| Postgres | Neon Launch (10 GB, PITR-style branching) | managed backups, cheapest paid Postgres; Supabase Pro is $25 and buys nothing we use | 5 |
+| RPC + webhooks | Helius Developer (10 M credits, 50 RPS, webhooks) | keeper + indexer webhooks + server-side reads; upgrade to Business ($499) only when credits run out | 49 |
+| Errors / uptime | Sentry free + Better Stack (or UptimeRobot) free | keeper "missed epoch" alert goes to Telegram/Discord via webhook | 0 |
+| **Total** | | | **≈ 90** |
+
+Cheaper still: one Hetzner CX22-class VPS (~€4–8) running keeper + indexer + Postgres under Docker Compose,
+Vercel Hobby dropped for Cloudflare Pages (free, commercial OK). ≈ $55/mo all-in, but one box is one failure
+domain and you own backups, so it is the pre-audit option, not the mainnet one.
+
+Rules that hold on either setup: the browser never holds an RPC key with write scope (web reads go through
+Next.js route handlers with a server-side Helius key, or a second key with domain allow-listing); the keeper
+key lives in Fly secrets at launch and moves to a KMS-backed signer before caps are raised; Postgres is
+reachable only from the Fly private network; every service exposes `/healthz` and Better Stack pages on it.
+The dominant mainnet cost is not hosting but payout transaction fees + priority/Jito tips, which scale with
+holders × 96 epochs/day — budget that from the fee split, not the infra line.
+
 ## 7. Mainnet deployment (runbook)
 
 1. Deploy the four programs from the verified build via the multisig; run `anchor keys sync` against mainnet IDs; verify on-chain hash.

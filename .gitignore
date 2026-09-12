@@ -11,8 +11,8 @@ keys/
 *.log
 .DS_Store
 coverage/
-apps/web/public/idl/
-apps/web/public/deployments/
+# apps/web/public/idl and /deployments are committed on purpose: Vercel builds without `anchor build`, and the
+# web app fetches /idl/peg_desk.json and /deployments/<cluster>.json at runtime. Refresh with `make idl web-deployments`.
 apps/web/tsconfig.tsbuildinfo
 
 # scripts/dev-postgres.ts data dir (embedded dev Postgres)
@@ -21,3 +21,4 @@ apps/web/tsconfig.tsbuildinfo
 # localnet deployments are per-ledger (anchor localnet resets); devnet/mainnet ones are committed
 deployments/localnet.json
 deployments/localnet.sql
+.localnet-logs/

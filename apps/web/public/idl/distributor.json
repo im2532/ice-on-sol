@@ -1,0 +1,1536 @@
+{
+  "address": "AEGw9dc3MUYR3aJXzZJjQmQDsJBJuT1RfsjoByNv4dV6",
+  "metadata": {
+    "name": "distributor",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "ICEmarkets distributor: per-pool epochs, keeper push payouts + Merkle claims of COIN fees to holders",
+    "repository": "https://github.com/icemarkets-exchange/icemarkets"
+  },
+  "instructions": [
+    {
+      "name": "claim",
+      "docs": [
+        "Wallet. leaf = keccak(epoch || wallet || amount_le); sorted-pair nodes."
+      ],
+      "discriminator": [
+        62,
+        198,
+        214,
+        193,
+        213,
+        159,
+        108,
+        210
+      ],
+      "accounts": [
+        {
+          "name": "wallet",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "dist_config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  105,
+                  115,
+                  116
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "epoch",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  112,
+                  111,
+                  99,
+                  104
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "epoch.pool",
+                "account": "Epoch"
+              },
+              {
+                "kind": "account",
+                "path": "epoch.index",
+                "account": "Epoch"
+              }
+            ]
+          }
+        },
+        {
+          "name": "claimed",
+          "docs": [
+            "Existence of this PDA is the double-claim guard (init fails if it exists)."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  108,
+                  97,
+                  105,
+                  109,
+                  101,
+                  100
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "epoch"
+              },
+              {
+                "kind": "account",
+                "path": "wallet"
+              }
+            ]
+          }
+        },
+        {
+          "name": "coin_mint",
+          "relations": [
+            "epoch"
+          ]
+        },
+        {
+          "name": "epoch_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "epoch"
+              },
+              {
+                "kind": "account",
+                "path": "token_program"
+              },
+              {
+                "kind": "account",
+                "path": "coin_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "wallet_ata",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "wallet"
+              },
+              {
+                "kind": "account",
+                "path": "token_program"
+              },
+              {
+                "kind": "account",
+                "path": "coin_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "token_program"
+        },
+        {
+          "name": "associated_token_program",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        },
+        {
+          "name": "proof",
+          "type": {
+            "vec": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "finalize_epoch",
+      "discriminator": [
+        159,
+        93,
+        117,
+        217,
+        63,
+        44,
+        249,
+        76
+      ],
+      "accounts": [
+        {
+          "name": "keeper",
+          "signer": true
+        },
+        {
+          "name": "dist_config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  105,
+                  115,
+                  116
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "epoch",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  112,
+                  111,
+                  99,
+                  104
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "epoch.pool",
+                "account": "Epoch"
+              },
+              {
+                "kind": "account",
+                "path": "epoch.index",
+                "account": "Epoch"
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "merkle_root",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "merkle_total",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "initialize",
+      "discriminator": [
+        175,
+        175,
+        109,
+        31,
+        13,
+        152,
+        155,
+        237
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "dist_config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  105,
+                  115,
+                  116
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "fee_router",
+          "type": "pubkey"
+        },
+        {
+          "name": "max_push_per_epoch_bps",
+          "type": "u16"
+        }
+      ]
+    },
+    {
+      "name": "open_epoch",
+      "docs": [
+        "Keeper. Router mode: remaining_accounts = [fee_router_program, router_config]. See `OpenEpoch` docs."
+      ],
+      "discriminator": [
+        75,
+        57,
+        218,
+        33,
+        173,
+        254,
+        207,
+        136
+      ],
+      "accounts": [
+        {
+          "name": "keeper",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "dist_config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  105,
+                  115,
+                  116
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "epoch",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  112,
+                  111,
+                  99,
+                  104
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "args.pool"
+              },
+              {
+                "kind": "arg",
+                "path": "args.index"
+              }
+            ]
+          }
+        },
+        {
+          "name": "coin_mint"
+        },
+        {
+          "name": "epoch_vault",
+          "docs": [
+            "COIN ATA owned by the Epoch PDA. `init_if_needed`: the ATA address is derivable before the",
+            "epoch exists, so anyone could pre-create it (plain `init` would then fail = DoS on this index).",
+            "Funding is checked as a balance delta in the handler, so pre-seeded tokens can't break it either."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "epoch"
+              },
+              {
+                "kind": "account",
+                "path": "token_program"
+              },
+              {
+                "kind": "account",
+                "path": "coin_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "source_vault",
+          "writable": true
+        },
+        {
+          "name": "source_authority"
+        },
+        {
+          "name": "dist_auth",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  105,
+                  115,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_program"
+        },
+        {
+          "name": "associated_token_program",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "OpenEpochArgs"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "push_payouts",
+      "docs": [
+        "Keeper. ≤ 12 items; remaining_accounts[i] = existing COIN token account of items[i].wallet."
+      ],
+      "discriminator": [
+        63,
+        244,
+        190,
+        23,
+        249,
+        76,
+        241,
+        251
+      ],
+      "accounts": [
+        {
+          "name": "keeper",
+          "signer": true
+        },
+        {
+          "name": "dist_config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  105,
+                  115,
+                  116
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "epoch",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  112,
+                  111,
+                  99,
+                  104
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "epoch.pool",
+                "account": "Epoch"
+              },
+              {
+                "kind": "account",
+                "path": "epoch.index",
+                "account": "Epoch"
+              }
+            ]
+          }
+        },
+        {
+          "name": "coin_mint",
+          "relations": [
+            "epoch"
+          ]
+        },
+        {
+          "name": "epoch_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "epoch"
+              },
+              {
+                "kind": "account",
+                "path": "token_program"
+              },
+              {
+                "kind": "account",
+                "path": "coin_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "token_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "items",
+          "type": {
+            "vec": {
+              "defined": {
+                "name": "PayoutItem"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "set_keepers",
+      "discriminator": [
+        135,
+        123,
+        16,
+        243,
+        252,
+        182,
+        46,
+        169
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "signer": true,
+          "relations": [
+            "dist_config"
+          ]
+        },
+        {
+          "name": "dist_config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  105,
+                  115,
+                  116
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "keepers",
+          "type": {
+            "vec": "pubkey"
+          }
+        }
+      ]
+    },
+    {
+      "name": "set_params",
+      "discriminator": [
+        27,
+        234,
+        178,
+        52,
+        147,
+        2,
+        187,
+        141
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "signer": true,
+          "relations": [
+            "dist_config"
+          ]
+        },
+        {
+          "name": "dist_config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  105,
+                  115,
+                  116
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "fee_router",
+          "type": {
+            "option": "pubkey"
+          }
+        },
+        {
+          "name": "max_push_per_epoch_bps",
+          "type": {
+            "option": "u16"
+          }
+        },
+        {
+          "name": "paused",
+          "type": {
+            "option": "bool"
+          }
+        },
+        {
+          "name": "new_admin",
+          "type": {
+            "option": "pubkey"
+          }
+        }
+      ]
+    },
+    {
+      "name": "sweep_unclaimed",
+      "discriminator": [
+        64,
+        168,
+        221,
+        224,
+        42,
+        216,
+        138,
+        144
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "signer": true,
+          "relations": [
+            "dist_config"
+          ]
+        },
+        {
+          "name": "dist_config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  105,
+                  115,
+                  116
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "epoch",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  112,
+                  111,
+                  99,
+                  104
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "epoch.pool",
+                "account": "Epoch"
+              },
+              {
+                "kind": "account",
+                "path": "epoch.index",
+                "account": "Epoch"
+              }
+            ]
+          }
+        },
+        {
+          "name": "coin_mint",
+          "relations": [
+            "epoch"
+          ]
+        },
+        {
+          "name": "epoch_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "epoch"
+              },
+              {
+                "kind": "account",
+                "path": "token_program"
+              },
+              {
+                "kind": "account",
+                "path": "coin_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "treasury",
+          "docs": [
+            "fee_router treasury[coin_mint] — PDA checked in the handler against `dist_config.fee_router`."
+          ],
+          "writable": true
+        },
+        {
+          "name": "token_program"
+        }
+      ],
+      "args": []
+    }
+  ],
+  "accounts": [
+    {
+      "name": "Claimed",
+      "discriminator": [
+        252,
+        214,
+        31,
+        113,
+        15,
+        4,
+        218,
+        25
+      ]
+    },
+    {
+      "name": "DistConfig",
+      "discriminator": [
+        158,
+        3,
+        52,
+        197,
+        62,
+        77,
+        117,
+        72
+      ]
+    },
+    {
+      "name": "Epoch",
+      "discriminator": [
+        93,
+        83,
+        120,
+        89,
+        151,
+        138,
+        152,
+        108
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "DistConfigUpdated",
+      "discriminator": [
+        37,
+        212,
+        57,
+        56,
+        114,
+        210,
+        22,
+        225
+      ]
+    },
+    {
+      "name": "EpochFinalized",
+      "discriminator": [
+        109,
+        54,
+        231,
+        81,
+        101,
+        249,
+        145,
+        107
+      ]
+    },
+    {
+      "name": "EpochOpened",
+      "discriminator": [
+        136,
+        166,
+        130,
+        170,
+        78,
+        145,
+        67,
+        78
+      ]
+    },
+    {
+      "name": "EpochSwept",
+      "discriminator": [
+        11,
+        16,
+        10,
+        21,
+        155,
+        190,
+        75,
+        56
+      ]
+    },
+    {
+      "name": "Payout",
+      "discriminator": [
+        156,
+        247,
+        34,
+        25,
+        6,
+        177,
+        75,
+        15
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "Unauthorized",
+      "msg": "Unauthorized"
+    },
+    {
+      "code": 6001,
+      "name": "Paused",
+      "msg": "Distributor is paused"
+    },
+    {
+      "code": 6002,
+      "name": "TooManyKeepers",
+      "msg": "Too many keepers (max 8)"
+    },
+    {
+      "code": 6003,
+      "name": "InvalidWindow",
+      "msg": "Invalid epoch window"
+    },
+    {
+      "code": 6004,
+      "name": "ZeroAmount",
+      "msg": "Amount must be > 0"
+    },
+    {
+      "code": 6005,
+      "name": "FundingMismatch",
+      "msg": "Epoch vault not funded with total_amount"
+    },
+    {
+      "code": 6006,
+      "name": "InvalidSource",
+      "msg": "Invalid funding source"
+    },
+    {
+      "code": 6007,
+      "name": "MissingRouterAccounts",
+      "msg": "Missing fee_router accounts in remaining_accounts"
+    },
+    {
+      "code": 6008,
+      "name": "InvalidFeeRouter",
+      "msg": "fee_router program mismatch"
+    },
+    {
+      "code": 6009,
+      "name": "TooManyItems",
+      "msg": "Too many payout items (max 12)"
+    },
+    {
+      "code": 6010,
+      "name": "AccountsMismatch",
+      "msg": "remaining_accounts must match items 1:1"
+    },
+    {
+      "code": 6011,
+      "name": "InvalidDestination",
+      "msg": "Destination must be an existing token account of the wallet for the epoch coin"
+    },
+    {
+      "code": 6012,
+      "name": "ExceedsRemainder",
+      "msg": "Payout exceeds epoch remainder"
+    },
+    {
+      "code": 6013,
+      "name": "PushCapExceeded",
+      "msg": "Push cap for this epoch exceeded"
+    },
+    {
+      "code": 6014,
+      "name": "AlreadyFinalized",
+      "msg": "Epoch already finalized"
+    },
+    {
+      "code": 6015,
+      "name": "NotFinalized",
+      "msg": "Epoch not finalized"
+    },
+    {
+      "code": 6016,
+      "name": "InvalidProof",
+      "msg": "Invalid Merkle proof"
+    },
+    {
+      "code": 6017,
+      "name": "ProofTooLong",
+      "msg": "Proof too long"
+    },
+    {
+      "code": 6018,
+      "name": "ClaimWindowClosed",
+      "msg": "Claim window closed"
+    },
+    {
+      "code": 6019,
+      "name": "SweepTooEarly",
+      "msg": "Sweep not yet allowed"
+    },
+    {
+      "code": 6020,
+      "name": "InvalidTreasury",
+      "msg": "Invalid treasury account"
+    },
+    {
+      "code": 6021,
+      "name": "MathOverflow",
+      "msg": "Math overflow"
+    },
+    {
+      "code": 6022,
+      "name": "InvalidBps",
+      "msg": "Invalid bps"
+    }
+  ],
+  "types": [
+    {
+      "name": "Claimed",
+      "docs": [
+        "PDA[\"claimed\", epoch, wallet] — existence = already claimed."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "epoch",
+            "type": "pubkey"
+          },
+          {
+            "name": "wallet",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "DistConfig",
+      "docs": [
+        "PDA[\"dist\"]"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "admin",
+            "type": "pubkey"
+          },
+          {
+            "name": "keepers",
+            "type": {
+              "array": [
+                "pubkey",
+                8
+              ]
+            }
+          },
+          {
+            "name": "keeper_count",
+            "type": "u8"
+          },
+          {
+            "name": "fee_router",
+            "docs": [
+              "fee_router program id (holder vaults + treasury live there)."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "max_push_per_epoch_bps",
+            "docs": [
+              "Max share of an epoch's total that may be pushed (rest must go through the Merkle claim). 10000 = no cap."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "paused",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "DistConfigUpdated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "admin",
+            "type": "pubkey"
+          },
+          {
+            "name": "fee_router",
+            "type": "pubkey"
+          },
+          {
+            "name": "keeper_count",
+            "type": "u8"
+          },
+          {
+            "name": "max_push_per_epoch_bps",
+            "type": "u16"
+          },
+          {
+            "name": "paused",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Epoch",
+      "docs": [
+        "PDA[\"epoch\", pool, index(u32 LE)] — `pool` is the DBC pool key (same key fee_router uses)."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "pool",
+            "type": "pubkey"
+          },
+          {
+            "name": "index",
+            "type": "u32"
+          },
+          {
+            "name": "coin_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "start_ts",
+            "type": "i64"
+          },
+          {
+            "name": "end_ts",
+            "type": "i64"
+          },
+          {
+            "name": "total_amount",
+            "type": "u64"
+          },
+          {
+            "name": "pushed_amount",
+            "type": "u64"
+          },
+          {
+            "name": "merkle_root",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "merkle_total",
+            "type": "u64"
+          },
+          {
+            "name": "claimed_amount",
+            "type": "u64"
+          },
+          {
+            "name": "eligible_holders",
+            "type": "u32"
+          },
+          {
+            "name": "twab_total",
+            "type": "u128"
+          },
+          {
+            "name": "finalized",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "EpochFinalized",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "pool",
+            "type": "pubkey"
+          },
+          {
+            "name": "index",
+            "type": "u32"
+          },
+          {
+            "name": "merkle_root",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "remainder",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "EpochOpened",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "pool",
+            "type": "pubkey"
+          },
+          {
+            "name": "index",
+            "type": "u32"
+          },
+          {
+            "name": "total",
+            "type": "u64"
+          },
+          {
+            "name": "holders",
+            "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "EpochSwept",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "pool",
+            "type": "pubkey"
+          },
+          {
+            "name": "index",
+            "type": "u32"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "treasury",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "OpenEpochArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "pool",
+            "docs": [
+              "DBC pool key (fee_router PoolState seed)."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "index",
+            "type": "u32"
+          },
+          {
+            "name": "start_ts",
+            "type": "i64"
+          },
+          {
+            "name": "end_ts",
+            "type": "i64"
+          },
+          {
+            "name": "total_amount",
+            "type": "u64"
+          },
+          {
+            "name": "eligible_holders",
+            "type": "u32"
+          },
+          {
+            "name": "twab_total",
+            "type": "u128"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Payout",
+      "docs": [
+        "kind: 0 = push, 1 = claim"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "pool",
+            "type": "pubkey"
+          },
+          {
+            "name": "epoch",
+            "type": "pubkey"
+          },
+          {
+            "name": "wallet",
+            "type": "pubkey"
+          },
+          {
+            "name": "coin_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "kind",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PayoutItem",
+      "docs": [
+        "Borsh-identical to the contract's `(Pubkey, u64)` tuple; a named struct keeps the IDL clean."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "wallet",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    }
+  ]
+}

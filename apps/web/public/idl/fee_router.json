@@ -1,0 +1,2615 @@
+{
+  "address": "9bnCKVesMxQPDaWAmiT21vaES2QgtdXinfXciTCZrbEt",
+  "metadata": {
+    "name": "fee_router",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "ICEmarkets fee router: DBC fee_claimer / DAMM v2 position owner; splits COIN fees to holders, buyback, protocol",
+    "repository": "https://github.com/icemarkets-exchange/icemarkets"
+  },
+  "instructions": [
+    {
+      "name": "claim_damm",
+      "docs": [
+        "CPI `cp_amm::claim_position_fee`; quote split, base → treasury[base_mint] (MVP)."
+      ],
+      "discriminator": [
+        148,
+        206,
+        151,
+        9,
+        124,
+        128,
+        61,
+        118
+      ],
+      "accounts": [
+        {
+          "name": "caller",
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  111,
+                  117,
+                  116,
+                  101,
+                  114
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "pool_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  111,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "pool_state.dbc_pool",
+                "account": "PoolState"
+              }
+            ]
+          }
+        },
+        {
+          "name": "damm_pool_authority"
+        },
+        {
+          "name": "damm_pool",
+          "writable": true,
+          "relations": [
+            "pool_state"
+          ]
+        },
+        {
+          "name": "damm_position",
+          "writable": true,
+          "relations": [
+            "pool_state"
+          ]
+        },
+        {
+          "name": "token_a_vault",
+          "writable": true
+        },
+        {
+          "name": "token_b_vault",
+          "writable": true
+        },
+        {
+          "name": "base_mint",
+          "relations": [
+            "pool_state"
+          ]
+        },
+        {
+          "name": "quote_mint",
+          "relations": [
+            "pool_state"
+          ]
+        },
+        {
+          "name": "position_nft_account"
+        },
+        {
+          "name": "treasury_base",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "base_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "router_quote_recv",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "config"
+              },
+              {
+                "kind": "account",
+                "path": "quote_token_program"
+              },
+              {
+                "kind": "account",
+                "path": "quote_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "holder_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  104,
+                  111,
+                  108,
+                  100,
+                  101,
+                  114,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "pool_state.dbc_pool",
+                "account": "PoolState"
+              }
+            ]
+          }
+        },
+        {
+          "name": "buyback_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  117,
+                  121,
+                  98,
+                  97,
+                  99,
+                  107,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "quote_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "treasury_quote",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "quote_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "base_token_program"
+        },
+        {
+          "name": "quote_token_program"
+        },
+        {
+          "name": "damm_event_authority"
+        },
+        {
+          "name": "damm_program"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "claim_dbc",
+      "docs": [
+        "CPI `dynamic_bonding_curve::claim_trading_fee(0, u64::MAX)` then split."
+      ],
+      "discriminator": [
+        229,
+        142,
+        38,
+        65,
+        198,
+        50,
+        110,
+        58
+      ],
+      "accounts": [
+        {
+          "name": "caller",
+          "docs": [
+            "Keeper, admin, or anyone once `PERMISSIONLESS_CLAIM_INTERVAL` has elapsed."
+          ],
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  111,
+                  117,
+                  116,
+                  101,
+                  114
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "pool_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  111,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "dbc_pool"
+              }
+            ]
+          }
+        },
+        {
+          "name": "dbc_pool_authority"
+        },
+        {
+          "name": "dbc_config",
+          "relations": [
+            "pool_state"
+          ]
+        },
+        {
+          "name": "dbc_pool",
+          "writable": true,
+          "relations": [
+            "pool_state"
+          ]
+        },
+        {
+          "name": "base_vault",
+          "writable": true
+        },
+        {
+          "name": "quote_vault",
+          "writable": true
+        },
+        {
+          "name": "base_mint",
+          "relations": [
+            "pool_state"
+          ]
+        },
+        {
+          "name": "quote_mint",
+          "relations": [
+            "pool_state"
+          ]
+        },
+        {
+          "name": "treasury_base",
+          "docs": [
+            "DBC `token_a_account` (base). max_base_amount = 0, so normally unchanged."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "base_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "router_quote_recv",
+          "docs": [
+            "DBC `token_b_account` (quote). Router's receiving ATA."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "config"
+              },
+              {
+                "kind": "account",
+                "path": "quote_token_program"
+              },
+              {
+                "kind": "account",
+                "path": "quote_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "holder_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  104,
+                  111,
+                  108,
+                  100,
+                  101,
+                  114,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "dbc_pool"
+              }
+            ]
+          }
+        },
+        {
+          "name": "buyback_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  117,
+                  121,
+                  98,
+                  97,
+                  99,
+                  107,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "quote_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "treasury_quote",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "quote_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "base_token_program"
+        },
+        {
+          "name": "quote_token_program"
+        },
+        {
+          "name": "dbc_event_authority"
+        },
+        {
+          "name": "dbc_program",
+          "address": "dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "claim_dbc_surplus",
+      "docs": [
+        "CPI `dynamic_bonding_curve::partner_withdraw_surplus` then split. Keeper only."
+      ],
+      "discriminator": [
+        115,
+        113,
+        64,
+        141,
+        153,
+        240,
+        40,
+        240
+      ],
+      "accounts": [
+        {
+          "name": "keeper",
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  111,
+                  117,
+                  116,
+                  101,
+                  114
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "pool_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  111,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "dbc_pool"
+              }
+            ]
+          }
+        },
+        {
+          "name": "dbc_pool_authority"
+        },
+        {
+          "name": "dbc_config",
+          "relations": [
+            "pool_state"
+          ]
+        },
+        {
+          "name": "dbc_pool",
+          "writable": true,
+          "relations": [
+            "pool_state"
+          ]
+        },
+        {
+          "name": "quote_vault",
+          "writable": true
+        },
+        {
+          "name": "quote_mint",
+          "relations": [
+            "pool_state"
+          ]
+        },
+        {
+          "name": "router_quote_recv",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "config"
+              },
+              {
+                "kind": "account",
+                "path": "quote_token_program"
+              },
+              {
+                "kind": "account",
+                "path": "quote_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "holder_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  104,
+                  111,
+                  108,
+                  100,
+                  101,
+                  114,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "dbc_pool"
+              }
+            ]
+          }
+        },
+        {
+          "name": "buyback_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  117,
+                  121,
+                  98,
+                  97,
+                  99,
+                  107,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "quote_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "treasury_quote",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "quote_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "quote_token_program"
+        },
+        {
+          "name": "dbc_event_authority"
+        },
+        {
+          "name": "dbc_program",
+          "address": "dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "initialize_router",
+      "discriminator": [
+        115,
+        12,
+        152,
+        202,
+        152,
+        4,
+        87,
+        120
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  111,
+                  117,
+                  116,
+                  101,
+                  114
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "InitializeRouterArgs"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "pause",
+      "discriminator": [
+        211,
+        22,
+        221,
+        251,
+        74,
+        121,
+        193,
+        47
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  111,
+                  117,
+                  116,
+                  101,
+                  114
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "paused",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "record_migration",
+      "docs": [
+        "Keeper/admin: store damm_pool + position after `migrate_damm_v2`."
+      ],
+      "discriminator": [
+        193,
+        58,
+        44,
+        254,
+        11,
+        3,
+        78,
+        117
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  111,
+                  117,
+                  116,
+                  101,
+                  114
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "pool_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  111,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "dbc_pool"
+              }
+            ]
+          }
+        },
+        {
+          "name": "dbc_pool",
+          "relations": [
+            "pool_state"
+          ]
+        },
+        {
+          "name": "damm_pool"
+        },
+        {
+          "name": "damm_position"
+        },
+        {
+          "name": "position_nft_account",
+          "docs": [
+            "Token-2022 account holding the position NFT; must be owned by the router PDA."
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "force",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "register_pool",
+      "docs": [
+        "Permissionless: validates `dbc_config.fee_claimer == router PDA` (raw bytes, see constants::dbc_layout)."
+      ],
+      "discriminator": [
+        85,
+        229,
+        114,
+        47,
+        75,
+        145,
+        166,
+        100
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  111,
+                  117,
+                  116,
+                  101,
+                  114
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "dbc_pool"
+        },
+        {
+          "name": "dbc_config"
+        },
+        {
+          "name": "commodity"
+        },
+        {
+          "name": "base_mint"
+        },
+        {
+          "name": "quote_mint",
+          "docs": [
+            "COIN"
+          ]
+        },
+        {
+          "name": "pool_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  111,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "dbc_pool"
+              }
+            ]
+          }
+        },
+        {
+          "name": "holder_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  104,
+                  111,
+                  108,
+                  100,
+                  101,
+                  114,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "dbc_pool"
+              }
+            ]
+          }
+        },
+        {
+          "name": "buyback_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  117,
+                  121,
+                  98,
+                  97,
+                  99,
+                  107,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "quote_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "treasury_quote",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "quote_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "treasury_base",
+          "docs": [
+            "Receives any base-token fees (DBC `token_a_account`, DAMM v2 base side). MVP: stays in treasury."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "base_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "router_quote_recv",
+          "docs": [
+            "Router's temporary receiving ATA for COIN (shared per coin; claims split the delta only)."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "config"
+              },
+              {
+                "kind": "account",
+                "path": "quote_token_program"
+              },
+              {
+                "kind": "account",
+                "path": "quote_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "base_token_program"
+        },
+        {
+          "name": "quote_token_program"
+        },
+        {
+          "name": "associated_token_program",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "fee_bps",
+          "type": "u16"
+        }
+      ]
+    },
+    {
+      "name": "register_pool_admin",
+      "docs": [
+        "Admin override of `register_pool` (skips layout checks)."
+      ],
+      "discriminator": [
+        118,
+        220,
+        245,
+        139,
+        22,
+        146,
+        167,
+        83
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  111,
+                  117,
+                  116,
+                  101,
+                  114
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "dbc_pool"
+        },
+        {
+          "name": "dbc_config"
+        },
+        {
+          "name": "commodity"
+        },
+        {
+          "name": "base_mint"
+        },
+        {
+          "name": "quote_mint",
+          "docs": [
+            "COIN"
+          ]
+        },
+        {
+          "name": "pool_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  111,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "dbc_pool"
+              }
+            ]
+          }
+        },
+        {
+          "name": "holder_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  104,
+                  111,
+                  108,
+                  100,
+                  101,
+                  114,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "dbc_pool"
+              }
+            ]
+          }
+        },
+        {
+          "name": "buyback_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  117,
+                  121,
+                  98,
+                  97,
+                  99,
+                  107,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "quote_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "treasury_quote",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "quote_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "treasury_base",
+          "docs": [
+            "Receives any base-token fees (DBC `token_a_account`, DAMM v2 base side). MVP: stays in treasury."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "base_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "router_quote_recv",
+          "docs": [
+            "Router's temporary receiving ATA for COIN (shared per coin; claims split the delta only)."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "config"
+              },
+              {
+                "kind": "account",
+                "path": "quote_token_program"
+              },
+              {
+                "kind": "account",
+                "path": "quote_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "base_token_program"
+        },
+        {
+          "name": "quote_token_program"
+        },
+        {
+          "name": "associated_token_program",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "fee_bps",
+          "type": "u16"
+        },
+        {
+          "name": "creator",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "set_keepers",
+      "discriminator": [
+        135,
+        123,
+        16,
+        243,
+        252,
+        182,
+        46,
+        169
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  111,
+                  117,
+                  116,
+                  101,
+                  114
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "keepers",
+          "type": {
+            "vec": "pubkey"
+          }
+        }
+      ]
+    },
+    {
+      "name": "set_programs",
+      "discriminator": [
+        92,
+        78,
+        9,
+        46,
+        111,
+        204,
+        237,
+        151
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  111,
+                  117,
+                  116,
+                  101,
+                  114
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "distributor_program",
+          "type": "pubkey"
+        },
+        {
+          "name": "buyback_program",
+          "type": "pubkey"
+        },
+        {
+          "name": "peg_desk_program",
+          "type": "pubkey"
+        },
+        {
+          "name": "new_admin",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "set_split",
+      "discriminator": [
+        133,
+        67,
+        66,
+        245,
+        114,
+        175,
+        32,
+        51
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  111,
+                  117,
+                  116,
+                  101,
+                  114
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "holders_bps",
+          "type": "u16"
+        },
+        {
+          "name": "buyback_bps",
+          "type": "u16"
+        },
+        {
+          "name": "protocol_bps",
+          "type": "u16"
+        }
+      ]
+    },
+    {
+      "name": "withdraw_for_buyback",
+      "docs": [
+        "CPI-only from the buyback program (signer = buyback PDA[\"bb_auth\"])."
+      ],
+      "discriminator": [
+        106,
+        56,
+        170,
+        217,
+        151,
+        43,
+        6,
+        139
+      ],
+      "accounts": [
+        {
+          "name": "bb_authority",
+          "docs": [
+            "Buyback program's PDA[\"bb_auth\"]."
+          ],
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  111,
+                  117,
+                  116,
+                  101,
+                  114
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "coin_mint"
+        },
+        {
+          "name": "buyback_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  117,
+                  121,
+                  98,
+                  97,
+                  99,
+                  107,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "coin_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "destination",
+          "writable": true
+        },
+        {
+          "name": "token_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "withdraw_for_epoch",
+      "docs": [
+        "CPI-only from the distributor (signer = distributor PDA[\"dist_auth\"])."
+      ],
+      "discriminator": [
+        103,
+        104,
+        65,
+        174,
+        89,
+        171,
+        49,
+        217
+      ],
+      "accounts": [
+        {
+          "name": "dist_authority",
+          "docs": [
+            "Distributor program's PDA[\"dist_auth\"] (signs via invoke_signed inside the distributor)."
+          ],
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  111,
+                  117,
+                  116,
+                  101,
+                  114
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "pool_state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  111,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "pool_state.dbc_pool",
+                "account": "PoolState"
+              }
+            ]
+          }
+        },
+        {
+          "name": "holder_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  104,
+                  111,
+                  108,
+                  100,
+                  101,
+                  114,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "pool_state.dbc_pool",
+                "account": "PoolState"
+              }
+            ]
+          }
+        },
+        {
+          "name": "quote_mint",
+          "relations": [
+            "pool_state"
+          ]
+        },
+        {
+          "name": "destination",
+          "writable": true
+        },
+        {
+          "name": "token_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "withdraw_treasury",
+      "discriminator": [
+        40,
+        63,
+        122,
+        158,
+        144,
+        216,
+        83,
+        96
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  111,
+                  117,
+                  116,
+                  101,
+                  114
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "mint"
+        },
+        {
+          "name": "treasury",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "destination",
+          "writable": true
+        },
+        {
+          "name": "token_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "PoolState",
+      "discriminator": [
+        247,
+        237,
+        227,
+        245,
+        215,
+        195,
+        222,
+        70
+      ]
+    },
+    {
+      "name": "RouterConfig",
+      "discriminator": [
+        147,
+        20,
+        81,
+        135,
+        46,
+        251,
+        46,
+        139
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "FeesClaimed",
+      "discriminator": [
+        22,
+        104,
+        110,
+        222,
+        38,
+        157,
+        14,
+        62
+      ]
+    },
+    {
+      "name": "FeesSplit",
+      "discriminator": [
+        184,
+        151,
+        122,
+        249,
+        135,
+        3,
+        6,
+        129
+      ]
+    },
+    {
+      "name": "MigrationRecorded",
+      "discriminator": [
+        140,
+        6,
+        207,
+        60,
+        121,
+        82,
+        157,
+        143
+      ]
+    },
+    {
+      "name": "PoolRegistered",
+      "discriminator": [
+        77,
+        114,
+        165,
+        230,
+        33,
+        230,
+        135,
+        215
+      ]
+    },
+    {
+      "name": "RouterConfigUpdated",
+      "discriminator": [
+        75,
+        159,
+        47,
+        177,
+        162,
+        44,
+        127,
+        69
+      ]
+    },
+    {
+      "name": "RouterInitialized",
+      "discriminator": [
+        2,
+        194,
+        31,
+        191,
+        122,
+        98,
+        112,
+        243
+      ]
+    },
+    {
+      "name": "VaultWithdrawn",
+      "discriminator": [
+        238,
+        9,
+        219,
+        172,
+        188,
+        77,
+        72,
+        104
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "Unauthorized",
+      "msg": "Unauthorized"
+    },
+    {
+      "code": 6001,
+      "name": "Paused",
+      "msg": "Router is paused"
+    },
+    {
+      "code": 6002,
+      "name": "InvalidSplit",
+      "msg": "Split bps must sum to 10000"
+    },
+    {
+      "code": 6003,
+      "name": "TooManyKeepers",
+      "msg": "Too many keepers (max 8)"
+    },
+    {
+      "code": 6004,
+      "name": "InvalidDbcAccount",
+      "msg": "Account is not a valid DBC account"
+    },
+    {
+      "code": 6005,
+      "name": "FeeClaimerMismatch",
+      "msg": "DBC config fee_claimer is not the router PDA"
+    },
+    {
+      "code": 6006,
+      "name": "QuoteMintMismatch",
+      "msg": "Quote mint mismatch"
+    },
+    {
+      "code": 6007,
+      "name": "BaseMintMismatch",
+      "msg": "Base mint mismatch"
+    },
+    {
+      "code": 6008,
+      "name": "ConfigMismatch",
+      "msg": "DBC pool does not belong to the given config"
+    },
+    {
+      "code": 6009,
+      "name": "InvalidCommodity",
+      "msg": "Invalid commodity account"
+    },
+    {
+      "code": 6010,
+      "name": "NotMigrated",
+      "msg": "DBC pool is not migrated"
+    },
+    {
+      "code": 6011,
+      "name": "MigrationNotRecorded",
+      "msg": "Pool migration not recorded in router"
+    },
+    {
+      "code": 6012,
+      "name": "InvalidDammAccount",
+      "msg": "Account is not a valid DAMM v2 account"
+    },
+    {
+      "code": 6013,
+      "name": "InvalidPositionNft",
+      "msg": "Position NFT account invalid or not owned by router"
+    },
+    {
+      "code": 6014,
+      "name": "ClaimTooSoon",
+      "msg": "Claim too soon for a non-keeper caller"
+    },
+    {
+      "code": 6015,
+      "name": "MathOverflow",
+      "msg": "Math overflow"
+    },
+    {
+      "code": 6016,
+      "name": "InvalidProgram",
+      "msg": "Invalid program id"
+    },
+    {
+      "code": 6017,
+      "name": "InvalidAuthority",
+      "msg": "Caller is not the authorised program signer"
+    },
+    {
+      "code": 6018,
+      "name": "InsufficientVault",
+      "msg": "Insufficient vault balance"
+    },
+    {
+      "code": 6019,
+      "name": "InvalidFeeBps",
+      "msg": "fee_bps out of range"
+    },
+    {
+      "code": 6020,
+      "name": "ZeroAmount",
+      "msg": "Amount must be > 0"
+    }
+  ],
+  "types": [
+    {
+      "name": "FeesClaimed",
+      "docs": [
+        "source: 0 = DBC trading fee, 1 = DBC surplus, 2 = DAMM v2 position fee"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "pool",
+            "type": "pubkey"
+          },
+          {
+            "name": "source",
+            "type": "u8"
+          },
+          {
+            "name": "quote_amount",
+            "type": "u64"
+          },
+          {
+            "name": "base_amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "FeesSplit",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "pool",
+            "type": "pubkey"
+          },
+          {
+            "name": "holders",
+            "type": "u64"
+          },
+          {
+            "name": "buyback",
+            "type": "u64"
+          },
+          {
+            "name": "protocol",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "InitializeRouterArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "distributor_program",
+            "type": "pubkey"
+          },
+          {
+            "name": "buyback_program",
+            "type": "pubkey"
+          },
+          {
+            "name": "peg_desk_program",
+            "type": "pubkey"
+          },
+          {
+            "name": "holders_bps",
+            "type": "u16"
+          },
+          {
+            "name": "buyback_bps",
+            "type": "u16"
+          },
+          {
+            "name": "protocol_bps",
+            "type": "u16"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MigrationRecorded",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "pool",
+            "type": "pubkey"
+          },
+          {
+            "name": "damm_pool",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PoolRegistered",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "pool",
+            "type": "pubkey"
+          },
+          {
+            "name": "base_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "quote_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "commodity",
+            "type": "pubkey"
+          },
+          {
+            "name": "fee_bps",
+            "type": "u16"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PoolState",
+      "docs": [
+        "PDA[\"pool\", dbc_pool]."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "dbc_pool",
+            "type": "pubkey"
+          },
+          {
+            "name": "dbc_config",
+            "type": "pubkey"
+          },
+          {
+            "name": "base_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "quote_mint",
+            "docs": [
+              "COIN"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "commodity",
+            "type": "pubkey"
+          },
+          {
+            "name": "creator",
+            "type": "pubkey"
+          },
+          {
+            "name": "fee_bps",
+            "type": "u16"
+          },
+          {
+            "name": "migrated",
+            "type": "bool"
+          },
+          {
+            "name": "damm_pool",
+            "type": "pubkey"
+          },
+          {
+            "name": "damm_position",
+            "type": "pubkey"
+          },
+          {
+            "name": "position_nft_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "total_claimed",
+            "type": "u64"
+          },
+          {
+            "name": "total_to_holders",
+            "type": "u64"
+          },
+          {
+            "name": "total_to_buyback",
+            "type": "u64"
+          },
+          {
+            "name": "total_to_protocol",
+            "type": "u64"
+          },
+          {
+            "name": "last_claim_ts",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "_reserved",
+            "type": {
+              "array": [
+                "u8",
+                64
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "RouterConfig",
+      "docs": [
+        "PDA[\"router\"]. Also the signing authority: DBC `fee_claimer`, DAMM v2 position-NFT owner,",
+        "and token authority of buyback_vault[coin], treasury[mint] and the router's receiving ATAs."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "admin",
+            "type": "pubkey"
+          },
+          {
+            "name": "keepers",
+            "type": {
+              "array": [
+                "pubkey",
+                8
+              ]
+            }
+          },
+          {
+            "name": "keeper_count",
+            "type": "u8"
+          },
+          {
+            "name": "distributor_program",
+            "type": "pubkey"
+          },
+          {
+            "name": "buyback_program",
+            "type": "pubkey"
+          },
+          {
+            "name": "holders_bps",
+            "type": "u16"
+          },
+          {
+            "name": "buyback_bps",
+            "type": "u16"
+          },
+          {
+            "name": "protocol_bps",
+            "type": "u16"
+          },
+          {
+            "name": "paused",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "peg_desk_program",
+            "docs": [
+              "Carved out of the contract's `_reserved[64]` (layout of all fields above is unchanged):",
+              "owner program of `Commodity` accounts, checked by permissionless `register_pool`."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "_reserved",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "RouterConfigUpdated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "admin",
+            "type": "pubkey"
+          },
+          {
+            "name": "holders_bps",
+            "type": "u16"
+          },
+          {
+            "name": "buyback_bps",
+            "type": "u16"
+          },
+          {
+            "name": "protocol_bps",
+            "type": "u16"
+          },
+          {
+            "name": "keeper_count",
+            "type": "u8"
+          },
+          {
+            "name": "paused",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "RouterInitialized",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "admin",
+            "type": "pubkey"
+          },
+          {
+            "name": "distributor_program",
+            "type": "pubkey"
+          },
+          {
+            "name": "buyback_program",
+            "type": "pubkey"
+          },
+          {
+            "name": "holders_bps",
+            "type": "u16"
+          },
+          {
+            "name": "buyback_bps",
+            "type": "u16"
+          },
+          {
+            "name": "protocol_bps",
+            "type": "u16"
+          }
+        ]
+      }
+    },
+    {
+      "name": "VaultWithdrawn",
+      "docs": [
+        "kind: 0 = epoch (distributor), 1 = buyback, 2 = treasury (admin)"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "destination",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "kind",
+            "type": "u8"
+          }
+        ]
+      }
+    }
+  ]
+}
