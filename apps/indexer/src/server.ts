@@ -1,7 +1,8 @@
 import Fastify from "fastify";
 import cors from "@fastify/cors";
 import { FEE_SPLIT_BPS } from "@icemarkets/registry";
-import { query, queryOne } from "./db";
+import { pool, query, queryOne } from "./db";
+import { defaultConnection, reconcilePools } from "./decode/ingest";
 
 /**
  * REST API matching apps/web/lib/api.ts fetchers 1:1. Reads Postgres tables from schema.sql.
@@ -231,6 +232,25 @@ async function start() {
   app.get("/healthz", async () => ({ ok: true }));
 
   await app.listen({ port: PORT, host: "0.0.0.0" });
+
+  // Safety net for lost PoolRegistered events (log truncation): every 60 s upsert unknown fee_router
+  // PoolState accounts. Cheap (one account per market) and idempotent.
+  const conn = defaultConnection();
+  if (conn) {
+    const reconcile = async () => {
+      const client = await pool.connect();
+      try {
+        const added = await reconcilePools({ client, connection: conn, log: app.log as never });
+        if (added > 0) app.log.info({ added }, "pools reconciled from PoolState");
+      } catch (err) {
+        app.log.warn({ err: String(err) }, "pool reconcile failed");
+      } finally {
+        client.release();
+      }
+    };
+    void reconcile();
+    setInterval(() => void reconcile(), 60_000).unref();
+  }
 }
 
 // ---- DTO mappers (snake_case rows -> camelCase API shapes matching apps/web/lib/types.ts) ----

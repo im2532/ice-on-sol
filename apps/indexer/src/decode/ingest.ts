@@ -22,6 +22,7 @@ import { baseToHuman, price1e8ToHuman, type IcemarketsEvent } from "./events";
 import { dammTokenVault, dbcTokenVault, fetchTokenMetadata } from "./meteora";
 import { decodeBalanceDeltas, decodeSwaps, touchedMints, type PoolRef } from "./swaps";
 import type { NormalizedTx } from "./types";
+import { fetchAllPoolStates, type PoolStateView } from "./poolState";
 
 export interface IngestLogger {
   info(obj: object, msg?: string): void;
@@ -85,6 +86,7 @@ export async function ingestTransaction(tx: NormalizedTx, deps: IngestDeps, rawP
   try {
     if (!tx.failed) {
       await ensureLogs(tx, deps);
+      let sawPoolRegistered = false;
       if (tx.logs) {
         const events = decodeAnchorEvents(tx.logs, (program, err) =>
           deps.log.warn({ sig: tx.signature, program, err: String(err) }, "event decode failed"),
@@ -93,7 +95,14 @@ export async function ingestTransaction(tx: NormalizedTx, deps: IngestDeps, rawP
         for (const ev of events) {
           await applyEvent(ev, tx, deps);
           result.events++;
+          if (ev.kind === "PoolRegistered") sawPoolRegistered = true;
         }
+      }
+      // Solana truncates logs at 10 KB; a launch tx overruns it and loses fee_router's PoolRegistered
+      // (emitted last). Recover from the PoolState account so the trade/balance writers below can run.
+      if (tx.logs && tx.programIds.has(programIds().fee_router) && tx.logs.some((l) => l.includes("Instruction: RegisterPool")) && !sawPoolRegistered) {
+        if (tx.logs.some((l) => l.includes("Log truncated"))) deps.log.warn({ sig: tx.signature }, "logs truncated; reconciling pools from PoolState");
+        await reconcilePools(deps, tx.blockTime);
       }
       const pools = await loadPoolRefs(client, touchedMints(tx));
       if (pools.length > 0) {
@@ -204,6 +213,59 @@ export function epochPda(pool: string, index: number): string {
 
 // ---- events ------------------------------------------------------------------------------------
 
+interface PoolUpsert { pool: string; baseMint: string; quoteMint: string; commodity: string; feeBps: number; creator: string }
+
+/** pools upsert shared by the `PoolRegistered` event path and the PoolState reconcile path. */
+async function upsertPool(deps: IngestDeps, p: PoolUpsert, ts: number, sig: string | null): Promise<boolean> {
+  const { client, log } = deps;
+  const c = await symbolForCommodity(client, p.commodity);
+  if (!c) {
+    log.warn({ sig, pool: p.pool, commodity: p.commodity }, "pool for unknown commodity (seed SQL loaded?); skipped");
+    return false;
+  }
+  const meta = await fetchTokenMetadata(deps.connection, p.baseMint);
+  const placeholder = p.baseMint.slice(0, 6);
+  await client.query(
+    `insert into pools (dbc_pool, base_mint, quote_mint, commodity, creator, fee_bps, ticker, name, image_uri, created_at,
+                        base_vault, quote_vault, registered_sig)
+     values ($1,$2,$3,$4,$5,$6,$7,$8,$9,to_timestamp($10),$11,$12,$13)
+     on conflict (dbc_pool) do update set
+       base_mint = excluded.base_mint, quote_mint = excluded.quote_mint, commodity = excluded.commodity,
+       fee_bps = excluded.fee_bps, base_vault = excluded.base_vault, quote_vault = excluded.quote_vault,
+       registered_sig = coalesce(pools.registered_sig, excluded.registered_sig),
+       ticker    = case when $14 then excluded.ticker    else pools.ticker end,
+       name      = case when $14 then excluded.name      else pools.name end,
+       image_uri = coalesce(pools.image_uri, excluded.image_uri)`,
+    [
+      p.pool, p.baseMint, p.quoteMint, c.symbol, p.creator, p.feeBps,
+      meta?.symbol || placeholder, meta?.name || placeholder, meta?.uri || null, ts,
+      dbcTokenVault(p.baseMint, p.pool), dbcTokenVault(p.quoteMint, p.pool), sig, meta !== null,
+    ],
+  );
+  return true;
+}
+
+/**
+ * Upsert every fee_router PoolState the DB does not know yet. Used when a RegisterPool ran but its event
+ * was lost to log truncation, at backfill start, and periodically by the server.
+ */
+export async function reconcilePools(deps: IngestDeps, ts: number = Math.floor(Date.now() / 1000)): Promise<number> {
+  if (!deps.connection) return 0;
+  const states: PoolStateView[] = await fetchAllPoolStates(deps.connection);
+  const known = new Set(
+    (await deps.client.query<{ dbc_pool: string }>(`select dbc_pool from pools`)).rows.map((r) => r.dbc_pool),
+  );
+  let added = 0;
+  for (const st of states) {
+    if (known.has(st.dbcPool)) continue;
+    if (await upsertPool(deps, { pool: st.dbcPool, baseMint: st.baseMint, quoteMint: st.quoteMint, commodity: st.commodity, feeBps: st.feeBps, creator: st.creator }, ts, null)) {
+      added++;
+      deps.log.info({ pool: st.dbcPool, poolState: st.poolState }, "pool reconciled from PoolState (PoolRegistered event not seen)");
+    }
+  }
+  return added;
+}
+
 async function applyEvent(ev: IcemarketsEvent, tx: NormalizedTx, deps: IngestDeps): Promise<void> {
   const { client, log } = deps;
   const ts = tx.blockTime;
@@ -268,27 +330,7 @@ async function applyEvent(ev: IcemarketsEvent, tx: NormalizedTx, deps: IngestDep
 
     // ---- fee_router ----
     case "PoolRegistered": {
-      const c = await symbolForCommodity(client, ev.commodity);
-      if (!c) return log.warn({ sig, commodity: ev.commodity }, "PoolRegistered for unknown commodity (seed SQL loaded?); skipped");
-      const meta = await fetchTokenMetadata(deps.connection, ev.baseMint);
-      const placeholder = ev.baseMint.slice(0, 6);
-      await client.query(
-        `insert into pools (dbc_pool, base_mint, quote_mint, commodity, creator, fee_bps, ticker, name, image_uri, created_at,
-                            base_vault, quote_vault, registered_sig)
-         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,to_timestamp($10),$11,$12,$13)
-         on conflict (dbc_pool) do update set
-           base_mint = excluded.base_mint, quote_mint = excluded.quote_mint, commodity = excluded.commodity,
-           fee_bps = excluded.fee_bps, base_vault = excluded.base_vault, quote_vault = excluded.quote_vault,
-           registered_sig = coalesce(pools.registered_sig, excluded.registered_sig),
-           ticker    = case when $14 then excluded.ticker    else pools.ticker end,
-           name      = case when $14 then excluded.name      else pools.name end,
-           image_uri = coalesce(pools.image_uri, excluded.image_uri)`,
-        [
-          ev.pool, ev.baseMint, ev.quoteMint, c.symbol, tx.feePayer || ev.pool, ev.feeBps,
-          meta?.symbol || placeholder, meta?.name || placeholder, meta?.uri || null, ts,
-          dbcTokenVault(ev.baseMint, ev.pool), dbcTokenVault(ev.quoteMint, ev.pool), sig, meta !== null,
-        ],
-      );
+      await upsertPool(deps, { pool: ev.pool, baseMint: ev.baseMint, quoteMint: ev.quoteMint, commodity: ev.commodity, feeBps: ev.feeBps, creator: tx.feePayer || ev.pool }, ts, sig);
       return;
     }
     case "FeesClaimed": {

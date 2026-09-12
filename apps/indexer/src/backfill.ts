@@ -16,7 +16,7 @@
  */
 import { Connection, PublicKey, type ConfirmedSignatureInfo } from "@solana/web3.js";
 import { pool as pgPool } from "./db";
-import { defaultConnection, epochPda, ingestTransaction, type IngestLogger } from "./decode/ingest";
+import { defaultConnection, epochPda, ingestTransaction, reconcilePools, type IngestLogger } from "./decode/ingest";
 import { programIds } from "./decode/anchorEvents";
 import { fromParsedRpc } from "./decode/normalize";
 
@@ -89,6 +89,16 @@ async function signaturesFor(conn: Connection, address: string, until: string | 
 async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
   const conn = defaultConnection();
+  {
+    // Pools whose PoolRegistered event was lost (log truncation) are recovered from fee_router PoolState first.
+    const c0 = await pgPool.connect();
+    try {
+      const added = await reconcilePools({ client: c0, connection: conn, log });
+      if (added > 0) log.info({ added }, "pools reconciled from PoolState");
+    } finally {
+      c0.release();
+    }
+  }
   if (!conn) throw new Error("RPC_URL (or HELIUS_API_KEY) is required for the backfill");
   const addresses = await addressesFor(args.dbcPool, args.extra);
   console.log(`backfill ${args.dbcPool}: scanning ${addresses.length} addresses${args.resume ? " (resume)" : ""}`);
