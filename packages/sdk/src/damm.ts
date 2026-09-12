@@ -12,7 +12,7 @@
  */
 import { Connection, PublicKey } from "@solana/web3.js";
 import BN from "bn.js";
-import { CpAmm } from "@meteora-ag/cp-amm-sdk";
+import { CpAmm, getUnClaimLpFee } from "@meteora-ag/cp-amm-sdk";
 import { meteora } from "./meteora";
 
 export interface DammQuote {
@@ -85,4 +85,19 @@ export async function dammVaultBalances(connection: Connection, pool: PublicKey,
 export function haircutBps(x: bigint, bps: number): bigint {
   if (!Number.isInteger(bps) || bps < 0 || bps > 10_000) throw new Error(`haircutBps: bad bps ${bps}`);
   return (x * BigInt(10_000 - bps)) / 10_000n;
+}
+
+/**
+ * Unclaimed LP fees on a DAMM v2 position (what `claim_position_fee` would pay out right now), in
+ * base units of token A / token B. Used by the keeper to skip `claim_damm` when nothing is owed.
+ */
+export async function dammUnclaimedPositionFees(
+  connection: Connection,
+  pool: PublicKey,
+  position: PublicKey,
+): Promise<{ feeTokenA: bigint; feeTokenB: bigint }> {
+  const cpAmm = new CpAmm(connection);
+  const [poolState, positionState] = await Promise.all([cpAmm.fetchPoolState(pool), cpAmm.fetchPositionState(position)]);
+  const r = getUnClaimLpFee(poolState, positionState);
+  return { feeTokenA: toBig(r.feeTokenA), feeTokenB: toBig(r.feeTokenB) };
 }

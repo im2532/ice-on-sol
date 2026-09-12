@@ -1,4 +1,24 @@
-# Build status — 12 Sep 2026 (v0.5: FIRST DEVNET MARKET + HARDENING PASS 1)
+# Build status — 12 Sep 2026 (v0.6: LOCALNET LOOP PROVEN END TO END)
+
+**v0.6 (12 Sep 2026, evening).** `make localnet` brings up the whole stack on a local validator with the mainnet Meteora DBC,
+DAMM v2, Pyth and Metaplex programs cloned (`scripts/localnet-up.sh`), and the money path is proven on the breaker-enabled
+programs: CLI launch → three funded payout epochs (claim_dbc → 50/25/25 split → open_epoch via the fee_router CPI → push →
+finalize) → forced migration on a $300-cap market (curve completion → migrate_damm_v2 → record_migration) → claim_damm from
+the router-owned DAMM position → a payout epoch on the migrated pool. Tier breakers applied to all 75 coins; 60 keeper-relayed
+coins post; `anchor test` **49/49** (fee_router, buyback and breaker suites included). 72 h soak running under `.localnet-logs/`.
+
+Bugs the loop found (all fixed, head c6b2276+): launch tx overruns the 10 KB log limit so `PoolRegistered` never reached the
+indexer (indexer now reconciles from `PoolState`; durable fix `emit_cpi!` → audit-freeze list); SDK `getPool` wraps the account
+in `{ poolState }` so the keeper read zero unclaimed fees; `migrate.ts` waited on a non-existent `curveComplete` (now
+`migrationProgress`); keeper relays stamped with wall time while the validator clock lags (now chain time — would also bite a
+lagging mainnet RPC); DBC exact-in swap rejects buys above remaining curve capacity (now `swap2` partial fill); SDK-prepended
+ComputeBudget ixs collided with ours; keeper was never registered on distributor/fee_router (`init-programs` does it).
+`claim_damm` now thresholds on the position's unclaimed COIN fee (`FEE_MIN_CLAIM_USD`).
+
+Still open: buyback (needs $ICE mint + ICE/GLD DAMM pool + `buyback.initialize`); devnet re-run once funded (Helius airdrops)
+with `make init-programs` (KEEPER_PUBKEYS) and `PYTH_API_KEY`; hosting live on Vercel Pro / Fly / Neon / Helius (`deploy/README.md`).
+
+*(previous header)* # Build status — 12 Sep 2026 (v0.5: FIRST DEVNET MARKET + HARDENING PASS 1)
 
 **v0.5 (12 Sep 2026).** First market launched end to end on devnet: `$BG` / BURGER, tx `5Ye5tS73…CPon` — one transaction
 running `peg_desk.buy_exact_out` → `DBC initialize_virtual_pool` (+ Metaplex metadata) → creator first swap →

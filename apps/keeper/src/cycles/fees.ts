@@ -2,7 +2,7 @@
  * Fee cycle (CONTRACTS §2, §5): every FEE_CYCLE_INTERVAL, for each registered pool
  *   - not migrated: `fee_router.claim_dbc` (CPI DBC claim_trading_fee(0, u64::MAX) → split)
  *   - migrated:     `fee_router.claim_damm` (CPI cp_amm claim_position_fee → split; base → treasury)
- * when the unclaimed partner fee is worth ≥ $100 (or unknown, for DAMM positions).
+ * when the unclaimed fee (DBC partner quote fee / DAMM position token-B fee) is worth ≥ FEE_MIN_CLAIM_USD.
  *
  * Account keys are the camelCase of the Rust `ClaimDbc` / `ClaimDamm` field names
  * (programs/fee_router/src/instructions/claim_dbc.rs, claim_damm.rs).
@@ -12,7 +12,7 @@
  */
 import { PublicKey, type TransactionInstruction } from "@solana/web3.js";
 import { TOKEN_PROGRAM_ID, getAssociatedTokenAddressSync } from "@solana/spl-token";
-import { DBC_PROGRAM_ID, DAMM_V2_PROGRAM_ID, feeRouter as feeRouterPda, getPoolState, makeDbcClient, meteora } from "@icemarkets/sdk";
+import { DBC_PROGRAM_ID, DAMM_V2_PROGRAM_ID, dammUnclaimedPositionFees, feeRouter as feeRouterPda, getPoolState, makeDbcClient, meteora } from "@icemarkets/sdk";
 import { getConnection, getKeeperKeypair, sendWithPriority } from "../rpc";
 import { getProgram, parseEvents, programId } from "../programs";
 import { findRouterPositions } from "../positions";
@@ -118,7 +118,22 @@ async function claimDamm(pool: PoolRow, caller: PublicKey, positionNftAccount: P
   const dammPool: PublicKey = ps.dammPool;
 
   // Migrated DBC pools: token_a = memecoin (base), token_b = COIN (quote) — see claim_damm.rs.
-  log.info({ pool: pool.dbc_pool, dammPool: dammPool.toBase58() }, "claim_damm");
+  // Threshold on the COIN side (the memecoin side is swept to treasury and has no USD price here).
+  let unclaimedQuote = 0n;
+  try {
+    unclaimedQuote = (await dammUnclaimedPositionFees(getConnection(), dammPool, ps.dammPosition)).feeTokenB;
+  } catch (err) {
+    log.warn({ pool: pool.dbc_pool, err: String(err) }, "could not read DAMM position fees; claiming anyway");
+    unclaimedQuote = -1n;
+  }
+  if (unclaimedQuote >= 0n) {
+    const priceRow = await getLatestPrice(pool.commodity);
+    const unclaimedUsd = priceRow ? (Number(unclaimedQuote) / 1e6) * (Number(priceRow.price) / 1e8) : 0;
+    if (unclaimedUsd < CLAIM_THRESHOLD_USD) return;
+    log.info({ pool: pool.dbc_pool, dammPool: dammPool.toBase58(), unclaimedQuote: unclaimedQuote.toString(), unclaimedUsd }, "claim_damm");
+  } else {
+    log.info({ pool: pool.dbc_pool, dammPool: dammPool.toBase58() }, "claim_damm");
+  }
   const ix: TransactionInstruction = await fr.methods
     .claimDamm()
     .accountsPartial({

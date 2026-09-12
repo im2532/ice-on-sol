@@ -22,7 +22,9 @@ The launch proves the write path. The money path (fees → split → payouts eve
 - Rerun `make alt` so the lookup table carries the correct ATAs; then freeze the ALT authority. Close the orphaned DBC config (`4Nmk…`) to reclaim rent.
 - Launch 5–10 more markets across categories (Pyth-priced, Switchboard-priced, keeper-signed) to shake out oracle-path differences.
 
-Exit criteria: 72 hours of unattended keeper operation on devnet with payouts every 15 minutes and zero manual intervention.
+Exit criteria: 72 hours of unattended keeper operation with payouts every 15 minutes and zero manual intervention.
+
+**Status 12 Sep:** the whole loop is proven on localnet (`make localnet`, mainnet Meteora/Pyth/Metaplex bytecode cloned): launch → three funded epochs (claim_dbc, 50/25/25 split, open_epoch CPI, push, finalize) → forced migration on a $300-cap market → migrate_damm_v2 → record_migration → claim_damm → a payout epoch on the migrated pool; breakers applied to all 75 coins; `anchor test` 49/49. Seven real bugs came out of it (see BUILD_STATUS v0.6). The 72 h soak is running on localnet; buyback still needs the $ICE mint + ICE/GLD DAMM pool + `buyback.initialize`. Devnet repeats this once funded (Helius devnet airdrops) with `make init-programs` (KEEPER_PUBKEYS set) and the Pyth key.
 
 ## 2. Test and harden (1–2 weeks, overlaps with phase 1)
 
@@ -34,6 +36,7 @@ The ATA-program typo was silent for weeks because nothing exercised the derivati
 - `cargo audit`, `cargo clippy -D warnings`, `anchor build --verifiable` and `solana-verify` so the deployed bytecode is reproducible.
 - Circuit breakers in peg_desk: per-coin daily mint cap, max oracle deviation vs last price, staleness bound, global pause. These are what protect the USDC reserve if an oracle or the keeper key is compromised.
 - Keeper: idempotent cycles, crash-safe epoch state (already partly there), alerting on missed epochs, key rotation procedure.
+- **Audit-freeze list (found by the localnet loop, 12 Sep):** switch fee_router (and the other three programs) from `emit!` to `emit_cpi!` — the launch transaction overruns Solana's 10 KB log limit, so `PoolRegistered` is truncated and the indexer currently reconciles pools from `PoolState` instead; `claim_damm` is now thresholded on the position's unclaimed COIN fee like `claim_dbc` (keeper, done).
 
 ## 3. Governance and keys (before audit starts)
 
