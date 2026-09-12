@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
+import { NOT_ALLOWED_MESSAGE, walletAllowed } from "@/lib/allowlist";
 import { fetchCommodity } from "@/lib/api";
 import { launchMarket } from "@/lib/actions";
 import { LAUNCH } from "@icemarkets/registry";
@@ -41,6 +42,10 @@ export default function LaunchPage() {
   async function handleLaunch() {
     if (!publicKey) {
       setVisible(true);
+      return;
+    }
+    if (!walletAllowed(publicKey)) {
+      toast.error(NOT_ALLOWED_MESSAGE);
       return;
     }
     if (!ready) {

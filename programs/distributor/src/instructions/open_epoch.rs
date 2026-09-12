@@ -85,6 +85,13 @@ pub fn handle_open_epoch<'info>(
         DistError::Unauthorized
     );
     require!(args.end_ts > args.start_ts, DistError::InvalidWindow);
+    // Audit L-03: the claim/sweep clocks key off end_ts, so it must be a real, recent time —
+    // not in the future, and not so far in the past that the 180-day claim window is already shut.
+    let now = Clock::get()?.unix_timestamp;
+    require!(
+        args.end_ts <= now && args.end_ts >= now.saturating_sub(MAX_EPOCH_AGE_SECS),
+        DistError::InvalidWindow
+    );
     require!(args.total_amount > 0, DistError::ZeroAmount);
 
     let vault_before = ctx.accounts.epoch_vault.amount;

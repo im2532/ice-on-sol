@@ -25,6 +25,16 @@ export const TOKEN_PROGRAM = new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss6
 export const ASSOCIATED_TOKEN_PROGRAM = new PublicKey("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL");
 
 /** Associated token address (same as spl-token `getAssociatedTokenAddressSync(mint, owner, true, tokenProgram)`). */
+export const BPF_LOADER_UPGRADEABLE = new PublicKey("BPFLoaderUpgradeab1e11111111111111111111111");
+
+/**
+ * ProgramData PDA of an upgradeable program. Every `initialize*` instruction takes the program +
+ * this account and requires the payer to be the upgrade authority (audit F-09: no init front-running).
+ */
+export function programDataPda(programId: PublicKey): PublicKey {
+  return PublicKey.findProgramAddressSync([programId.toBuffer()], BPF_LOADER_UPGRADEABLE)[0];
+}
+
 export function ata(mint: PublicKey, owner: PublicKey, tokenProgram: PublicKey = TOKEN_PROGRAM): PublicKey {
   return PublicKey.findProgramAddressSync(
     [owner.toBuffer(), tokenProgram.toBuffer(), mint.toBuffer()],

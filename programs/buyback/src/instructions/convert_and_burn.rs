@@ -87,17 +87,17 @@ fn rate_per_usdc(ice_out: u64, usdc_in: u64) -> Option<u64> {
     u64::try_from((ice_out as u128).checked_mul(USDC_UNIT)? / usdc_in as u128).ok()
 }
 
-/// Next anchor: move towards `rate` by at most `move_bps` of the current anchor.
+/// Next anchor (audit F-01/F-02): the anchor only ever moves UP automatically, by at most
+/// `move_bps` of the current anchor towards a better executed rate. It never moves down on a
+/// keeper-executed cycle — a compromised keeper could otherwise walk it to zero 2 % per cycle.
+/// Downward moves (genuine ICE repricing) are an admin `set_params.ice_per_usdc_anchor`.
+/// An anchor of 0 is never accepted as a cycle input (see `handle_convert_and_burn`).
 pub fn next_anchor(anchor: u64, rate: u64, move_bps: u16) -> u64 {
-    if anchor == 0 {
-        return rate;
+    if rate <= anchor {
+        return anchor;
     }
-    let step = ((anchor as u128) * (move_bps as u128) / (BPS_DENOM as u128)) as u64;
-    if rate > anchor {
-        anchor.saturating_add(step).min(rate)
-    } else {
-        anchor.saturating_sub(step).max(rate)
-    }
+    let step = (((anchor as u128) * (move_bps as u128) / (BPS_DENOM as u128)) as u64).max(1);
+    anchor.saturating_add(step).min(rate)
 }
 
 /// Minimum acceptable rate given the anchor: anchor × (1 − max_deviation_bps). 0 when unanchored.
@@ -114,6 +114,9 @@ pub fn handle_convert_and_burn<'info>(
 ) -> Result<()> {
     let st = &ctx.accounts.state;
     require!(!st.paused, BuybackError::Paused);
+    // Audit F-02: the breaker must be armed before any vault funds move.
+    require!(st.ice_per_usdc_anchor > 0, BuybackError::Unanchored);
+    require!(st.max_per_cycle_usdc > 0, BuybackError::CycleCapUnset);
     require!(
         st.is_admin_or_keeper(ctx.accounts.keeper.key),
         BuybackError::Unauthorized
@@ -212,7 +215,14 @@ pub fn handle_convert_and_burn<'info>(
     ctx.accounts.bb_coin.reload()?;
     let ice_out = ctx.accounts.bb_ice.amount.saturating_sub(ice_before);
     let usdc_spent = usdc_pre_swap.saturating_sub(ctx.accounts.bb_usdc.amount);
-    require!(usdc_spent <= usdc_out, BuybackError::UsdcOverspent);
+    // Audit F-03/F-04: the route must consume (almost) exactly what this cycle sold — no
+    // under-spending that strands USDC in bb_usdc, no dust cycles that steer the breaker — and may
+    // additionally drain residue left by earlier cycles (bounded by the per-cycle cap).
+    let min_spend = ((usdc_out as u128) * ((BPS_DENOM - MIN_SPEND_TOLERANCE_BPS) as u128)
+        / (BPS_DENOM as u128)) as u64;
+    require!(usdc_spent >= min_spend.max(1), BuybackError::UsdcUnderspent);
+    require!(usdc_spent <= usdc_pre_swap, BuybackError::UsdcOverspent);
+    require!(usdc_spent <= st.max_per_cycle_usdc, BuybackError::CycleCapExceeded);
     require!(
         ctx.accounts.bb_coin.amount == coin_after_sell,
         BuybackError::UsdcOverspent
@@ -223,7 +233,8 @@ pub fn handle_convert_and_burn<'info>(
     );
 
     // Rate breaker: the executed ICE-per-USDC must be within max_deviation_bps of the anchor.
-    let rate = rate_per_usdc(ice_out, usdc_spent.max(1)).ok_or(error!(BuybackError::MathOverflow))?;
+    let rate = rate_per_usdc(ice_out, usdc_spent).ok_or(error!(BuybackError::MathOverflow))?;
+    require!(rate > 0, BuybackError::RateBelowAnchor);
     require!(
         rate >= min_rate(st.ice_per_usdc_anchor, st.max_deviation_bps),
         BuybackError::RateBelowAnchor
@@ -279,17 +290,17 @@ mod tests {
     }
 
     #[test]
-    fn anchor_moves_at_most_move_bps_per_cycle() {
-        assert_eq!(next_anchor(0, 500, 200), 500); // first cycle sets it
+    fn anchor_only_ratchets_up_and_at_most_move_bps_per_cycle() {
         assert_eq!(next_anchor(10_000, 20_000, 200), 10_200); // +2% cap
-        assert_eq!(next_anchor(10_000, 5_000, 200), 9_800); // −2% cap
         assert_eq!(next_anchor(10_000, 10_100, 200), 10_100); // within the step: lands exactly
-        assert_eq!(next_anchor(10_000, 9_950, 200), 9_950);
+        assert_eq!(next_anchor(10_000, 5_000, 200), 10_000); // never down on an executed cycle
+        assert_eq!(next_anchor(10_000, 9_950, 200), 10_000);
+        assert_eq!(next_anchor(10, 100, 200), 11); // step floors at 1 so tiny anchors can recover
     }
 
     #[test]
     fn min_rate_from_anchor() {
-        assert_eq!(min_rate(0, 500), 0); // unanchored: anything goes (first cycle)
+        assert_eq!(min_rate(0, 500), 0); // unanchored — handler refuses to run in this state
         assert_eq!(min_rate(10_000, 500), 9_500);
         assert_eq!(min_rate(10_000, 0), 10_000);
     }

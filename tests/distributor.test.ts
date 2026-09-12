@@ -60,6 +60,12 @@ async function sendSignedBySourceAuthority(
   return provider.sendAndConfirm(new Transaction().add(ix), [sourceAuthority, ...extraSigners]);
 }
 
+const BPF_LOADER_UPGRADEABLE = new PublicKey("BPFLoaderUpgradeab1e11111111111111111111111");
+/** ProgramData PDA of a program (audit F-09: initialize is gated on the upgrade authority). */
+function programDataPda(programId: PublicKey): PublicKey {
+  return PublicKey.findProgramAddressSync([programId.toBuffer()], BPF_LOADER_UPGRADEABLE)[0];
+}
+
 describe("distributor", () => {
   const provider = anchor.AnchorProvider.env();
   anchor.setProvider(provider);
@@ -117,7 +123,8 @@ describe("distributor", () => {
     if (!existing) {
       await program.methods
         .initialize(feeRouterId, 10_000)
-        .accountsPartial({ payer: admin.publicKey, distConfig, systemProgram: SystemProgram.programId })
+        // `program`/`programData` (audit F-09) land in target/types on the next `anchor build`; cast until then.
+        .accountsPartial({ payer: admin.publicKey, program: program.programId, programData: programDataPda(program.programId), distConfig, systemProgram: SystemProgram.programId } as any)
         .rpc();
     }
     const cfg = await program.account.distConfig.fetch(distConfig);

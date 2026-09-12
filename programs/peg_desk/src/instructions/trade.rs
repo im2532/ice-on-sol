@@ -124,13 +124,14 @@ fn quote<'info>(
         PegDeskError::ConfidenceTooWide
     );
 
-    // Circuit breaker: a jump vs the last accepted price (any oracle kind) is refused while the
-    // anchor is fresh. Protects the reserve from a bad feed print / compromised keeper key.
+    // Circuit breaker (audit F-06): the price may not move more than max_deviation_bps per
+    // deviation window (validator time) from a fixed anchor. Protects the reserve from a bad
+    // feed print / compromised keeper key regardless of how many posts or dust trades happen.
     require!(
         pricing::deviation_ok(
             op.price,
-            c.last_price,
-            c.last_publish_time,
+            c.anchor_price,
+            c.anchor_ts,
             clock.unix_timestamp,
             c.max_deviation_bps,
             c.deviation_window_secs,
@@ -249,6 +250,12 @@ fn execute_buy(
     c.reserve_balance_cached = vault_amount;
     c.last_publish_time = q.publish_time;
     c.last_price = q.price;
+    // Net-flow caps (audit F-08): a buy releases redeem capacity.
+    c.window_redeemed = pricing::window_release(c.window_redeemed, usdc_in);
+    if pricing::should_reanchor(c.anchor_price, c.anchor_ts, q.now, c.deviation_window_secs) {
+        c.anchor_price = q.price;
+        c.anchor_ts = q.now;
+    }
 
     emit!(Trade {
         commodity: commodity_key,
@@ -337,7 +344,8 @@ pub fn handle_sell<'info>(
     );
 
     // Circuit breaker: rolling daily redemption cap (USDC out). The buyback PDA is exempt (its
-    // volume is capped by the buyback program); its sells still count towards the window.
+    // volume is capped by the buyback program) and — audit F-07 — its sells do NOT consume the
+    // users' window: the window still rolls, but the exempt amount is not accumulated.
     let exempt = a.config.redeem_cap_exempt != Pubkey::default()
         && a.user.key() == a.config.redeem_cap_exempt;
     let (win_start, win_redeemed) = pricing::window_add(
@@ -346,7 +354,7 @@ pub fn handle_sell<'info>(
         q.now,
         DAILY_WINDOW_SECS,
         if exempt { 0 } else { a.commodity.daily_redeem_cap },
-        usdc_out,
+        if exempt { 0 } else { usdc_out },
     )
     .ok_or_else(|| error!(PegDeskError::DailyRedeemCapExceeded))?;
     if win_start != a.commodity.window_start {
@@ -398,6 +406,12 @@ pub fn handle_sell<'info>(
     c.reserve_balance_cached = vault_amount;
     c.last_publish_time = q.publish_time;
     c.last_price = q.price;
+    // Net-flow caps (audit F-08): a sell releases mint capacity.
+    c.window_minted = pricing::window_release(c.window_minted, coin_in);
+    if pricing::should_reanchor(c.anchor_price, c.anchor_ts, q.now, c.deviation_window_secs) {
+        c.anchor_price = q.price;
+        c.anchor_ts = q.now;
+    }
 
     emit!(Trade {
         commodity: commodity_key,

@@ -25,7 +25,7 @@ import {
   createAssociatedTokenAccountIdempotentInstruction,
 } from "@solana/spl-token";
 import { PROGRAM_IDS } from "@icemarkets/registry";
-import { pegDesk as pegDeskPda, symbolToBytes12 } from "./pda";
+import { pegDesk as pegDeskPda, programDataPda, symbolToBytes12 } from "./pda";
 import {
   Status,
   QuoteScale,
@@ -83,9 +83,12 @@ export interface CommodityAccountView {
     windowRedeemed: bigint;
     maxDeviationBps: number;
     deviationWindowSecs: number;
-    /** Deviation anchor (`last_price`, 1e8) and its publish time; 0 = unanchored. */
+    /** Last trade's oracle price (1e8) and publish time. */
     lastPrice: bigint;
     lastPublishTime: bigint;
+    /** Deviation anchor (1e8) and the validator time it was set; 0 = unanchored (audit F-06). */
+    anchorPrice: bigint;
+    anchorTs: bigint;
   };
   /** Composite only: the leg Commodity PDAs, in `legs` order. */
   legs?: PublicKey[];
@@ -226,6 +229,8 @@ export class PegDeskClient {
         deviationWindowSecs: Number(c.deviationWindowSecs ?? 0),
         lastPrice: big(c.lastPrice ?? 0),
         lastPublishTime: big(c.lastPublishTime ?? 0),
+        anchorPrice: big(c.anchorPrice ?? 0),
+        anchorTs: big(c.anchorTs ?? 0),
       },
       legs: legCount > 0 ? (c.legs as { commodity: PublicKey }[]).slice(0, legCount).map((l) => l.commodity) : undefined,
       legViews: legCount > 0 ? await this.fetchLegViews((c.legs as { commodity: PublicKey; weightBps: number }[]).slice(0, legCount)) : undefined,
@@ -536,7 +541,7 @@ export class PegDeskClient {
 
   // ---- instruction builders (admin/keeper) --------------------------------
 
-  /** `initialize_config(max_conf_bps, reserve_warn_bps, reserve_halt_bps)` — payer becomes admin. */
+  /** `initialize_config(max_conf_bps, reserve_warn_bps, reserve_halt_bps)` — payer (must be the upgrade authority) becomes admin. */
   async initializeConfigIx(params: {
     payer: PublicKey;
     reserveMint: PublicKey;
@@ -549,6 +554,8 @@ export class PegDeskClient {
       .initializeConfig(params.maxConfBps, params.reserveWarnBps, params.reserveHaltBps)
       .accountsPartial({
         payer: params.payer,
+        program: this.program.programId,
+        programData: programDataPda(this.program.programId),
         config: this.configPda(),
         reserveMint: params.reserveMint,
         treasury: params.treasury,

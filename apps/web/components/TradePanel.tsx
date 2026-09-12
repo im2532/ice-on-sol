@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
+import { NOT_ALLOWED_MESSAGE, walletAllowed } from "@/lib/allowlist";
 import { buyCoin, sellCoin, type PayWith } from "@/lib/actions";
 import { closedBuyTooltip, sessionOpensCopy } from "@/lib/session";
 import { fmtAmount, fmtPrice, pct } from "@/lib/format";
@@ -107,7 +108,8 @@ export default function TradePanel({
 
   const payLabel = payWith === "COIN" ? coinSymbol : payWith;
   const outLabel = ticker ?? coinSymbol;
-  const tradingBlocked = disabled || halted || (side === "buy" && buyTabDisabled) || payDisabled(payWith);
+  const notAllowed = !!publicKey && !walletAllowed(publicKey);
+  const tradingBlocked = disabled || halted || notAllowed || (side === "buy" && buyTabDisabled) || payDisabled(payWith);
 
   // Rough client-side estimate only — the real quote comes from the pool at signing time.
   const estimate = useMemo(() => {
@@ -313,7 +315,7 @@ export default function TradePanel({
 
       {tradingBlocked ? (
         <button type="button" disabled className="btn-primary tap h-12 w-full text-[15px]">
-          {halted ? "Feed recovering" : disabled ? disabledReason ?? "Trading unavailable" : "Market closed"}
+          {halted ? "Feed recovering" : notAllowed ? NOT_ALLOWED_MESSAGE : disabled ? disabledReason ?? "Trading unavailable" : "Market closed"}
         </button>
       ) : (
         <button

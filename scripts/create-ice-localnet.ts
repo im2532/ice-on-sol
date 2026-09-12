@@ -19,7 +19,7 @@ import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID, createMint, getAssociate
 import { ComputeBudgetProgram, Connection, Keypair, PublicKey, SystemProgram, Transaction, sendAndConfirmTransaction } from "@solana/web3.js";
 import { BaseFeeMode, CpAmm, getBaseFeeParams, getSqrtPriceFromPrice, MAX_SQRT_PRICE, MIN_SQRT_PRICE } from "@meteora-ag/cp-amm-sdk";
 import { parseCluster, usdcMintFor } from "@icemarkets/registry";
-import { DAMM_V2_PROGRAM_ID, buyback as buybackPda, pegDesk as pegDeskPda } from "@icemarkets/sdk";
+import { DAMM_V2_PROGRAM_ID, buyback as buybackPda, pegDesk as pegDeskPda, programDataPda } from "@icemarkets/sdk";
 
 const ONE = 1_000_000n;
 
@@ -105,6 +105,13 @@ async function main(): Promise<void> {
   void adminUsdc;
 
   // 3. buyback.initialize + peg_desk exemption
+  // Initial rate anchor (audit F-02): ICE base units per 1 USDC at the pool's spot price, discounted by
+  // the 1% pool fee so the first real cycle lands inside max_deviation_bps. Override with BUYBACK_ANCHOR
+  // (ICE per USDC, whole tokens) when seeding against a pool created elsewhere. Downward repricing later
+  // is an admin set_params; the program only ratchets the anchor upward on its own.
+  const icePerUsdcAnchor = process.env.BUYBACK_ANCHOR
+    ? new BN(Math.round(Number(process.env.BUYBACK_ANCHOR) * 1e6))
+    : new BN(((iceAmt * ONE * 99n) / (usdcAmt * 100n)).toString());
   const keepers = (process.env.KEEPER_PUBKEYS ?? "").split(",").map((s) => s.trim()).filter(Boolean).map((s) => new PublicKey(s));
   if (!(await connection.getAccountInfo(statePda))) {
     const sig = await buyback.methods
@@ -117,10 +124,12 @@ async function main(): Promise<void> {
         maxDeviationBps: 500,
         anchorMoveBps: 200,
         minIntervalSecs: Number(process.env.BUYBACK_MIN_INTERVAL ?? 60),
-        icePerUsdcAnchor: new BN(0),
+        icePerUsdcAnchor,
       })
       .accountsPartial({
         admin: admin.publicKey,
+        program: ids.buyback,
+        programData: programDataPda(ids.buyback),
         state: statePda,
         bbAuth,
         iceMint,
@@ -133,13 +142,13 @@ async function main(): Promise<void> {
         systemProgram: SystemProgram.programId,
       })
       .rpc();
-    console.log(`buyback.initialize ${statePda.toBase58()} (${sig})`);
+    console.log(`buyback.initialize ${statePda.toBase58()} anchor=${icePerUsdcAnchor.toString()} ICE-base/USDC (${sig})`);
   } else {
     await buyback.methods
-      .setParams({ feeRouter: null, pegDesk: null, swapProgram: null, reserveBufferBps: null, maxPerCycleUsdc: null, maxDeviationBps: null, anchorMoveBps: null, minIntervalSecs: null, icePerUsdcAnchor: new BN(0), paused: null, keepers: null, newAdmin: null })
+      .setParams({ feeRouter: null, pegDesk: null, swapProgram: null, reserveBufferBps: null, maxPerCycleUsdc: null, maxDeviationBps: null, anchorMoveBps: null, minIntervalSecs: null, icePerUsdcAnchor, paused: null, keepers: null, newAdmin: null })
       .accountsPartial({ admin: admin.publicKey, state: statePda })
       .rpc();
-    console.warn("buyback state existed: anchor reset to 0; ice_mint/usdc_mint cannot change without RESET (close + re-init)");
+    console.warn(`buyback state existed: anchor re-set to ${icePerUsdcAnchor.toString()} ICE-base/USDC; ice_mint/usdc_mint cannot change without RESET (close + re-init)`);
   }
   if (keepers.length > 0) {
     await buyback.methods

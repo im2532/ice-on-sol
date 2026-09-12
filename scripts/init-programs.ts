@@ -11,6 +11,7 @@
  */
 import { AnchorProvider, Program, Wallet } from "@coral-xyz/anchor";
 import { Connection, Keypair, PublicKey, SystemProgram } from "@solana/web3.js";
+import { programDataPda } from "@icemarkets/sdk";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 
@@ -48,7 +49,7 @@ async function main(): Promise<void> {
   } else {
     const sig = await (feeRouter.methods as any)
       .initializeRouter({ distributorProgram: ids.distributor, buybackProgram: ids.buyback, pegDeskProgram: ids.pegDesk, ...SPLIT })
-      .accountsPartial({ payer: admin.publicKey, config: router, systemProgram: SystemProgram.programId })
+      .accountsPartial({ payer: admin.publicKey, program: ids.feeRouter, programData: programDataPda(ids.feeRouter), config: router, systemProgram: SystemProgram.programId })
       .rpc();
     console.log(`fee_router initialize_router -> ${router.toBase58()} (${sig})`);
   }
@@ -59,7 +60,7 @@ async function main(): Promise<void> {
   } else {
     const sig = await (distributor.methods as any)
       .initialize(ids.feeRouter, MAX_PUSH_PER_EPOCH_BPS)
-      .accountsPartial({ payer: admin.publicKey, distConfig, systemProgram: SystemProgram.programId })
+      .accountsPartial({ payer: admin.publicKey, program: ids.distributor, programData: programDataPda(ids.distributor), distConfig, systemProgram: SystemProgram.programId })
       .rpc();
     console.log(`distributor initialize -> ${distConfig.toBase58()} (${sig})`);
   }

@@ -34,4 +34,12 @@ pub enum BuybackError {
     CycleCapExceeded,
     #[msg("Math overflow")]
     MathOverflow,
+    #[msg("Rate anchor is 0 — admin must set ice_per_usdc_anchor before cycles run")]
+    Unanchored,
+    #[msg("max_per_cycle_usdc is 0 — admin must set a per-cycle cap")]
+    CycleCapUnset,
+    #[msg("Swap consumed less USDC than the sell produced (minus tolerance)")]
+    UsdcUnderspent,
+    #[msg("Payer is not the program's upgrade authority")]
+    NotUpgradeAuthority,
 }

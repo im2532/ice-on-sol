@@ -14,6 +14,8 @@ pub const DEFAULT_MAX_DEVIATION_BPS: u16 = 500;
 /// Anchor may move ≤ 2% per cycle by default.
 pub const DEFAULT_ANCHOR_MOVE_BPS: u16 = 200;
 pub const DEFAULT_MIN_INTERVAL_SECS: u32 = 600;
+/// The route must spend at least (1 − this) of the cycle's USDC (audit F-03/F-04).
+pub const MIN_SPEND_TOLERANCE_BPS: u64 = 100;
 /// Max bytes of forwarded route instruction data (Jupiter route data is well under this).
 pub const MAX_ROUTE_DATA_LEN: usize = 1024;
 /// One USDC in base units (6 decimals) — the anchor's denominator.

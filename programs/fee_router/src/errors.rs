@@ -44,4 +44,6 @@ pub enum RouterError {
     InvalidFeeBps,
     #[msg("Amount must be > 0")]
     ZeroAmount,
+    #[msg("Payer is not the program's upgrade authority")]
+    NotUpgradeAuthority,
 }

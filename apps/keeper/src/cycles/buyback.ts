@@ -111,7 +111,9 @@ export async function runBuybackCycle(): Promise<void> {
   let coinAmount = (best.vault * (BPS - BigInt(st.reserveBufferBps))) / BPS;
   const reading = await pegDesk.fetchOracleReading(view);
   const bid = bidPrice(reading.price, view.baseSpreadBps);
-  if (maxPerCycleUsdc > 0n) {
+  if (maxPerCycleUsdc === 0n) return log.error("buyback: max_per_cycle_usdc is 0 — program refuses to run (CycleCapUnset); set it via set_params");
+  if (BigInt(st.icePerUsdcAnchor.toString()) === 0n) return log.error("buyback: ice_per_usdc_anchor is 0 — program refuses to run (Unanchored); set it via set_params");
+  {
     const maxCoin = (maxPerCycleUsdc * 100_000_000n) / bid;
     if (coinAmount > maxCoin) coinAmount = maxCoin;
   }
@@ -119,6 +121,12 @@ export async function runBuybackCycle(): Promise<void> {
   const usdcExpected = usdcOutForCoinIn(coinAmount, bid);
   const minUsdcOut = haircutBps(usdcExpected, slippageBps);
   if (minUsdcOut === 0n) return log.debug({ symbol: best.symbol }, "buyback: min usdc out is zero; skipping");
+  // Route sizing (audit F-03/F-04): the program requires the swap to consume ≥ 99 % of the USDC the sell
+  // produced (MIN_SPEND_TOLERANCE_BPS), so the fixed route amount is quoted at ≤ 0.9 % under the expected
+  // sell output regardless of BUYBACK_SLIPPAGE_BPS. If the oracle re-prices upward between this quote
+  // and execution the cycle reverts with UsdcUnderspent and simply retries next interval; any residue
+  // an odd fill leaves in the work ATA is recovered by the admin via `sweep_work_account`.
+  const routeUsdcIn = haircutBps(usdcExpected, Math.min(slippageBps, 90));
 
   // Route USDC → ICE.
   let route: BuybackRoute;
@@ -126,12 +134,12 @@ export async function runBuybackCycle(): Promise<void> {
     const mode = process.env.BUYBACK_ROUTE ?? "jupiter";
     if (mode === "damm") {
       const pool = new PublicKey(process.env.BUYBACK_DAMM_POOL ?? "");
-      route = await buildBuybackRouteViaDamm(connection, { pool, usdcMint, iceMint, amountUsdc: minUsdcOut, minOut: 1n, bbAuth });
+      route = await buildBuybackRouteViaDamm(connection, { pool, usdcMint, iceMint, amountUsdc: routeUsdcIn, minOut: 1n, bbAuth });
     } else {
       route = await buildBuybackRouteViaJupiter(connection, {
         usdcMint,
         iceMint,
-        amountUsdc: minUsdcOut,
+        amountUsdc: routeUsdcIn,
         bbAuth,
         slippageBps,
         maxAccounts: envInt("BUYBACK_MAX_ACCOUNTS", 24),

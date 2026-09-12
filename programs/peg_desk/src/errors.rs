@@ -59,4 +59,6 @@ pub enum PegDeskError {
     DailyRedeemCapExceeded,
     #[msg("Oracle price deviates too far from the last accepted price")]
     PriceDeviationTooLarge,
+    #[msg("Payer is not the program's upgrade authority")]
+    NotUpgradeAuthority,
 }

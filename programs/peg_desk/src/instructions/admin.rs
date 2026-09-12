@@ -39,6 +39,12 @@ pub struct InitializeConfig<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
 
+    /// CHECK: this program's executable account (audit F-09).
+    #[account(address = crate::ID @ PegDeskError::NotUpgradeAuthority)]
+    pub program: UncheckedAccount<'info>,
+    /// CHECK: this program's ProgramData PDA (validated in the handler; ignored for non-upgradeable loaders).
+    pub program_data: UncheckedAccount<'info>,
+
     #[account(
         init,
         payer = payer,
@@ -64,6 +70,7 @@ pub fn handle_initialize_config(
     reserve_warn_bps: u16,
     reserve_halt_bps: u16,
 ) -> Result<()> {
+    require_upgrade_authority(&ctx.accounts.program.to_account_info(), &ctx.accounts.program_data.to_account_info(), &ctx.accounts.payer.key())?;
     require!(
         max_conf_bps > 0 && (max_conf_bps as u64) <= BPS,
         PegDeskError::InvalidParams
@@ -193,5 +200,33 @@ pub fn handle_set_global_pause(ctx: Context<SetGlobalPause>, paused: bool) -> Re
 /// Admin: set (or clear with Pubkey::default()) the signer exempt from daily_redeem_cap.
 pub fn handle_set_redeem_cap_exempt(ctx: Context<AdminConfig>, exempt: Pubkey) -> Result<()> {
     ctx.accounts.config.redeem_cap_exempt = exempt;
+    Ok(())
+}
+
+/// Audit F-09 (init front-running): a singleton config may only be initialised by the program's
+/// upgrade authority. `program` is this program's executable account; `program_data` its
+/// BPFLoaderUpgradeable ProgramData PDA. Programs loaded at genesis on a local validator are owned
+/// by the non-upgradeable loader and have no ProgramData — the check is skipped there.
+pub fn require_upgrade_authority(
+    program: &AccountInfo,
+    program_data: &AccountInfo,
+    payer: &Pubkey,
+) -> Result<()> {
+    let loader = anchor_lang::solana_program::bpf_loader_upgradeable::id();
+    if *program.owner != loader {
+        return Ok(());
+    }
+    let (expected, _) = Pubkey::find_program_address(&[program.key.as_ref()], &loader);
+    require_keys_eq!(*program_data.key, expected, PegDeskError::NotUpgradeAuthority);
+    let data = program_data.try_borrow_data()?;
+    // bincode UpgradeableLoaderState::ProgramData { slot: u64, upgrade_authority_address: Option<Pubkey> }
+    // = u32 variant (3) | u64 slot | u8 option tag | [u8; 32]
+    require!(
+        data.len() >= 45 && data[0..4] == [3, 0, 0, 0] && data[12] == 1,
+        PegDeskError::NotUpgradeAuthority
+    );
+    let mut key = [0u8; 32];
+    key.copy_from_slice(&data[13..45]);
+    require_keys_eq!(Pubkey::new_from_array(key), *payer, PegDeskError::NotUpgradeAuthority);
     Ok(())
 }

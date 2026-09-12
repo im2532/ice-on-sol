@@ -8,8 +8,8 @@
 //!   spread components round UP, bid rounds DOWN, reserve ratio rounds DOWN.
 
 use crate::constants::{
-    BPS, COIN_DECIMALS, MAX_SPREAD_BPS, PRICE_SCALE, QUOTE_EUR, QUOTE_USC, QUOTE_USD,
-    STATUS_CLOSED, USDC_DECIMALS,
+    BPS, COIN_DECIMALS, MAX_DEVIATION_WINDOWS, MAX_SPREAD_BPS, PRICE_SCALE, QUOTE_EUR, QUOTE_USC,
+    QUOTE_USD, STATUS_CLOSED, USDC_DECIMALS,
 };
 
 /// USDC_UNIT / COIN_UNIT expressed as (numerator, denominator) so equal decimals cost nothing
@@ -221,28 +221,39 @@ pub fn deviation_bps(price: u64, last: u64) -> Option<u64> {
     to_u64(ceil_div(diff.checked_mul(B)?, last as u128)?)
 }
 
-/// Whether a trade at `price` is allowed by the deviation breaker.
-/// Disabled when `max_deviation_bps == 0`; the anchor is ignored once it is older than
-/// `window_secs` (so a market that gapped over a weekend re-anchors on its first trade) or
-/// when there is no anchor yet (`last_price == 0`).
+/// Deviation breaker v2 (audit F-06). The anchor is *fixed* for a window (a trade never moves it
+/// before `window_secs` elapse, so dust trades cannot walk it), and the allowed move grows by
+/// `max_deviation_bps` per elapsed window, capped at `MAX_DEVIATION_WINDOWS` windows — so a market
+/// that gapped over a weekend can trade, but a keeper cannot jump more than max_deviation_bps per
+/// window of validator time regardless of how many posts or trades it makes.
+/// Disabled when `max_deviation_bps == 0` or there is no anchor yet.
 pub fn deviation_ok(
     price: u64,
-    last_price: u64,
-    last_publish_time: i64,
+    anchor_price: u64,
+    anchor_ts: i64,
     now: i64,
     max_deviation_bps: u16,
     window_secs: u32,
 ) -> bool {
-    if max_deviation_bps == 0 || last_price == 0 {
+    if max_deviation_bps == 0 || anchor_price == 0 {
         return true;
     }
-    if now.saturating_sub(last_publish_time) > window_secs as i64 {
-        return true;
-    }
-    match deviation_bps(price, last_price) {
-        Some(d) => d <= max_deviation_bps as u64,
+    let windows = if window_secs == 0 {
+        1
+    } else {
+        let elapsed = now.saturating_sub(anchor_ts).max(0) as u64;
+        (elapsed / window_secs as u64 + 1).min(MAX_DEVIATION_WINDOWS)
+    };
+    let allowed = (max_deviation_bps as u64).saturating_mul(windows);
+    match deviation_bps(price, anchor_price) {
+        Some(d) => d <= allowed,
         None => false,
     }
+}
+
+/// Whether a trade at `now` should replace the anchor: no anchor yet, or the window has elapsed.
+pub fn should_reanchor(anchor_price: u64, anchor_ts: i64, now: i64, window_secs: u32) -> bool {
+    anchor_price == 0 || now.saturating_sub(anchor_ts) >= window_secs as i64
 }
 
 /// Rolling-window accounting for the daily caps. Returns the `(window_start, used)` to store
@@ -266,6 +277,12 @@ pub fn window_add(
         return None;
     }
     Some((start, new_used))
+}
+
+/// Net-flow accounting (audit F-08): a sell releases mint capacity and a buy releases redeem
+/// capacity, so a wash round-trip cannot exhaust the shared daily caps. Saturating at 0.
+pub fn window_release(used: u64, amount: u64) -> u64 {
+    used.saturating_sub(amount)
 }
 
 #[cfg(test)]
@@ -294,23 +311,38 @@ mod tests {
     }
 
     #[test]
-    fn deviation_inside_window_is_bounded() {
+    fn deviation_inside_first_window_is_bounded() {
         // +2% with a 1% bound, anchor 10 s old, 60 s window → rejected
         assert!(!deviation_ok(102 * USD, 100 * USD, 1_000, 1_010, 100, 60));
-        // exactly at the bound passes
         assert!(deviation_ok(101 * USD, 100 * USD, 1_000, 1_010, 100, 60));
-        // -0.5% passes
         assert!(deviation_ok(995 * USD / 10, 100 * USD, 1_000, 1_010, 100, 60));
+        // clock skew (anchor in the future) counts as window 1
+        assert!(!deviation_ok(102 * USD, 100 * USD, 2_000, 1_000, 100, 60));
     }
 
     #[test]
-    fn deviation_anchor_expires() {
-        // same +2% move but the anchor is 61 s old with a 60 s window → re-anchor, pass
+    fn deviation_bound_grows_one_step_per_window_and_caps() {
+        // 61 s after anchoring with a 60 s window → 2 windows → 2% allowed
         assert!(deviation_ok(102 * USD, 100 * USD, 1_000, 1_061, 100, 60));
-        // 60 s old is still inside the window (strict >)
-        assert!(!deviation_ok(102 * USD, 100 * USD, 1_000, 1_060, 100, 60));
-        // clock skew (anchor in the future) never disables the check
-        assert!(!deviation_ok(102 * USD, 100 * USD, 2_000, 1_000, 100, 60));
+        assert!(!deviation_ok(103 * USD, 100 * USD, 1_000, 1_061, 100, 60));
+        // a whole day idle at 60 s windows would be 1440 windows; capped at 20 → 20%
+        assert!(deviation_ok(120 * USD, 100 * USD, 1_000, 1_000 + 86_400, 100, 60));
+        assert!(!deviation_ok(121 * USD, 100 * USD, 1_000, 1_000 + 86_400, 100, 60));
+        // overflow-safe: result outside u64 → reject
+        assert!(!deviation_ok(u64::MAX, 1, 1_000, 1_001, 10_000, 60));
+    }
+
+    #[test]
+    fn reanchor_only_after_window() {
+        assert!(should_reanchor(0, 0, 5, 60));
+        assert!(!should_reanchor(100, 1_000, 1_059, 60));
+        assert!(should_reanchor(100, 1_000, 1_060, 60));
+    }
+
+    #[test]
+    fn window_release_saturates() {
+        assert_eq!(window_release(100, 40), 60);
+        assert_eq!(window_release(10, 40), 0);
     }
 
     #[test]

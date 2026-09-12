@@ -45,6 +45,12 @@ function params(overrides: Record<string, unknown>) {
   };
 }
 
+const BPF_LOADER_UPGRADEABLE = new PublicKey("BPFLoaderUpgradeab1e11111111111111111111111");
+/** ProgramData PDA of a program (audit F-09: initialize is gated on the upgrade authority). */
+function programDataPda(programId: PublicKey): PublicKey {
+  return PublicKey.findProgramAddressSync([programId.toBuffer()], BPF_LOADER_UPGRADEABLE)[0];
+}
+
 describe("buyback", () => {
   const provider = anchor.AnchorProvider.env();
   anchor.setProvider(provider);
@@ -71,12 +77,14 @@ describe("buyback", () => {
     maxDeviationBps: 500,
     anchorMoveBps: 200,
     minIntervalSecs: 0,
-    icePerUsdcAnchor: new BN(0),
+    icePerUsdcAnchor: new BN(1_000_000_000), // 1,000 ICE per USDC (off-chain reference; audit F-02)
     ...overrides,
   });
 
   const initAccounts = () => ({
     admin: admin.publicKey,
+    program: program.programId,
+    programData: programDataPda(program.programId),
     state: statePda,
     bbAuth,
     iceMint,
@@ -103,6 +111,11 @@ describe("buyback", () => {
     }
   });
 
+  it("initialize rejects an unarmed breaker (zero anchor or zero per-cycle cap; audit F-02)", async () => {
+    await expectAnchorError(program.methods.initialize(initArgs({ icePerUsdcAnchor: new BN(0) })).accountsPartial(initAccounts()).rpc(), "Unanchored");
+    await expectAnchorError(program.methods.initialize(initArgs({ maxPerCycleUsdc: new BN(0) })).accountsPartial(initAccounts()).rpc(), "CycleCapUnset");
+  });
+
   it("initialize creates the state and both work ATAs owned by bb_auth", async () => {
     await program.methods.initialize(initArgs({ reserveBufferBps: 1_000 })).accountsPartial(initAccounts()).rpc();
     const s = await program.account.buybackState.fetch(statePda);
@@ -116,7 +129,7 @@ describe("buyback", () => {
     expect(s.maxPerCycleUsdc.toNumber()).to.equal(5_000_000_000);
     expect(s.maxDeviationBps).to.equal(500);
     expect(s.anchorMoveBps).to.equal(200);
-    expect(s.icePerUsdcAnchor.toNumber()).to.equal(0);
+    expect(s.icePerUsdcAnchor.toNumber()).to.equal(1_000_000_000);
     expect(s.paused).to.equal(false);
     expect(s.authBump).to.equal(authBump);
     expect(s.totalUsdcOut.toNumber()).to.equal(0);

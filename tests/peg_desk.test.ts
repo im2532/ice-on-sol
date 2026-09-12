@@ -55,6 +55,12 @@ function pda(seeds: (Buffer | Uint8Array)[], programId: PublicKey): PublicKey {
   return PublicKey.findProgramAddressSync(seeds, programId)[0];
 }
 
+const BPF_LOADER_UPGRADEABLE = new PublicKey("BPFLoaderUpgradeab1e11111111111111111111111");
+/** ProgramData PDA of an upgradeable program (audit F-09 init gate; ignored on genesis-loaded programs). */
+function programDataPda(programId: PublicKey): PublicKey {
+  return PublicKey.findProgramAddressSync([programId.toBuffer()], BPF_LOADER_UPGRADEABLE)[0];
+}
+
 /** Asserts the promise rejects with the given Anchor error name (e.g. "StaleOracle"). */
 async function expectAnchorError(p: Promise<unknown>, code: string): Promise<void> {
   let threw = false;
@@ -135,8 +141,18 @@ describe("peg_desk", () => {
     return (await getAccount(connection, ata)).amount;
   }
 
-  /** Keeper posts a price; publish_time strictly increases across calls. */
+  let lastPushWall = 0;
+  let boundsSet = false;
+  /**
+   * Keeper posts a price; publish_time strictly increases across calls. Posts are rate-limited on
+   * the validator clock (audit F-05): the first post creates the KeeperPrice with the 30 s default,
+   * which the suite immediately lowers to 1 s, and the helper waits out that second between posts.
+   */
   async function pushPrice(price: number, opts: { publishTime?: number; conf?: number } = {}) {
+    if (boundsSet) {
+      const wait = 1_200 - (Date.now() - lastPushWall);
+      if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+    }
     const now = await chainNow();
     const publishTime = opts.publishTime ?? Math.max(now, lastPushed + 1);
     await program.methods
@@ -151,6 +167,14 @@ describe("peg_desk", () => {
       .signers([keeper])
       .rpc();
     lastPushed = Math.max(lastPushed, publishTime);
+    lastPushWall = Date.now();
+    if (!boundsSet) {
+      boundsSet = true;
+      await program.methods
+        .setKeeperBounds(500, 1)
+        .accountsPartial({ admin: admin.publicKey, config: configPda, commodity: gldPda, keeperPrice: keeperPricePda })
+        .rpc();
+    }
   }
 
   function tradeAccounts() {
@@ -238,6 +262,8 @@ describe("peg_desk", () => {
         config: configPda,
         reserveMint: usdcMint,
         treasury: treasuryOwner.publicKey,
+        program: program.programId,
+        programData: programDataPda(program.programId),
         systemProgram: SystemProgram.programId,
       })
       .rpc();
@@ -435,7 +461,22 @@ describe("peg_desk", () => {
   it("keeper price is monotonic and move-bounded", async () => {
     await pushPrice(GLD_PRICE);
     await expectAnchorError(pushPrice(GLD_PRICE, { publishTime: lastPushed - 5 }), "OracleNotMonotonic");
-    await expectAnchorError(pushPrice(GLD_PRICE, { publishTime: lastPushed }), "TooSoon");
+    await expectAnchorError(pushPrice(GLD_PRICE, { publishTime: lastPushed }), "OracleNotMonotonic");
+    // validator-clock rate limit (audit F-05): a second post inside min_interval (1 s) is refused
+    // even with a strictly newer publish_time — the keeper cannot pack max-move posts into one slot.
+    lastPushWall = Date.now();
+    await expectAnchorError(
+      program.methods
+        .keeperUpdatePrice(new BN(GLD_PRICE), new BN(0), new BN(lastPushed + 1), Array(32).fill(7))
+        .accountsPartial({ keeper: keeper.publicKey, config: configPda, commodity: gldPda, keeperPrice: keeperPricePda, systemProgram: SystemProgram.programId })
+        .signers([keeper])
+        .rpc(),
+      "TooSoon",
+    );
+    await expectAnchorError(
+      program.methods.setKeeperBounds(500, 0).accountsPartial({ admin: admin.publicKey, config: configPda, commodity: gldPda, keeperPrice: keeperPricePda }).rpc(),
+      "InvalidParams",
+    );
     // default max_move_bps = 500 (±5%)
     await expectAnchorError(pushPrice(Math.round(GLD_PRICE * 1.06)), "MoveTooLarge");
     await pushPrice(Math.round(GLD_PRICE * 1.04));
@@ -534,6 +575,7 @@ describe("peg_desk", () => {
     expect(c.dailyRedeemCap.toNumber()).to.equal(0);
     expect(c.maxDeviationBps).to.equal(0);
     expect(c.deviationWindowSecs).to.equal(0);
+    expect(c.anchorPrice.toNumber()).to.be.greaterThan(0); // set by the first trade of the suite
 
     await expectAnchorError(
       program.methods
@@ -624,17 +666,51 @@ describe("peg_desk", () => {
     expect(c.lastPrice.toNumber()).to.equal(Math.round(GLD_PRICE * 1.03));
   });
 
-  it("price-deviation anchor expires after deviation_window_secs", async () => {
+  it("price-deviation bound widens by max_deviation_bps per elapsed window and the anchor is fixed within a window", async () => {
+    // anchor = $2,060 from the previous trade; 2% per 1 s window
     await setParams({ maxDeviationBps: 200, deviationWindowSecs: 1 });
-    const c = await program.account.commodity.fetch(gldPda);
-    // wait until the anchor (last_publish_time) is strictly older than the 1 s window
-    await waitForChainPast(c.lastPublishTime.toNumber() + 1);
-
-    // −2.9% vs the $2,060 anchor would trip a fresh anchor; an expired one re-anchors instead
-    await pushPrice(GLD_PRICE);
-    await buy(2_002 * ONE);
-    expect((await program.account.commodity.fetch(gldPda)).lastPrice.toNumber()).to.equal(GLD_PRICE);
+    const c0 = await program.account.commodity.fetch(gldPda);
+    const anchor0 = c0.anchorPrice.toNumber();
+    // wait until at least two windows have elapsed → 4% allowed; −2.9% passes, −5% does not
+    await waitForChainPast(c0.anchorTs.toNumber() + 1);
+    await pushPrice(Math.round(anchor0 * 0.95));
+    await expectAnchorError(buy(2_000 * ONE), "PriceDeviationTooLarge");
+    await pushPrice(Math.round(anchor0 * 0.971));
+    await buy(2_000 * ONE);
+    const c1 = await program.account.commodity.fetch(gldPda);
+    expect(c1.lastPrice.toNumber()).to.equal(Math.round(anchor0 * 0.971));
+    // the trade re-anchored (window elapsed) at the new price and time
+    expect(c1.anchorPrice.toNumber()).to.equal(Math.round(anchor0 * 0.971));
+    expect(c1.anchorTs.toNumber()).to.be.greaterThan(c0.anchorTs.toNumber());
 
     await setParams({ maxDeviationBps: 0, deviationWindowSecs: 0 });
+  });
+
+  it("net-flow caps: a sell releases mint capacity and buyback-exempt sells do not consume the redeem window", async () => {
+    await pushPrice(GLD_PRICE);
+    let c = await program.account.commodity.fetch(gldPda);
+    const minted0 = c.windowMinted.toNumber();
+    const redeemed0 = c.windowRedeemed.toNumber();
+    await buy(2_002 * ONE); // +1 GLD minted
+    await sell(ONE / 2); // −0.5 GLD → releases 0.5 of mint capacity, adds $999 redeemed
+    c = await program.account.commodity.fetch(gldPda);
+    expect(c.windowMinted.toNumber()).to.equal(minted0 + ONE / 2);
+    // the $2,002 buy releases redeem capacity (saturating), then the sell adds $999
+    expect(c.windowRedeemed.toNumber()).to.equal(Math.max(0, redeemed0 - 2_002 * ONE) + 999 * ONE);
+
+    // exempt signer: its sells are allowed above the cap and do not accumulate (audit F-07)
+    await program.methods
+      .setRedeemCapExempt(user.publicKey)
+      .accountsPartial({ admin: admin.publicKey, config: configPda })
+      .rpc();
+    await setParams({ dailyRedeemCap: new BN(1) });
+    const before = (await program.account.commodity.fetch(gldPda)).windowRedeemed.toNumber();
+    await sell(ONE / 10);
+    expect((await program.account.commodity.fetch(gldPda)).windowRedeemed.toNumber()).to.equal(before);
+    await program.methods
+      .setRedeemCapExempt(PublicKey.default)
+      .accountsPartial({ admin: admin.publicKey, config: configPda })
+      .rpc();
+    await setParams({ dailyRedeemCap: new BN(0) });
   });
 });

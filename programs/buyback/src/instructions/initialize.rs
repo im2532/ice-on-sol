@@ -14,12 +14,12 @@ pub struct InitializeArgs {
     /// Jupiter v6 on mainnet/devnet; any AMM program on localnet.
     pub swap_program: Pubkey,
     pub reserve_buffer_bps: u16,
-    /// 0 = unlimited.
+    /// Must be > 0 (audit F-02).
     pub max_per_cycle_usdc: u64,
     pub max_deviation_bps: u16,
     pub anchor_move_bps: u16,
     pub min_interval_secs: u32,
-    /// 0 = let the first cycle set it.
+    /// Must be > 0: ICE base units per 1 USDC from an off-chain reference (audit F-02).
     pub ice_per_usdc_anchor: u64,
 }
 
@@ -27,6 +27,12 @@ pub struct InitializeArgs {
 pub struct Initialize<'info> {
     #[account(mut)]
     pub admin: Signer<'info>,
+
+    /// CHECK: this program's executable account (audit F-09).
+    #[account(address = crate::ID @ BuybackError::NotUpgradeAuthority)]
+    pub program: UncheckedAccount<'info>,
+    /// CHECK: this program's ProgramData PDA (validated in the handler; ignored for non-upgradeable loaders).
+    pub program_data: UncheckedAccount<'info>,
 
     #[account(init, payer = admin, space = 8 + BuybackState::INIT_SPACE, seeds = [STATE_SEED], bump)]
     pub state: Box<Account<'info, BuybackState>>,
@@ -85,9 +91,13 @@ fn emit_params(s: &BuybackState) {
 }
 
 pub fn handle_initialize(ctx: Context<Initialize>, args: InitializeArgs) -> Result<()> {
+    require_upgrade_authority(&ctx.accounts.program.to_account_info(), &ctx.accounts.program_data.to_account_info(), &ctx.accounts.admin.key())?;
     check_bps(args.reserve_buffer_bps)?;
     check_bps(args.max_deviation_bps)?;
     check_bps(args.anchor_move_bps)?;
+    // Audit F-02: the breaker must be armed from the first cycle.
+    require!(args.ice_per_usdc_anchor > 0, BuybackError::Unanchored);
+    require!(args.max_per_cycle_usdc > 0, BuybackError::CycleCapUnset);
     let s = &mut ctx.accounts.state;
     s.admin = ctx.accounts.admin.key();
     s.keepers = [Pubkey::default(); 8];
@@ -154,6 +164,7 @@ pub fn handle_set_params(ctx: Context<SetParams>, args: SetParamsArgs) -> Result
         s.reserve_buffer_bps = v;
     }
     if let Some(v) = args.max_per_cycle_usdc {
+        require!(v > 0, BuybackError::CycleCapUnset);
         s.max_per_cycle_usdc = v;
     }
     if let Some(v) = args.max_deviation_bps {
@@ -168,6 +179,7 @@ pub fn handle_set_params(ctx: Context<SetParams>, args: SetParamsArgs) -> Result
         s.min_interval_secs = v;
     }
     if let Some(v) = args.ice_per_usdc_anchor {
+        require!(v > 0, BuybackError::Unanchored);
         s.ice_per_usdc_anchor = v;
     }
     if let Some(v) = args.paused {
@@ -186,5 +198,77 @@ pub fn handle_set_params(ctx: Context<SetParams>, args: SetParamsArgs) -> Result
         s.admin = v;
     }
     emit_params(s);
+    Ok(())
+}
+
+/// Audit F-09 (init front-running): a singleton config may only be initialised by the program's
+/// upgrade authority. `program` is this program's executable account; `program_data` its
+/// BPFLoaderUpgradeable ProgramData PDA. Programs loaded at genesis on a local validator are owned
+/// by the non-upgradeable loader and have no ProgramData — the check is skipped there.
+pub fn require_upgrade_authority(
+    program: &AccountInfo,
+    program_data: &AccountInfo,
+    payer: &Pubkey,
+) -> Result<()> {
+    let loader = anchor_lang::solana_program::bpf_loader_upgradeable::id();
+    if *program.owner != loader {
+        return Ok(());
+    }
+    let (expected, _) = Pubkey::find_program_address(&[program.key.as_ref()], &loader);
+    require_keys_eq!(*program_data.key, expected, BuybackError::NotUpgradeAuthority);
+    let data = program_data.try_borrow_data()?;
+    // bincode UpgradeableLoaderState::ProgramData { slot: u64, upgrade_authority_address: Option<Pubkey> }
+    // = u32 variant (3) | u64 slot | u8 option tag | [u8; 32]
+    require!(
+        data.len() >= 45 && data[0..4] == [3, 0, 0, 0] && data[12] == 1,
+        BuybackError::NotUpgradeAuthority
+    );
+    let mut key = [0u8; 32];
+    key.copy_from_slice(&data[13..45]);
+    require_keys_eq!(Pubkey::new_from_array(key), *payer, BuybackError::NotUpgradeAuthority);
+    Ok(())
+}
+
+// ---- sweep_work_account (audit F-03): admin recovers residue from a bb_auth-owned ATA -------------
+
+#[derive(Accounts)]
+pub struct SweepWorkAccount<'info> {
+    pub admin: Signer<'info>,
+    #[account(seeds = [STATE_SEED], bump = state.bump, has_one = admin @ BuybackError::Unauthorized)]
+    pub state: Box<Account<'info, BuybackState>>,
+    /// CHECK: PDA["bb_auth"].
+    #[account(seeds = [BB_AUTH_SEED], bump = state.auth_bump)]
+    pub bb_auth: UncheckedAccount<'info>,
+    pub mint: Box<InterfaceAccount<'info, Mint>>,
+    #[account(mut, associated_token::mint = mint, associated_token::authority = bb_auth, associated_token::token_program = token_program)]
+    pub source: Box<InterfaceAccount<'info, TokenAccount>>,
+    /// Must be owned by the admin (the multisig vault) — residue is protocol revenue, never a third party's.
+    #[account(mut, token::mint = mint, constraint = destination.owner == state.admin @ BuybackError::Unauthorized)]
+    pub destination: Box<InterfaceAccount<'info, TokenAccount>>,
+    pub token_program: Interface<'info, TokenInterface>,
+}
+
+/// Moves `amount` (0 = everything) of a bb_auth work ATA to an admin-owned account. Cannot touch the
+/// vaults in fee_router; only residue that a route left behind.
+pub fn handle_sweep_work_account(ctx: Context<SweepWorkAccount>, amount: u64) -> Result<()> {
+    let bal = ctx.accounts.source.amount;
+    let amount = if amount == 0 { bal } else { amount.min(bal) };
+    require!(amount > 0, BuybackError::ZeroAmount);
+    let bump = [ctx.accounts.state.auth_bump];
+    let seeds: &[&[&[u8]]] = &[&[BB_AUTH_SEED, &bump]];
+    anchor_spl::token_interface::transfer_checked(
+        CpiContext::new_with_signer(
+            ctx.accounts.token_program.to_account_info(),
+            anchor_spl::token_interface::TransferChecked {
+                from: ctx.accounts.source.to_account_info(),
+                mint: ctx.accounts.mint.to_account_info(),
+                to: ctx.accounts.destination.to_account_info(),
+                authority: ctx.accounts.bb_auth.to_account_info(),
+            },
+            seeds,
+        ),
+        amount,
+        ctx.accounts.mint.decimals,
+    )?;
     Ok(())
 }

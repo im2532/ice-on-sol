@@ -7,8 +7,10 @@ filled in.
 
 ## 0. Go / no-go — read this first
 
-The programs are **unaudited**. `peg_desk` custodies user USDC and `fee_router` touches every fee. The plan
-(§4) says no public mainnet before a third-party audit, and that still stands. What is defensible today is a
+The programs have had an **AI-assisted security review only** (`docs/audit/ICEmarkets-ai-security-review-2026-09-12.md`
+— 10 findings fixed in v0.7, one mitigated operationally) and **no independent human audit**. `peg_desk` custodies
+user USDC and `fee_router` touches every fee. The plan (§4) says no public mainnet before a third-party audit, and
+that still stands. What is defensible today is a
 **guarded launch**: deploy, hand every key to a multisig, run with daily caps at 10 % of the tier defaults
 (`BREAKER_SCALE_BPS=1000`), Peg Desk `per_tx_cap` small, and only markets the team seeds — so the worst case
 of an undiscovered bug is bounded to what the caps let through per day, and the pause switches stop it.
@@ -52,6 +54,9 @@ anchor build --verifiable                          # docker; ~10 min
 make idl web-deployments
 for p in peg_desk fee_router distributor buyback; do sha256sum target/verifiable/$p.so; done
 
+# NOTE (v0.7): every initialize (peg_desk initialize_config, fee_router initialize_router, distributor initialize,
+# buyback initialize) must be signed by the program's UPGRADE AUTHORITY — run them from the deploy key BEFORE
+# `make transfer-authority`, or build the Squads proposals so the vault is both upgrade authority and payer.
 # 3.2 deploy at exact size (halves rent vs the 2× default); same keypairs → same ids as devnet
 for p in peg_desk fee_router distributor buyback; do
   solana program deploy target/verifiable/$p.so --program-id target/deploy/$p-keypair.json \
@@ -93,6 +98,9 @@ Then `SOLANA_CLUSTER=mainnet-beta make smoke` — all four programs, configs, 96
 
 ## 5. Guarded launch (team-only, capped)
 
+0. Team-only means **allowlisted wallets**: set `NEXT_PUBLIC_ALLOWED_WALLETS=<pubkey>,<pubkey>,…` on Vercel — the trade
+   UI refuses any other connected wallet (on-chain access is still open; the caps and `per_tx_cap` are the real bound).
+   Leave it unset to open the UI to everyone after the audit.
 1. `deposit_reserve` $500–2,000 USDC into GLD, SLV, CL, BURGER and one card/watch coin.
 2. Launch one market per category from the UI with the team wallet; trade among team wallets; confirm three payout epochs and one fee claim on mainnet exactly as on localnet.
 3. Watch for 7 days: `make smoke` nightly (CI does it), reserve ratios ≥ 102 %, no `PriceDeviationTooLarge` storms, buyback vault filling (buyback stays paused until `$ICE` exists).
@@ -101,7 +109,13 @@ Then `SOLANA_CLUSTER=mainnet-beta make smoke` — all four programs, configs, 96
 ## 6. `$ICE` on stonk.fun (after the audit)
 
 Launch with SOL quote, **2 % fee tier**; creator fees (1 %) accrue to the launch wallet — sweep to `TREASURY_PUBKEY` weekly (manual for now). Then via Squads:
-`buyback.initialize(fee_router, peg_desk, swap_program = JUP6…, reserve_buffer 200, max_per_cycle_usdc 2 000 USDC, max_deviation 500, anchor_move 200, min_interval 900, anchor 0)` with `ice_mint` = the stonk.fun mint, `buyback.set_params(keepers)`, `peg_desk.set_redeem_cap_exempt(bb_auth)`; set `ICE_MINT`, `BUYBACK_ROUTE=jupiter` on the keeper. The first cycle sets the rate anchor — run it while watching.
+`buyback.initialize(fee_router, peg_desk, swap_program = JUP6…, reserve_buffer 200, max_per_cycle_usdc 2 000 USDC, max_deviation 500, anchor_move 200, min_interval 900, ice_per_usdc_anchor = A)` with `ice_mint` = the stonk.fun mint, `buyback.set_params(keepers)`, `peg_desk.set_redeem_cap_exempt(bb_auth)`; set `ICE_MINT`, `BUYBACK_ROUTE=jupiter` on the keeper.
+
+**`A` (the rate anchor) must be > 0 (v0.7, audit F-02) — the program refuses to initialise or run unanchored.** Compute it
+from a Jupiter quote at launch time: `A = ICE base units received per 1 USDC × 0.98` (2 % under spot so the first cycle
+lands inside `max_deviation_bps`). The program only ratchets the anchor **up** (≤ 2 % per cycle); if ICE reprices
+downward the cycles start failing with `RateBelowAnchor` and the fix is an admin `set_params(ice_per_usdc_anchor)` from
+a fresh quote — never 0. `max_per_cycle_usdc` must also stay > 0.
 
 ## 7. Incident switches (all Squads proposals; pause is the only one that should skip the timelock)
 
@@ -112,6 +126,9 @@ Launch with SOL quote, **2 % fee tier**; creator fees (1 %) accrue to the launch
 | Fee routing wrong | `fee_router.pause(true)` |
 | Buyback routing wrong | `buyback.set_params(paused = true)` |
 | Legit gap tripped the deviation breaker | `peg_desk.clear_price_anchor(coin)` |
+| ICE repriced down; buyback cycles fail `RateBelowAnchor` | `buyback.set_params(ice_per_usdc_anchor = fresh quote × 0.98)` |
+| Residue USDC/COIN stuck in a `bb_auth` work ATA | `buyback.sweep_work_account(mint, 0)` → admin-owned ATA |
+| Keeper posts rejected `TooSoon` | expected ≤ 30 s apart; `set_keeper_bounds(coin, 500, secs ≥ 1)` only if the cadence must change |
 
 ## 8. Still open before public launch (tracked in MAINNET_PLAN)
 

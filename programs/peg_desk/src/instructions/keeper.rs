@@ -58,7 +58,7 @@ pub fn handle_keeper_update_price(
 
     let now = Clock::get()?.unix_timestamp;
     require!(
-        publish_time <= now.saturating_add(MAX_FUTURE_SKEW_SECS),
+        publish_time >= 0 && publish_time <= now.saturating_add(MAX_FUTURE_SKEW_SECS),
         PegDeskError::InvalidParams
     );
 
@@ -76,13 +76,16 @@ pub fn handle_keeper_update_price(
     }
 
     if kp.publish_time != 0 {
+        // Feed time must be strictly newer (monotonic guard) …
         require!(
-            publish_time >= kp.publish_time,
+            publish_time > kp.publish_time,
             PegDeskError::OracleNotMonotonic
         );
-        let elapsed = publish_time - kp.publish_time;
+        // … and — audit F-05 — the spacing is enforced on the VALIDATOR clock, so a keeper cannot
+        // pack N max-move posts into one slot by choosing its own timestamps.
+        let elapsed_chain = now.saturating_sub(kp.last_update_ts);
         require!(
-            elapsed > 0 && elapsed >= kp.min_interval as i64,
+            elapsed_chain >= kp.min_interval.max(1) as i64,
             PegDeskError::TooSoon
         );
     }
@@ -100,6 +103,7 @@ pub fn handle_keeper_update_price(
     kp.conf = conf;
     kp.publish_time = publish_time;
     kp.source_hash = source_hash;
+    kp.last_update_ts = now;
 
     emit!(PriceUpdated {
         commodity: commodity_key,
@@ -143,6 +147,7 @@ pub fn handle_set_keeper_bounds(
     min_interval: u32,
 ) -> Result<()> {
     require_admin(&ctx.accounts.config, &ctx.accounts.admin.key())?;
+    require!(min_interval >= 1, PegDeskError::InvalidParams);
     require!(
         max_move_bps > 0 && (max_move_bps as u64) <= BPS,
         PegDeskError::InvalidParams

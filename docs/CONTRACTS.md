@@ -53,6 +53,7 @@ Seeds (`constants.rs`): `config`, `cmdty` + symbol bytes (padded to 12), `reserv
 #[account] pub struct KeeperPrice {            // PDA["kp", commodity]
   pub commodity: Pubkey, pub price: u64, pub conf: u64, pub publish_time: i64,
   pub source_hash: [u8; 32], pub max_move_bps: u16, pub min_interval: u32, pub bump: u8,
+  pub last_update_ts: i64,                      // v0.7: validator clock of the last accepted post (audit F-05)
 }
 ```
 
@@ -259,7 +260,7 @@ Recorded after the first build pass so the doc matches the code. These are the d
 - `reserve_vault` is a PDA token account at `["reserve", commodity]` (authority = commodity PDA), not an ATA.
 - `IndexLeg` is a plain Borsh struct (not `zero_copy`); identical bytes.
 - `Commodity.pyth_min_signatures: u8` added (taken from `_reserved`, now 63 bytes). 0 = require `VerificationLevel::Full`.
-- New admin ix `set_keeper_bounds(max_move_bps, min_interval)`; first `keeper_update_price` creates `KeeperPrice` with defaults 500 bps / 0 s.
+- New admin ix `set_keeper_bounds(max_move_bps, min_interval ≥ 1)`; first `keeper_update_price` creates `KeeperPrice` with defaults 500 bps / 30 s (v0.7; was 0 s).
 - `sell` has no treasury account (spread stays in reserve until `sweep_spread_fees`, which also needs `coin_mint` and values the reserve at `last_price`, which must be within `max_age`).
 - New commodities start `Open`. Extra errors/events are appended after the listed ones (codes preserved).
 - Program id placeholder is `PegDesk111111111111111111111111111111111111` (43 chars; the 44-char form was not a valid 32-byte key).
@@ -320,5 +321,32 @@ Recorded after the first build pass so the doc matches the code. These are the d
 - Error codes appended (stable): `DailyMintCapExceeded`, `DailyRedeemCapExceeded`, `PriceDeviationTooLarge`.
 - Defaults per risk tier live in `packages/registry/src/risk.ts` and are applied with `make breakers`
   (`scripts/set-breakers.ts`); `create_commodity` leaves them at 0.
+
+**v0.7 — AI-assisted security review fixes (2026-09-12, `docs/audit/ICEmarkets-ai-security-review-2026-09-12.md`)**
+- **Layout changes (re-seed devnet/localnet):** `KeeperPrice` gains `last_update_ts: i64` (+8 bytes — existing
+  KeeperPrice accounts are the wrong size and must be re-created); `Commodity` carves `anchor_price: u64`,
+  `anchor_ts: i64` from `_reserved` (now `[u8; 1]`) — byte-compatible with v0.5 accounts (zero = unanchored).
+- `keeper_update_price` (F-05): `publish_time` must be ≥ 0 and strictly greater than the stored one
+  (`OracleNotMonotonic`); the rate limit is `Clock::unix_timestamp − last_update_ts ≥ max(min_interval, 1)`
+  (`TooSoon`) on the validator clock, never on keeper-supplied time.
+- Deviation breaker v2 (F-06): the anchor (`anchor_price`, `anchor_ts`) is fixed for a whole
+  `deviation_window_secs` window on the validator clock; allowed deviation = `max_deviation_bps × min(windows
+  elapsed + 1, 20)`; a trade re-anchors only once a full window has elapsed. `clear_price_anchor` zeroes
+  `anchor_price`/`anchor_ts` (keeps `last_price`, so `sweep_spread_fees` still values the reserve).
+- Net-flow caps (F-07/F-08): `buy` releases `window_redeemed` by `usdc_in`, `sell` releases `window_minted` by
+  `coin_in`; the `redeem_cap_exempt` signer's sells neither check nor accumulate the redeem window.
+- `initialize_config` / `initialize_router` / `distributor.initialize` / `buyback.initialize` (F-09) take two
+  extra accounts — `program` (= the program id) and `program_data` (its BPFLoaderUpgradeable ProgramData PDA) —
+  and require the payer to be the program's **upgrade authority** (`NotUpgradeAuthority`). Programs owned by a
+  non-upgradeable loader (localnet genesis) skip the check. SDK: `programDataPda(programId)`.
+- buyback (F-01…F-04): `ice_per_usdc_anchor` and `max_per_cycle_usdc` must be > 0 at `initialize` and in
+  `set_params` (`Unanchored`, `CycleCapUnset`); the anchor only ratchets **up** (≤ `anchor_move_bps`, step ≥ 1) —
+  downward repricing is an admin `set_params`; a cycle must spend ≥ `usdc_out × (1 − MIN_SPEND_TOLERANCE_BPS
+  100)` of the sale proceeds (`UsdcUnderspent`), ≤ `usdc_pre_swap` and ≤ `max_per_cycle_usdc`; `rate` is computed
+  without the `.max(1)` fudge and must be > 0. New admin ix `sweep_work_account(amount; 0 = all)` moves residue from
+  any `bb_auth` ATA to an account owned by `state.admin`.
+- distributor (L-03): `open_epoch` requires `now − MAX_EPOCH_AGE_SECS (30 d) ≤ end_ts ≤ now` (`InvalidWindow`).
+- Error codes appended (stable): peg_desk `NotUpgradeAuthority`; fee_router/distributor `NotUpgradeAuthority`;
+  buyback `Unanchored`, `CycleCapUnset`, `UsdcUnderspent`, `NotUpgradeAuthority`.
 - fee_router: `cpi_ext/dbc.rs` `MIGRATE_DAMM_V2_DISCRIMINATOR` (derived from the wrong name) →
   `MIGRATION_DAMM_V2_DISCRIMINATOR` = sha256("global:migration_damm_v2"); it was never CPI'd, so no behaviour change.

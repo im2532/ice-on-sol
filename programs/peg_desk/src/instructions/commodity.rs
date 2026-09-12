@@ -204,7 +204,9 @@ pub fn handle_create_commodity(
         c.window_redeemed = 0;
         c.max_deviation_bps = 0;
         c.deviation_window_secs = 0;
-        c._reserved = [0u8; 17];
+        c.anchor_price = 0;
+        c.anchor_ts = 0;
+        c._reserved = [0u8; 1];
     }
 
     // Metaplex metadata. Mint authority = mint_auth PDA (signs via seeds), update authority = admin.
@@ -384,12 +386,13 @@ pub fn handle_set_feed_account(
 
 /// Keeper: Open↔Closed and anything→Halted. Admin: any transition (only admin may leave Halted).
 /// Admin: drop the deviation anchor so the next trade re-anchors at the current oracle price.
-/// Use after a legitimate gap (e.g. a limit-up session) trips `PriceDeviationTooLarge` before
-/// `deviation_window_secs` has elapsed. `last_publish_time` is kept so the monotonic guard holds.
+/// Use after a legitimate gap (e.g. a limit-up session) trips `PriceDeviationTooLarge`.
+/// `last_price` / `last_publish_time` are kept (sweep valuation, monotonic guard).
 pub fn handle_clear_price_anchor(ctx: Context<UpdateCommodity>) -> Result<()> {
     require_admin(&ctx.accounts.config, &ctx.accounts.authority.key())?;
     let key = ctx.accounts.commodity.key();
-    ctx.accounts.commodity.last_price = 0;
+    ctx.accounts.commodity.anchor_price = 0;
+    ctx.accounts.commodity.anchor_ts = 0;
     emit!(ParamsUpdated { commodity: key });
     Ok(())
 }

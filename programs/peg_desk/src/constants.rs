@@ -41,7 +41,7 @@ pub const QUOTE_EUR: u8 = 2;
 
 // ---- KeeperPrice defaults (set on first write; admin can change via set_keeper_bounds) ----
 pub const DEFAULT_MAX_MOVE_BPS: u16 = 500; // ±5% per update (spec §3.1A)
-pub const DEFAULT_MIN_INTERVAL: u32 = 0;
+pub const DEFAULT_MIN_INTERVAL: u32 = 30; // seconds of validator time between accepted posts (audit F-05)
 /// Keeper-posted publish_time may be at most this far ahead of the validator clock.
 pub const MAX_FUTURE_SKEW_SECS: i64 = 10;
 
@@ -50,6 +50,9 @@ pub const MAX_FUTURE_SKEW_SECS: i64 = 10;
 /// first trade after expiry, not sliding — cheap and good enough to bound damage per day.
 pub const DAILY_WINDOW_SECS: i64 = 86_400;
 /// Upper bound for `Commodity.max_deviation_bps` (100%).
+/// Cap on how many windows of drift the deviation bound may accumulate (so a long idle period
+/// still leaves a bound: 20 × max_deviation_bps).
+pub const MAX_DEVIATION_WINDOWS: u64 = 20;
 pub const MAX_DEVIATION_BPS: u16 = 10_000;
 
 // ---- metadata limits (Metaplex) --------------------------------------------

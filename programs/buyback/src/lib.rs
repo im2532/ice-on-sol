@@ -45,4 +45,9 @@ pub mod buyback {
     pub fn set_params(ctx: Context<SetParams>, args: SetParamsArgs) -> Result<()> {
         instructions::initialize::handle_set_params(ctx, args)
     }
+
+    /// Admin: recover residue a route left in a bb_auth work ATA (0 = all) to an admin-owned account.
+    pub fn sweep_work_account(ctx: Context<SweepWorkAccount>, amount: u64) -> Result<()> {
+        instructions::initialize::handle_sweep_work_account(ctx, amount)
+    }
 }

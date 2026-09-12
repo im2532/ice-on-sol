@@ -48,4 +48,6 @@ pub enum DistError {
     MathOverflow,
     #[msg("Invalid bps")]
     InvalidBps,
+    #[msg("Payer is not the program's upgrade authority")]
+    NotUpgradeAuthority,
 }

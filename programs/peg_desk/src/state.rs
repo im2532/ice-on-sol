@@ -185,9 +185,14 @@ pub struct Commodity {
     /// trade's oracle read is younger than `deviation_window_secs`. 0 = disabled.
     /// Applies to every oracle kind (KeeperPrice.max_move_bps only bounds keeper posts).
     pub max_deviation_bps: u16,
-    /// How long `last_price` stays the deviation anchor after `last_publish_time` (secs).
+    /// Length of one deviation window (secs). The anchor is fixed for a window; the allowed move
+    /// grows by `max_deviation_bps` per elapsed window (audit F-06).
     pub deviation_window_secs: u32,
-    pub _reserved: [u8; 17],
+    /// Deviation anchor (1e8) and the validator time it was set. 0 = unanchored (first trade or
+    /// admin `clear_price_anchor` sets it). Distinct from `last_price` (the last trade's price).
+    pub anchor_price: u64,
+    pub anchor_ts: i64,
+    pub _reserved: [u8; 1],
 }
 
 impl Commodity {
@@ -227,6 +232,9 @@ pub struct KeeperPrice {
     pub max_move_bps: u16,
     pub min_interval: u32,
     pub bump: u8,
+    /// Validator clock at the last accepted post (audit F-05): `min_interval` and `max_move_bps`
+    /// are enforced per second of *chain* time, not per keeper-supplied `publish_time`.
+    pub last_update_ts: i64,
 }
 
 /// Validates a 12-byte, zero-right-padded, uppercase ASCII symbol (A-Z, 0-9).

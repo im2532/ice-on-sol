@@ -41,6 +41,13 @@ const SEED = {
   treasury: Buffer.from("treasury"),
 };
 
+
+const BPF_LOADER_UPGRADEABLE = new PublicKey("BPFLoaderUpgradeab1e11111111111111111111111");
+/** ProgramData PDA of a program (audit F-09: initialize is gated on the upgrade authority). */
+function programDataPda(programId: PublicKey): PublicKey {
+  return PublicKey.findProgramAddressSync([programId.toBuffer()], BPF_LOADER_UPGRADEABLE)[0];
+}
+
 function pda(seeds: Buffer[], programId: PublicKey): PublicKey {
   return PublicKey.findProgramAddressSync(seeds, programId)[0];
 }
@@ -137,7 +144,7 @@ describe("fee_router", () => {
           buybackBps: 2_500,
           protocolBps: 2_499,
         })
-        .accountsPartial({ payer: admin.publicKey, config: routerPda, systemProgram: SystemProgram.programId })
+        .accountsPartial({ payer: admin.publicKey, program: program.programId, programData: programDataPda(program.programId), config: routerPda, systemProgram: SystemProgram.programId })
         .rpc(),
       "InvalidSplit",
     );
@@ -153,7 +160,7 @@ describe("fee_router", () => {
         buybackBps: 2_500,
         protocolBps: 2_500,
       })
-      .accountsPartial({ payer: admin.publicKey, config: routerPda, systemProgram: SystemProgram.programId })
+      .accountsPartial({ payer: admin.publicKey, program: program.programId, programData: programDataPda(program.programId), config: routerPda, systemProgram: SystemProgram.programId })
       .rpc();
     const cfg = await program.account.routerConfig.fetch(routerPda);
     expect(cfg.admin.equals(admin.publicKey)).to.equal(true);

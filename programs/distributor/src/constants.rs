@@ -26,3 +26,6 @@ pub const PAYOUT_CLAIM: u8 = 1;
 /// keccak(min || max). Leaves are 72 bytes and nodes 64 bytes, so a node can't be passed off as a leaf.
 /// Must match tests/merkle.ts.
 pub const LEAF_LEN: usize = 32 + 32 + 8;
+
+/// `open_epoch` rejects an `end_ts` older than this (audit L-03): 30 days.
+pub const MAX_EPOCH_AGE_SECS: i64 = 30 * 86_400;

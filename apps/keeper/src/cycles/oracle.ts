@@ -81,6 +81,12 @@ function groupByOracleKind(rows: CommodityRow[]) {
 }
 
 /** Relay cadence per commodity (seconds); the program's `KeeperPrice.min_interval` still applies on-chain. */
+/**
+ * Client-side spacing between relays per coin. Must stay ≥ the on-chain floor: `keeper_update_price`
+ * enforces `KeeperPrice.min_interval` (DEFAULT_MIN_INTERVAL = 30 s, admin-settable ≥ 1) against the
+ * VALIDATOR clock since the last accepted post and requires strictly increasing `publish_time`
+ * (audit F-05) — a faster relay just burns fees on TooSoon / OracleNotMonotonic reverts.
+ */
 const SWITCHBOARD_RELAY_MIN_INTERVAL_SEC = 300;
 /** Confidence posted with a relayed median: 1% of price for ≥ 2 sources, 2% for a single source. */
 const relayConfBps = (sourcesUsed: number): bigint => (sourcesUsed >= 2 ? 100n : 200n);
