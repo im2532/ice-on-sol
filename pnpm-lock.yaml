@@ -39,6 +39,9 @@ importers:
       '@types/node':
         specifier: ^22.10.0
         version: 22.20.2
+      '@types/pg':
+        specifier: ^8.11.10
+        version: 8.23.1
       chai:
         specifier: ^4.5.0
         version: 4.5.0
@@ -48,6 +51,9 @@ importers:
       mocha:
         specifier: ^10.8.2
         version: 10.8.2
+      pg:
+        specifier: ^8.13.1
+        version: 8.23.0
       prettier:
         specifier: ^3.4.2
         version: 3.9.6
