@@ -128,6 +128,7 @@ describe("peg_desk", () => {
   let adminUsdc: PublicKey;
   let treasuryUsdc: PublicKey;
   let lastPushed = 0;
+  let lastPushChain = 0;
 
   // ---- helpers ------------------------------------------------------------------------------
 
@@ -150,8 +151,11 @@ describe("peg_desk", () => {
    */
   async function pushPrice(price: number, opts: { publishTime?: number; conf?: number } = {}) {
     if (boundsSet) {
+      // The rate limit runs on the validator clock, which can lag the wall clock under load: wait until
+      // chain time has actually moved past the previous post by min_interval (1 s), not a wall-clock 1.2 s.
       const wait = 1_200 - (Date.now() - lastPushWall);
       if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+      while ((await chainNow()) < lastPushChain + 1) await new Promise((r) => setTimeout(r, 250));
     }
     const now = await chainNow();
     const publishTime = opts.publishTime ?? Math.max(now, lastPushed + 1);
@@ -168,6 +172,7 @@ describe("peg_desk", () => {
       .rpc();
     lastPushed = Math.max(lastPushed, publishTime);
     lastPushWall = Date.now();
+    lastPushChain = (await program.account.keeperPrice.fetch(keeperPricePda)).lastUpdateTs.toNumber();
     if (!boundsSet) {
       boundsSet = true;
       await program.methods
@@ -464,6 +469,9 @@ describe("peg_desk", () => {
     await expectAnchorError(pushPrice(GLD_PRICE, { publishTime: lastPushed }), "OracleNotMonotonic");
     // validator-clock rate limit (audit F-05): a second post inside min_interval (1 s) is refused
     // even with a strictly newer publish_time — the keeper cannot pack max-move posts into one slot.
+    // A 1 s interval makes this racy against the validator clock (the failed posts above can straddle a
+    // chain second); widen it to 30 s for the assertion, then restore.
+    await program.methods.setKeeperBounds(500, 30).accountsPartial({ admin: admin.publicKey, config: configPda, commodity: gldPda, keeperPrice: keeperPricePda }).rpc();
     lastPushWall = Date.now();
     await expectAnchorError(
       program.methods
@@ -473,6 +481,7 @@ describe("peg_desk", () => {
         .rpc(),
       "TooSoon",
     );
+    await program.methods.setKeeperBounds(500, 1).accountsPartial({ admin: admin.publicKey, config: configPda, commodity: gldPda, keeperPrice: keeperPricePda }).rpc();
     await expectAnchorError(
       program.methods.setKeeperBounds(500, 0).accountsPartial({ admin: admin.publicKey, config: configPda, commodity: gldPda, keeperPrice: keeperPricePda }).rpc(),
       "InvalidParams",
@@ -667,14 +676,19 @@ describe("peg_desk", () => {
   });
 
   it("price-deviation bound widens by max_deviation_bps per elapsed window and the anchor is fixed within a window", async () => {
-    // anchor = $2,060 from the previous trade; 2% per 1 s window
-    await setParams({ maxDeviationBps: 200, deviationWindowSecs: 1 });
+    // anchor = $2,060 from the previous trade; 2% per 3 s window (3 s, not 1 s: the helper's chain-clock
+    // waits and RPC round trips would otherwise let extra windows elapse and widen the bound mid-test)
+    const W = 3;
+    await setParams({ maxDeviationBps: 200, deviationWindowSecs: W });
     const c0 = await program.account.commodity.fetch(gldPda);
     const anchor0 = c0.anchorPrice.toNumber();
-    // wait until at least two windows have elapsed → 4% allowed; −2.9% passes, −5% does not
-    await waitForChainPast(c0.anchorTs.toNumber() + 1);
+    const anchorTs0 = c0.anchorTs.toNumber();
+    // ≥1 window (2% allowed): −5% must fail
+    await waitForChainPast(anchorTs0 + W);
     await pushPrice(Math.round(anchor0 * 0.95));
     await expectAnchorError(buy(2_000 * ONE), "PriceDeviationTooLarge");
+    // ≥2 windows (4% allowed): −2.9% passes and re-anchors
+    await waitForChainPast(anchorTs0 + 2 * W);
     await pushPrice(Math.round(anchor0 * 0.971));
     await buy(2_000 * ONE);
     const c1 = await program.account.commodity.fetch(gldPda);

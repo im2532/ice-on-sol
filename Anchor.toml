@@ -36,7 +36,9 @@ test = "pnpm exec ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.test.ts"
 [test]
 startup_wait = 20000
 shutdown_wait = 2000
-upgradeable = false
+# true: the test validator / anchor localnet load programs as upgradeable with the wallet as authority; every
+# `initialize` now requires the upgrade authority to sign (audit F-08), so false would fail every init.
+upgradeable = true
 
 [test.validator]
 # Agave 4.x rejects 0.0.0.0 (UnspecifiedIpAddr panic in gossip); Anchor defaults to it, so pin loopback.

@@ -61,6 +61,7 @@ import {
   type PoolRow,
 } from "../db";
 import { childLogger } from "../logger";
+import { chainNowSec } from "./oracle";
 
 const log = childLogger("payouts");
 
@@ -225,7 +226,8 @@ async function openNewEpoch(ctx: PoolCtx, latest: EpochAccount | null): Promise<
   const vaultUsd = (Number(vaultBaseUnits) / 1e6) * (Number(coinPrice.price) / 1e8);
   if (vaultUsd < cfg.payoutMinPoolUsd) return;
 
-  const nowSec = Math.floor(Date.now() / 1000);
+  // open_epoch requires end_ts <= Clock::unix_timestamp (audit F-09): use the chain clock, not the keeper's.
+  const nowSec = await chainNowSec(getConnection());
   const index = latest ? latest.index + 1 : 0;
   const startTs = latest ? latest.endTs : nowSec - cfg.feeCycleIntervalSec;
   const endTs = nowSec;

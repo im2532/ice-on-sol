@@ -169,7 +169,10 @@ describe("distributor", () => {
   });
 
   it("open_epoch (direct mode) funds the epoch vault", async () => {
-    const now = Math.floor(Date.now() / 1000);
+    // open_epoch requires end_ts <= Clock::unix_timestamp (audit F-09); use the chain clock, not the
+    // wall clock, which can run ahead of the test validator by a second or two.
+    const chainNow = (await conn.getBlockTime(await conn.getSlot("confirmed"))) ?? Math.floor(Date.now() / 1000);
+    const now = chainNow - 2;
     await sendSignedBySourceAuthority(
       provider,
       program.methods
