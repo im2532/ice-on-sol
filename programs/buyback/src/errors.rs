@@ -12,16 +12,26 @@ pub enum BuybackError {
     InvalidBps,
     #[msg("Nothing to convert")]
     ZeroAmount,
-    #[msg("Only the GLD path is supported in MVP")]
-    UnsupportedCoin,
+    #[msg("Invalid mint for this operation")]
+    InvalidMint,
     #[msg("Invalid program id")]
     InvalidProgram,
-    #[msg("Invalid DAMM v2 pool")]
-    InvalidPool,
+    #[msg("Route data too long")]
+    RouteTooLong,
     #[msg("Swap output below minimum")]
     SlippageExceeded,
+    #[msg("Swap rate below the anchored rate by more than max_deviation_bps")]
+    RateBelowAnchor,
     #[msg("fee_router did not deliver the requested amount")]
     WithdrawMismatch,
+    #[msg("peg_desk sell returned less USDC than min_usdc_out")]
+    SellBelowMinimum,
+    #[msg("Swap consumed more USDC than the sell produced")]
+    UsdcOverspent,
+    #[msg("Cycle too soon (min_interval_secs)")]
+    TooSoon,
+    #[msg("USDC out exceeds max_per_cycle_usdc")]
+    CycleCapExceeded,
     #[msg("Math overflow")]
     MathOverflow,
 }

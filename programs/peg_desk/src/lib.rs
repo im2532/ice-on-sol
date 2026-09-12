@@ -60,6 +60,11 @@ pub mod peg_desk {
         instructions::admin::handle_set_global_pause(ctx, paused)
     }
 
+    /// Admin: the buyback program's bb_auth PDA (or Pubkey::default() for nobody) bypasses daily_redeem_cap.
+    pub fn set_redeem_cap_exempt(ctx: Context<AdminConfig>, exempt: Pubkey) -> Result<()> {
+        instructions::admin::handle_set_redeem_cap_exempt(ctx, exempt)
+    }
+
     // ---- commodities --------------------------------------------------------------------------
 
     pub fn create_commodity(

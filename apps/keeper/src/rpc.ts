@@ -5,10 +5,13 @@
  * consistent across cycles.
  */
 import {
+  AddressLookupTableAccount,
   Connection,
   Keypair,
   Transaction,
   TransactionInstruction,
+  TransactionMessage,
+  VersionedTransaction,
   ComputeBudgetProgram,
   sendAndConfirmRawTransaction,
 } from "@solana/web3.js";
@@ -112,4 +115,43 @@ export async function sendJitoBundle(ixs: TransactionInstruction[], opts: SendWi
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Same as `sendWithPriority` but compiles a v0 transaction against address lookup tables — needed
+ * when an instruction carries a Jupiter route (buyback) or otherwise exceeds the legacy account limit.
+ */
+export async function sendV0WithPriority(
+  ixs: TransactionInstruction[],
+  lookupTables: AddressLookupTableAccount[],
+  opts: SendWithPriorityOpts = {},
+): Promise<string> {
+  const cfg = loadConfig();
+  const conn = getConnection();
+  const payer = getKeeperKeypair();
+  const cuLimit = opts.cuLimit ?? cfg.computeUnitLimit;
+  const priorityMicroLamports = opts.priorityMicroLamports ?? cfg.priorityMicroLamports;
+  const maxRetries = opts.maxRetries ?? 3;
+  const all = [
+    ComputeBudgetProgram.setComputeUnitLimit({ units: cuLimit }),
+    ComputeBudgetProgram.setComputeUnitPrice({ microLamports: priorityMicroLamports }),
+    ...ixs,
+  ];
+  let lastErr: unknown;
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const { blockhash, lastValidBlockHeight } = await conn.getLatestBlockhash("confirmed");
+      const msg = new TransactionMessage({ payerKey: payer.publicKey, recentBlockhash: blockhash, instructions: all }).compileToV0Message(lookupTables);
+      const tx = new VersionedTransaction(msg);
+      tx.sign([payer, ...(opts.extraSigners ?? [])]);
+      const sig = await conn.sendRawTransaction(tx.serialize(), { maxRetries: 0, skipPreflight: false });
+      await conn.confirmTransaction({ signature: sig, blockhash, lastValidBlockHeight }, "confirmed");
+      return sig;
+    } catch (err) {
+      lastErr = err;
+      log.warn({ attempt, err: String(err) }, "sendV0WithPriority: attempt failed, retrying");
+      await sleep(300 * attempt);
+    }
+  }
+  throw lastErr instanceof Error ? lastErr : new Error(`sendV0WithPriority: failed after ${maxRetries} attempts`);
 }

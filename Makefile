@@ -8,7 +8,7 @@ ANCHOR_VERSION ?= 0.31.1
 # and avm/anchor activate it automatically on `anchor build`.
 ANCHOR_BUILD := anchor build
 
-.PHONY: bootstrap toolchain deps build idl web-deployments test devnet-deploy init-programs seed breakers alt smoke db keeper web fmt
+.PHONY: bootstrap toolchain deps build idl web-deployments test devnet-deploy init-programs seed breakers ice alt smoke db keeper web fmt
 
 ## One-shot dev machine setup (macOS / Linux). Idempotent.
 bootstrap: toolchain deps
@@ -60,6 +60,10 @@ seed:
 ## Applies per-tier circuit breakers (daily mint/redeem caps, price-deviation bound) to every seeded commodity
 breakers:
 	pnpm exec tsx scripts/set-breakers.ts
+
+## Localnet/devnet stand-in for the stonk.fun $ICE launch: ICE mint + DAMM v2 ICE/USDC pool + buyback.initialize
+ice:
+	pnpm exec tsx scripts/create-ice-localnet.ts
 
 ## Read-only health check of the current cluster deployment (SMOKE_TRADE=1 adds a 1 USDC round-trip)
 smoke:

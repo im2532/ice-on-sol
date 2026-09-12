@@ -1,3 +1,5 @@
+//! `convert_and_burn` v2 (CONTRACTS §4a): COIN → USDC (peg_desk sell) → ICE (forwarded swap route) → burn,
+//! all in one instruction so no funds ever rest in a keeper-controlled account.
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface::{self, Burn, Mint, TokenAccount, TokenInterface};
 
@@ -7,10 +9,8 @@ use crate::errors::BuybackError;
 use crate::events::Buyback;
 use crate::state::BuybackState;
 
-/// MVP: GLD path only. 1) pull GLD from fee_router buyback_vault[GLD] (CPI, bb_auth signs),
-/// 2) swap GLD→ICEmarkets on the DAMM v2 ICE/GLD pool (CPI, bb_auth is `payer`), 3) burn the ICEmarkets received.
-/// `gld_is_token_a` tells which side of the DAMM pool GLD is (keeper reads it off-chain; a wrong value
-/// makes DAMM reject the vault/mint pairing, so it cannot misroute funds).
+/// remaining_accounts: the swap route's accounts, in the router's order (Jupiter `/swap-instructions`
+/// for `userPublicKey = bb_auth`, `inputMint = USDC`, `outputMint = ICE`, destination = `bb_ice`).
 #[derive(Accounts)]
 pub struct ConvertAndBurn<'info> {
     pub keeper: Signer<'info>,
@@ -22,63 +22,93 @@ pub struct ConvertAndBurn<'info> {
     #[account(seeds = [BB_AUTH_SEED], bump = state.auth_bump)]
     pub bb_auth: UncheckedAccount<'info>,
 
+    // ---- mints ----
+    pub coin_mint: Box<InterfaceAccount<'info, Mint>>,
+    #[account(address = state.usdc_mint @ BuybackError::InvalidMint)]
+    pub usdc_mint: Box<InterfaceAccount<'info, Mint>>,
+    #[account(mut, address = state.ice_mint @ BuybackError::InvalidMint)]
+    pub ice_mint: Box<InterfaceAccount<'info, Mint>>,
+
+    // ---- work accounts (ATAs of bb_auth; created idempotently by the keeper beforehand) ----
+    #[account(mut, associated_token::mint = coin_mint, associated_token::authority = bb_auth, associated_token::token_program = token_program)]
+    pub bb_coin: Box<InterfaceAccount<'info, TokenAccount>>,
+    #[account(mut, associated_token::mint = usdc_mint, associated_token::authority = bb_auth, associated_token::token_program = token_program)]
+    pub bb_usdc: Box<InterfaceAccount<'info, TokenAccount>>,
+    #[account(mut, associated_token::mint = ice_mint, associated_token::authority = bb_auth, associated_token::token_program = ice_token_program)]
+    pub bb_ice: Box<InterfaceAccount<'info, TokenAccount>>,
+
     // ---- fee_router side ----
     /// CHECK: must be the configured fee_router program.
     #[account(address = state.fee_router @ BuybackError::InvalidProgram)]
     pub fee_router_program: UncheckedAccount<'info>,
     /// CHECK: fee_router RouterConfig PDA — validated by fee_router.
     pub router_config: UncheckedAccount<'info>,
-    /// fee_router buyback_vault[GLD] — seeds validated by fee_router; read here for the buffer.
-    #[account(mut, token::mint = gld_mint)]
+    /// fee_router buyback_vault[coin] — seeds validated by fee_router; read here for the buffer.
+    #[account(mut, token::mint = coin_mint)]
     pub buyback_vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    // ---- mints / work accounts ----
-    #[account(address = state.gld_mint @ BuybackError::UnsupportedCoin)]
-    pub gld_mint: Box<InterfaceAccount<'info, Mint>>,
-    #[account(mut, address = state.ice_mint @ BuybackError::InvalidPool)]
-    pub ice_mint: Box<InterfaceAccount<'info, Mint>>,
-    #[account(
-        mut,
-        associated_token::mint = gld_mint,
-        associated_token::authority = bb_auth,
-        associated_token::token_program = gld_token_program
-    )]
-    pub bb_gld: Box<InterfaceAccount<'info, TokenAccount>>,
-    #[account(
-        mut,
-        associated_token::mint = ice_mint,
-        associated_token::authority = bb_auth,
-        associated_token::token_program = ice_token_program
-    )]
-    pub bb_icemarkets: Box<InterfaceAccount<'info, TokenAccount>>,
-
-    // ---- DAMM v2 side ----
-    /// CHECK: DAMM v2 pool authority — validated by DAMM v2.
-    pub damm_pool_authority: UncheckedAccount<'info>,
-    /// CHECK: configured ICE/GLD pool.
-    #[account(mut, address = state.ice_pool @ BuybackError::InvalidPool, owner = DAMM_V2_PROGRAM_ID @ BuybackError::InvalidPool)]
-    pub damm_pool: UncheckedAccount<'info>,
-    /// CHECK: validated by DAMM v2 (pool.token_a_vault).
+    // ---- peg_desk side (all validated by peg_desk itself) ----
+    /// CHECK: must be the configured peg_desk program.
+    #[account(address = state.peg_desk @ BuybackError::InvalidProgram)]
+    pub peg_desk_program: UncheckedAccount<'info>,
+    /// CHECK: peg_desk GlobalConfig.
+    pub peg_config: UncheckedAccount<'info>,
+    /// CHECK: peg_desk Commodity for `coin_mint`.
     #[account(mut)]
-    pub damm_token_a_vault: UncheckedAccount<'info>,
-    /// CHECK: validated by DAMM v2 (pool.token_b_vault).
+    pub commodity: UncheckedAccount<'info>,
+    /// CHECK: peg_desk PDA["mint_auth"].
+    pub mint_auth: UncheckedAccount<'info>,
+    /// CHECK: commodity reserve vault (USDC).
     #[account(mut)]
-    pub damm_token_b_vault: UncheckedAccount<'info>,
-    /// CHECK: DAMM v2 PDA["__event_authority"].
-    pub damm_event_authority: UncheckedAccount<'info>,
-    /// CHECK: must be the real DAMM v2 program (bb_auth signs this CPI).
-    #[account(address = DAMM_V2_PROGRAM_ID @ BuybackError::InvalidProgram)]
-    pub damm_program: UncheckedAccount<'info>,
+    pub reserve_vault: UncheckedAccount<'info>,
+    /// CHECK: optional oracle accounts — pass `peg_desk_program` for None (Anchor convention).
+    pub price_feed: UncheckedAccount<'info>,
+    /// CHECK: see price_feed.
+    pub fx_feed: UncheckedAccount<'info>,
+    /// CHECK: see price_feed.
+    pub keeper_price: UncheckedAccount<'info>,
 
-    pub gld_token_program: Interface<'info, TokenInterface>,
+    // ---- swap side ----
+    /// CHECK: must be the configured swap router program (Jupiter v6 on mainnet).
+    #[account(address = state.swap_program @ BuybackError::InvalidProgram)]
+    pub swap_program: UncheckedAccount<'info>,
+
+    pub token_program: Interface<'info, TokenInterface>,
     pub ice_token_program: Interface<'info, TokenInterface>,
 }
 
-pub fn handle_convert_and_burn(
-    ctx: Context<ConvertAndBurn>,
-    amount: u64,
+/// ICE base units received per 1 USDC (1e6 base units), rounded down.
+fn rate_per_usdc(ice_out: u64, usdc_in: u64) -> Option<u64> {
+    if usdc_in == 0 {
+        return None;
+    }
+    u64::try_from((ice_out as u128).checked_mul(USDC_UNIT)? / usdc_in as u128).ok()
+}
+
+/// Next anchor: move towards `rate` by at most `move_bps` of the current anchor.
+pub fn next_anchor(anchor: u64, rate: u64, move_bps: u16) -> u64 {
+    if anchor == 0 {
+        return rate;
+    }
+    let step = ((anchor as u128) * (move_bps as u128) / (BPS_DENOM as u128)) as u64;
+    if rate > anchor {
+        anchor.saturating_add(step).min(rate)
+    } else {
+        anchor.saturating_sub(step).max(rate)
+    }
+}
+
+/// Minimum acceptable rate given the anchor: anchor × (1 − max_deviation_bps). 0 when unanchored.
+pub fn min_rate(anchor: u64, max_deviation_bps: u16) -> u64 {
+    ((anchor as u128) * ((BPS_DENOM - max_deviation_bps as u64) as u128) / (BPS_DENOM as u128)) as u64
+}
+
+pub fn handle_convert_and_burn<'info>(
+    ctx: Context<'_, '_, '_, 'info, ConvertAndBurn<'info>>,
+    coin_amount: u64,
+    min_usdc_out: u64,
     min_ice_out: u64,
-    gld_is_token_a: bool,
+    route_data: Vec<u8>,
 ) -> Result<()> {
     let st = &ctx.accounts.state;
     require!(!st.paused, BuybackError::Paused);
@@ -86,93 +116,124 @@ pub fn handle_convert_and_burn(
         st.is_admin_or_keeper(ctx.accounts.keeper.key),
         BuybackError::Unauthorized
     );
+    require!(
+        route_data.len() <= MAX_ROUTE_DATA_LEN,
+        BuybackError::RouteTooLong
+    );
+    let now = Clock::get()?.unix_timestamp;
+    require!(
+        now.saturating_sub(st.last_cycle_ts) >= st.min_interval_secs as i64,
+        BuybackError::TooSoon
+    );
 
-    // Amount = min(requested, max_per_cycle, vault × (1 − reserve_buffer)).
+    // Amount = min(requested, vault × (1 − reserve_buffer)).
     let vault_bal = ctx.accounts.buyback_vault.amount;
     let usable = ((vault_bal as u128) * ((BPS_DENOM - st.reserve_buffer_bps as u64) as u128)
         / (BPS_DENOM as u128)) as u64;
-    let mut gld_amount = amount.min(usable);
-    if st.max_per_cycle > 0 {
-        gld_amount = gld_amount.min(st.max_per_cycle);
-    }
-    require!(gld_amount > 0, BuybackError::ZeroAmount);
+    let coin_amount = coin_amount.min(usable);
+    require!(coin_amount > 0, BuybackError::ZeroAmount);
 
     let auth_bump = [st.auth_bump];
     let seeds: &[&[&[u8]]] = &[&[BB_AUTH_SEED, &auth_bump]];
 
-    // 1) pull GLD from fee_router
-    let gld_before = ctx.accounts.bb_gld.amount;
+    // 1) pull COIN from fee_router into bb_coin
+    let coin_before = ctx.accounts.bb_coin.amount;
     cpi_ext::withdraw_for_buyback(
         cpi_ext::WithdrawForBuyback {
             fee_router_program: ctx.accounts.fee_router_program.to_account_info(),
             bb_authority: ctx.accounts.bb_auth.to_account_info(),
             router_config: ctx.accounts.router_config.to_account_info(),
-            coin_mint: ctx.accounts.gld_mint.to_account_info(),
+            coin_mint: ctx.accounts.coin_mint.to_account_info(),
             buyback_vault: ctx.accounts.buyback_vault.to_account_info(),
-            destination: ctx.accounts.bb_gld.to_account_info(),
-            token_program: ctx.accounts.gld_token_program.to_account_info(),
+            destination: ctx.accounts.bb_coin.to_account_info(),
+            token_program: ctx.accounts.token_program.to_account_info(),
         },
-        gld_amount,
+        coin_amount,
         seeds,
     )?;
-    ctx.accounts.bb_gld.reload()?;
-    let received = ctx.accounts.bb_gld.amount.saturating_sub(gld_before);
-    require!(received == gld_amount, BuybackError::WithdrawMismatch);
-
-    // 2) swap GLD → ICEmarkets on DAMM v2
-    let ice_before = ctx.accounts.bb_icemarkets.amount;
-    {
-        let a = &ctx.accounts;
-        let (a_mint, b_mint, a_prog, b_prog) = if gld_is_token_a {
-            (
-                a.gld_mint.to_account_info(),
-                a.ice_mint.to_account_info(),
-                a.gld_token_program.to_account_info(),
-                a.ice_token_program.to_account_info(),
-            )
-        } else {
-            (
-                a.ice_mint.to_account_info(),
-                a.gld_mint.to_account_info(),
-                a.ice_token_program.to_account_info(),
-                a.gld_token_program.to_account_info(),
-            )
-        };
-        cpi_ext::damm_swap(
-            cpi_ext::DammSwap {
-                pool_authority: a.damm_pool_authority.to_account_info(),
-                pool: a.damm_pool.to_account_info(),
-                input_token_account: a.bb_gld.to_account_info(),
-                output_token_account: a.bb_icemarkets.to_account_info(),
-                token_a_vault: a.damm_token_a_vault.to_account_info(),
-                token_b_vault: a.damm_token_b_vault.to_account_info(),
-                token_a_mint: a_mint,
-                token_b_mint: b_mint,
-                payer: a.bb_auth.to_account_info(),
-                token_a_program: a_prog,
-                token_b_program: b_prog,
-                event_authority: a.damm_event_authority.to_account_info(),
-                program: a.damm_program.to_account_info(),
-            },
-            gld_amount,
-            min_ice_out,
-            seeds,
-        )?;
-    }
-    ctx.accounts.bb_icemarkets.reload()?;
-    let ice_out = ctx.accounts.bb_icemarkets.amount.saturating_sub(ice_before);
+    ctx.accounts.bb_coin.reload()?;
     require!(
-        ice_out >= min_ice_out && ice_out > 0,
+        ctx.accounts.bb_coin.amount.saturating_sub(coin_before) == coin_amount,
+        BuybackError::WithdrawMismatch
+    );
+
+    // 2) sell COIN → USDC at the Peg Desk (bb_auth is the user)
+    let usdc_before = ctx.accounts.bb_usdc.amount;
+    cpi_ext::peg_desk_sell(
+        cpi_ext::PegDeskSell {
+            peg_desk_program: ctx.accounts.peg_desk_program.to_account_info(),
+            user: ctx.accounts.bb_auth.to_account_info(),
+            config: ctx.accounts.peg_config.to_account_info(),
+            commodity: ctx.accounts.commodity.to_account_info(),
+            coin_mint: ctx.accounts.coin_mint.to_account_info(),
+            mint_auth: ctx.accounts.mint_auth.to_account_info(),
+            reserve_vault: ctx.accounts.reserve_vault.to_account_info(),
+            user_usdc: ctx.accounts.bb_usdc.to_account_info(),
+            user_coin: ctx.accounts.bb_coin.to_account_info(),
+            price_feed: ctx.accounts.price_feed.to_account_info(),
+            fx_feed: ctx.accounts.fx_feed.to_account_info(),
+            keeper_price: ctx.accounts.keeper_price.to_account_info(),
+            token_program: ctx.accounts.token_program.to_account_info(),
+        },
+        coin_amount,
+        min_usdc_out,
+        seeds,
+    )?;
+    ctx.accounts.bb_usdc.reload()?;
+    ctx.accounts.bb_coin.reload()?;
+    let usdc_out = ctx.accounts.bb_usdc.amount.saturating_sub(usdc_before);
+    require!(
+        usdc_out > 0 && usdc_out >= min_usdc_out,
+        BuybackError::SellBelowMinimum
+    );
+    if st.max_per_cycle_usdc > 0 {
+        // The sell already happened; a cap breach reverts the whole instruction (keeper sizes coin_amount).
+        require!(
+            usdc_out <= st.max_per_cycle_usdc,
+            BuybackError::CycleCapExceeded
+        );
+    }
+    let coin_after_sell = ctx.accounts.bb_coin.amount;
+
+    // 3) USDC → ICE through the configured router, bb_auth signing as the route's user
+    let ice_before = ctx.accounts.bb_ice.amount;
+    let usdc_pre_swap = ctx.accounts.bb_usdc.amount;
+    cpi_ext::invoke_route(
+        &ctx.accounts.swap_program.to_account_info(),
+        ctx.remaining_accounts,
+        ctx.accounts.bb_auth.key,
+        &route_data,
+        seeds,
+    )?;
+    ctx.accounts.bb_ice.reload()?;
+    ctx.accounts.bb_usdc.reload()?;
+    ctx.accounts.bb_coin.reload()?;
+    let ice_out = ctx.accounts.bb_ice.amount.saturating_sub(ice_before);
+    let usdc_spent = usdc_pre_swap.saturating_sub(ctx.accounts.bb_usdc.amount);
+    require!(usdc_spent <= usdc_out, BuybackError::UsdcOverspent);
+    require!(
+        ctx.accounts.bb_coin.amount == coin_after_sell,
+        BuybackError::UsdcOverspent
+    );
+    require!(
+        ice_out > 0 && ice_out >= min_ice_out,
         BuybackError::SlippageExceeded
     );
 
-    // 3) burn everything bought
+    // Rate breaker: the executed ICE-per-USDC must be within max_deviation_bps of the anchor.
+    let rate = rate_per_usdc(ice_out, usdc_spent.max(1)).ok_or(error!(BuybackError::MathOverflow))?;
+    require!(
+        rate >= min_rate(st.ice_per_usdc_anchor, st.max_deviation_bps),
+        BuybackError::RateBelowAnchor
+    );
+
+    // 4) burn everything bought
     token_interface::burn(
         CpiContext::new_with_signer(
             ctx.accounts.ice_token_program.to_account_info(),
             Burn {
                 mint: ctx.accounts.ice_mint.to_account_info(),
-                from: ctx.accounts.bb_icemarkets.to_account_info(),
+                from: ctx.accounts.bb_ice.to_account_info(),
                 authority: ctx.accounts.bb_auth.to_account_info(),
             },
             seeds,
@@ -180,11 +241,13 @@ pub fn handle_convert_and_burn(
         ice_out,
     )?;
 
-    let gld_key = ctx.accounts.gld_mint.key();
+    let coin_key = ctx.accounts.coin_mint.key();
     let s = &mut ctx.accounts.state;
-    s.total_gld_in = s
-        .total_gld_in
-        .checked_add(gld_amount)
+    s.ice_per_usdc_anchor = next_anchor(s.ice_per_usdc_anchor, rate, s.anchor_move_bps);
+    s.last_cycle_ts = now;
+    s.total_usdc_out = s
+        .total_usdc_out
+        .checked_add(usdc_spent)
         .ok_or(error!(BuybackError::MathOverflow))?;
     s.total_ice_burned = s
         .total_ice_burned
@@ -192,10 +255,40 @@ pub fn handle_convert_and_burn(
         .ok_or(error!(BuybackError::MathOverflow))?;
 
     emit!(Buyback {
-        coin: gld_key,
-        coin_amount: gld_amount,
-        gld_amount,
-        ice_burned: ice_out
+        coin: coin_key,
+        coin_amount,
+        usdc_out: usdc_spent,
+        ice_burned: ice_out,
+        rate,
+        anchor: s.ice_per_usdc_anchor,
     });
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn rate_is_ice_per_one_usdc() {
+        // 2,000 ICE (6 dp) for 10 USDC → 200 ICE per USDC
+        assert_eq!(rate_per_usdc(2_000_000_000, 10_000_000), Some(200_000_000));
+        assert_eq!(rate_per_usdc(1, 0), None);
+    }
+
+    #[test]
+    fn anchor_moves_at_most_move_bps_per_cycle() {
+        assert_eq!(next_anchor(0, 500, 200), 500); // first cycle sets it
+        assert_eq!(next_anchor(10_000, 20_000, 200), 10_200); // +2% cap
+        assert_eq!(next_anchor(10_000, 5_000, 200), 9_800); // −2% cap
+        assert_eq!(next_anchor(10_000, 10_100, 200), 10_100); // within the step: lands exactly
+        assert_eq!(next_anchor(10_000, 9_950, 200), 9_950);
+    }
+
+    #[test]
+    fn min_rate_from_anchor() {
+        assert_eq!(min_rate(0, 500), 0); // unanchored: anything goes (first cycle)
+        assert_eq!(min_rate(10_000, 500), 9_500);
+        assert_eq!(min_rate(10_000, 0), 10_000);
+    }
 }

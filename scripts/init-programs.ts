@@ -4,7 +4,8 @@
  *   fee_router.initialize_router  — 5000/2500/2500 split (CONTRACTS §2), program ids from .env
  *   distributor.initialize        — fee_router id, max_push_per_epoch_bps 10000
  *   set_keepers on both           — from KEEPER_PUBKEYS (idempotent)
- * buyback.initialize needs the $ICE mint + ICE/GLD DAMM pool (not created yet) — run separately later.
+ * buyback.initialize needs the $ICE mint + a swap venue — `make ice` (scripts/create-ice-localnet.ts) on localnet/devnet;
+ * on mainnet the mint comes from stonk.fun and swap_program = Jupiter v6.
  * Env: RPC_URL, ADMIN_KEYPAIR_PATH, *_PROGRAM_ID (as written by scripts/write-program-ids.ts), [IDL_DIR].
  * Run: `pnpm exec tsx scripts/init-programs.ts` (with .env exported; `make init-programs`).
  */
@@ -62,7 +63,7 @@ async function main(): Promise<void> {
       .rpc();
     console.log(`distributor initialize -> ${distConfig.toBase58()} (${sig})`);
   }
-  console.log("buyback.initialize: skipped (needs $ICE mint + ICE/GLD pool)");
+  console.log("buyback.initialize: skipped — run `make ice` (needs the $ICE mint + swap venue)");
 
   // Keepers: fee_router + distributor mirror peg_desk's `set_keepers` (seed-commodities.ts does peg_desk).
   // Without this the keeper's fee/payout cycles fail with Unauthorized (claims are permissionless only

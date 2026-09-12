@@ -22,7 +22,11 @@ pub struct GlobalConfig {
     /// Default 9_800: buys revert if the post-trade ratio is below this.
     pub reserve_halt_bps: u16,
     pub bump: u8,
-    pub _reserved: [u8; 64],
+    /// Carved from `_reserved` (byte-compatible; default = Pubkey::default() = nobody): a `sell`
+    /// signer exempt from `Commodity.daily_redeem_cap` — the buyback program's `bb_auth` PDA, whose
+    /// volume is already bounded by `BuybackState.max_per_cycle_usdc`.
+    pub redeem_cap_exempt: Pubkey,
+    pub _reserved: [u8; 32],
 }
 
 impl GlobalConfig {

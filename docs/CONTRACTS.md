@@ -181,6 +181,52 @@ Seeds: `buyback` (state), vault = buyback_vault[coin] owned by fee_router; buyba
 
 v1.0 scope: `initialize`, `convert_and_burn` for the GLD path only (GLD→ICEmarkets→burn); other coins forwarded via peg_desk sell/buy is backlog, not part of v1.0.
 
+### 4a. Buyback v2 — $ICE launched on stonk.fun (decision 12 Sep 2026)
+
+$ICE is launched on stonk.fun (Raydium LaunchLab bonding curve, fixed 1 B supply, $5 k initial cap, **SOL quote**,
+graduates at ≈ 85 SOL into a Raydium CPMM ICE/SOL pool with the LP locked; creator fee 0.5 % or 1 % of volume paid in SOL
+automatically). There is therefore no ICE/GLD pool and the v1.0 `cp_amm::swap` path is dead. Replace it with one uniform
+route for **every** commodity coin:
+
+    COIN (buyback_vault[coin], fee_router) ──withdraw_for_buyback──▶ bb_auth ATA
+      ──peg_desk::sell (CPI, bb_auth signs)──▶ USDC ──Jupiter route (CPI, bb_auth signs)──▶ $ICE ──spl_token::burn
+
+All inside one instruction, `convert_and_burn_v2(coin_amount, min_usdc_out, min_ice_out, route_data)`, keeper-signed, so
+nothing ever sits in a keeper-controlled account: if any hop fails the whole thing reverts.
+
+| ix | signer | notes |
+|---|---|---|
+| `initialize_v2` | admin | `ice_mint, usdc_mint, peg_desk_program, jupiter_program (JUP6…), max_slippage_bps (default 100), max_per_cycle_usdc, reserve_buffer_bps` |
+| `convert_and_burn_v2` | keeper | remaining_accounts = peg_desk `TradeAccounts` for the coin (+ oracle accounts) followed by the Jupiter route accounts exactly as `/swap-instructions` returns them for `userPublicKey = bb_auth`, `inputMint = USDC`, `outputMint = ICE`; the program (1) CPIs `fee_router::withdraw_for_buyback`, (2) CPIs `peg_desk::sell` with `min_usdc_out`, (3) CPIs `jupiter::route`/`shared_accounts_route` with the opaque `route_data`, (4) requires `bb_ice` delta ≥ `min_ice_out` **and** ≥ `usdc_out × (1 − max_slippage_bps) / ice_ref_price`, (5) burns the delta. Emits `Buyback{coin, coin_amount, usdc_out, ice_burned, ref_price}` |
+| `set_params_v2` | admin | slippage / caps / pause / keepers / jupiter program id |
+
+`ice_ref_price` (USDC per ICE, 1e8): post-graduation = CPMM ICE/SOL vault ratio × Pyth SOL/USD; pre-graduation = LaunchLab
+pool virtual reserves × Pyth SOL/USD. Both are read from accounts the keeper passes and the program validates by owner +
+discriminator (same style as `fee_router` reading DBC accounts). The reference price bounds what a compromised keeper key can
+skim to `max_slippage_bps` of each cycle — that is the whole point of doing the swap by CPI instead of letting the keeper hold
+USDC between two transactions.
+
+Consequences elsewhere:
+- `peg_desk`: the buyback's sells are ordinary `sell`s and count against the new `daily_redeem_cap`; either exempt `bb_auth`
+  (config flag `redeem_cap_exempt: Pubkey`) or size the caps with buyback volume included. Decision: exempt (buyback volume is
+  bounded by `max_per_cycle_usdc` already).
+- Keeper `buyback` cycle: quote via Jupiter `/quote` (`onlyDirectRoutes=false`, `maxAccounts≈24` so the CPI fits a v0 tx with the
+  launch ALT + a buyback ALT), build with `/swap-instructions`, pass `route_data` + accounts through; skip when quote impact >
+  `max_slippage_bps` or vault value < `FEE_MIN_CLAIM_USD`.
+- Creator fee stream from stonk.fun (SOL, automatic): lands in the launch wallet — route it to the fee_router treasury or
+  into the same buyback (SOL → ICE, one hop). Open decision.
+- Implemented 12 Sep (programs/buyback v2, clean `BuybackState` layout — v1 was never initialised on devnet/mainnet):
+  `initialize(InitializeArgs{fee_router, peg_desk, swap_program, reserve_buffer_bps, max_per_cycle_usdc, max_deviation_bps,
+  anchor_move_bps, min_interval_secs, ice_per_usdc_anchor})`, `convert_and_burn(coin_amount, min_usdc_out, min_ice_out,
+  route_data)` with `remaining_accounts` = the route's accounts (signer flags recomputed on-chain: only bb_auth signs),
+  `set_params`. Instead of parsing Raydium/LaunchLab layouts for a reference price, the program keeps an **anchored
+  ICE-per-USDC rate**: a cycle must deliver ≥ anchor × (1 − max_deviation_bps), the anchor then moves ≤ anchor_move_bps
+  towards the executed rate, and `min_interval_secs` rate-limits cycles — so a compromised keeper can skim at most
+  max_deviation_bps of max_per_cycle_usdc per interval. An on-chain reference price (CPMM vaults × Pyth SOL/USD) is the
+  audit-freeze upgrade. peg_desk: `GlobalConfig.redeem_cap_exempt` (carved from `_reserved`) + admin `set_redeem_cap_exempt`;
+  keeper `buyback` cycle picks the most valuable vault per cycle, BUYBACK_ROUTE=jupiter|damm; `make ice`
+  (scripts/create-ice-localnet.ts) stands in for the stonk.fun launch on localnet/devnet.
+
 ---
 
 ## 5. Off-chain contracts

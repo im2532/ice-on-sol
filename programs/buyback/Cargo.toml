@@ -1,6 +1,6 @@
 [package]
 name = "buyback"
-description = "ICEmarkets buyback: pulls GLD from fee_router buyback vault, swaps GLD->ICEmarkets on DAMM v2, burns ICEmarkets"
+description = "ICEmarkets buyback: pulls COIN from the fee_router buyback vault, sells it at the Peg Desk for USDC, swaps USDC->ICE via a forwarded route (Jupiter), burns ICE"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

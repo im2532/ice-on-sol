@@ -85,7 +85,8 @@ pub fn handle_initialize_config(
     cfg.reserve_warn_bps = reserve_warn_bps;
     cfg.reserve_halt_bps = reserve_halt_bps;
     cfg.bump = ctx.bumps.config;
-    cfg._reserved = [0u8; 64];
+    cfg.redeem_cap_exempt = Pubkey::default();
+    cfg._reserved = [0u8; 32];
 
     emit!(ConfigInitialized {
         admin: cfg.admin,
@@ -186,5 +187,11 @@ pub fn handle_set_global_pause(ctx: Context<SetGlobalPause>, paused: bool) -> Re
     }
     cfg.global_pause = paused;
     emit!(GlobalPauseSet { paused, by: who });
+    Ok(())
+}
+
+/// Admin: set (or clear with Pubkey::default()) the signer exempt from daily_redeem_cap.
+pub fn handle_set_redeem_cap_exempt(ctx: Context<AdminConfig>, exempt: Pubkey) -> Result<()> {
+    ctx.accounts.config.redeem_cap_exempt = exempt;
     Ok(())
 }

@@ -336,13 +336,16 @@ pub fn handle_sell<'info>(
         PegDeskError::ReserveInsufficient
     );
 
-    // Circuit breaker: rolling daily redemption cap (USDC out).
+    // Circuit breaker: rolling daily redemption cap (USDC out). The buyback PDA is exempt (its
+    // volume is capped by the buyback program); its sells still count towards the window.
+    let exempt = a.config.redeem_cap_exempt != Pubkey::default()
+        && a.user.key() == a.config.redeem_cap_exempt;
     let (win_start, win_redeemed) = pricing::window_add(
         a.commodity.window_start,
         a.commodity.window_redeemed,
         q.now,
         DAILY_WINDOW_SECS,
-        a.commodity.daily_redeem_cap,
+        if exempt { 0 } else { a.commodity.daily_redeem_cap },
         usdc_out,
     )
     .ok_or_else(|| error!(PegDeskError::DailyRedeemCapExceeded))?;

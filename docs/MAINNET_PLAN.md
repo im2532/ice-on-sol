@@ -18,7 +18,7 @@ The launch proves the write path. The money path (fees → split → payouts eve
 - Bring up the indexer against devnet: Helius devnet webhook → Postgres; confirm `$BG`'s pool row appears and swaps decode.
 - Let the keeper fee cycle claim from the `$BG` pool, confirm the 50/25/25 split lands (holders / treasury / buyback), and watch the first three 15‑minute payout epochs land in holder ATAs (test with 3+ holder wallets, including one that buys mid-epoch and one that sells to zero).
 - Push `$BG` past the migration threshold and confirm DAMM v2 migration + fee claiming continues from the DAMM pool.
-- Run one buyback cycle (GLD → ICE burn) once GLD is seeded.
+- Run one buyback cycle once $ICE exists. **Decision 12 Sep:** $ICE launches on stonk.fun (Raydium LaunchLab, SOL quote, 1 B supply, graduates to a Raydium CPMM ICE/SOL pool). Buyback v2 = COIN → peg_desk sell → USDC → Jupiter → ICE → burn in one keeper-signed instruction with a program-enforced reference-price floor; see CONTRACTS §4a. Localnet needs the LaunchLab + CPMM + Jupiter programs cloned (Jupiter cannot be cloned meaningfully — test the Jupiter hop on devnet/mainnet-fork only; localnet tests stub the route with a direct CPMM swap).
 - Rerun `make alt` so the lookup table carries the correct ATAs; then freeze the ALT authority. Close the orphaned DBC config (`4Nmk…`) to reclaim rent.
 - Launch 5–10 more markets across categories (Pyth-priced, Switchboard-priced, keeper-signed) to shake out oracle-path differences.
 
