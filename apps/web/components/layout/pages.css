@@ -833,10 +833,17 @@
   position: relative;
   overflow: hidden;
   isolation: isolate;
-  background: linear-gradient(160deg, #2188b8 0%, #12648f 100%) !important;
+  border: 1px solid #4da8cb;
+  background:
+    linear-gradient(165deg, #257da5 0%, #145a80 48%, #0b3d5d 100%) !important;
   color: #fff !important;
-  box-shadow: inset 0 1px 0 #ffffff55, inset 0 0 0 1px #0e608f55, 0 2px 4px #155e8014;
-  transition: box-shadow 220ms ease, background-color 220ms ease;
+  box-shadow:
+    inset 0 1px 0 #d6f7ff80,
+    inset 0 -4px 10px #062b4599,
+    inset 0 0 0 1px #8cdaf733,
+    0 3px 7px #155e8026;
+  text-shadow: 0 1px 2px #062b45;
+  transition: box-shadow 220ms ease, filter 220ms ease, transform 180ms ease;
 }
 .agentic-theme [data-variant="solid"]::after,
 .agentic-theme .btn-primary::after {
@@ -846,18 +853,27 @@
   pointer-events: none;
   border-radius: inherit;
   background:
-    linear-gradient(112deg, transparent 47%, #d8f7ff 48%, #ffffff 49%, transparent 50%) 16% 12% / 34% 54% no-repeat,
-    linear-gradient(68deg, transparent 47%, #bcecff 48%, #ffffff 49%, transparent 50%) 61% 2% / 30% 68% no-repeat,
-    linear-gradient(132deg, transparent 47%, #d8f7ff 48%, #ffffff 49%, transparent 50%) 86% 52% / 26% 45% no-repeat;
-  transform: scale(.94);
+    radial-gradient(circle at 22% 18%, #ffffff73 0 2%, transparent 20%),
+    linear-gradient(112deg, transparent 47%, #d8f7ff 48%, #ffffff 49%, transparent 50%) 12% 8% / 42% 64% no-repeat,
+    linear-gradient(68deg, transparent 47%, #bcecff 48%, #ffffff 49%, transparent 50%) 56% -4% / 38% 78% no-repeat,
+    linear-gradient(132deg, transparent 47%, #d8f7ff 48%, #ffffff 49%, transparent 50%) 88% 46% / 32% 56% no-repeat,
+    linear-gradient(38deg, transparent 47%, #bcecff 48%, #ffffff 49%, transparent 50%) 48% 88% / 28% 42% no-repeat;
+  transform: scale(.9);
   opacity: 0;
 }
 @media (hover: hover) and (pointer: fine) {
   .agentic-theme [data-variant="solid"]:hover:not(:disabled),
   .agentic-theme .btn-primary:hover:not(:disabled) {
-    background: linear-gradient(160deg, #2188b8, #12648f) !important;
+    background:
+      linear-gradient(165deg, #2b87ae 0%, #155d83 46%, #0a3b5a 100%) !important;
     color: #fff !important;
-    box-shadow: inset 0 0 0 1px #b5ecff, inset 0 1px 8px #d5f6ff66, 0 0 12px #80d7ff40;
+    box-shadow:
+      inset 0 0 0 1px #d6f7ff,
+      inset 0 1px 10px #d5f6ff73,
+      inset 0 -5px 11px #062b4599,
+      0 0 0 2px #b5ecff66,
+      0 0 16px #62c8ef73;
+    filter: saturate(1.08);
   }
   .agentic-theme [data-variant="solid"]:hover:not(:disabled)::after,
   .agentic-theme .btn-primary:hover:not(:disabled)::after {
@@ -869,9 +885,44 @@
   }
 }
 @keyframes ice-crack {
-  0% { transform: scale(.94); opacity: 0; }
-  35% { transform: scale(1); opacity: .6; }
-  100% { transform: scale(1.03); opacity: .18; }
+  0% { transform: scale(.9); opacity: 0; filter: blur(1px); }
+  28% { transform: scale(.98); opacity: .82; filter: blur(0); }
+  58% { transform: scale(1.01); opacity: .5; }
+  100% { transform: scale(1.04); opacity: .28; }
+}
+.agentic-page .launch-pay-option {
+  color: var(--color-content-primary) !important;
+}
+.agentic-page .launch-pay-option:hover:not(:disabled) {
+  background: #e5f5ff !important;
+  color: #153f59 !important;
+  border-color: #77bddc !important;
+}
+.agentic-page .launch-pay-option.chip-on,
+.agentic-page .launch-pay-option.chip-on:hover:not(:disabled) {
+  background: linear-gradient(160deg, #2188b8 0%, #12648f 100%) !important;
+  color: #ffffff !important;
+  border-color: #14709e !important;
+  box-shadow: inset 0 1px 0 #d4f5ff80, 0 2px 7px #176d9633;
+}
+.agentic-page .rewards-table-footer {
+  min-height: 58px;
+  padding: 12px 20px;
+  border-top: 1px solid var(--color-border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  color: var(--color-content-secondary);
+  font-size: 12px;
+}
+.agentic-page .rewards-show-more {
+  flex: 0 0 auto;
+  width: auto;
+  min-width: 116px;
+  border-color: #9ccfe3;
+  background: #eef9fd;
+  color: #163e57;
 }
 .agentic-page .chip-on,
 .agentic-page .chip-on:hover,

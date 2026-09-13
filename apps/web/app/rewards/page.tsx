@@ -223,15 +223,16 @@ export default function RewardsPage() {
             <Leaderboard rows={rows} />
 
             {rows.length < totalRows && (
-              <div className="mono flex justify-between border-t border-white/[0.08] px-4 py-3.5 sm:px-5">
-                <span className="text-xs text-muted">
+              <div className="rewards-table-footer mono">
+                <span>
                   Showing {rows.length} of {totalRows}
                 </span>
                 <Button
-                  plain
+                  outline
+                  size="sm"
                   type="button"
                   onClick={() => setVisibleRows((v) => v + 15)}
-                  className="tap rounded text-xs text-dim hover:text-text"
+                  className="rewards-show-more tap"
                 >
                   Show 15 more
                 </Button>

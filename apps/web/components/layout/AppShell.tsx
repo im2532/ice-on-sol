@@ -109,7 +109,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               {USE_MOCK ? "Sample data" : "Live data"}
             </span>
             <Button
-              outline
               onClick={() => (publicKey ? disconnect() : setVisible(true))}
               disabled={connecting}
               aria-label={publicKey ? "Disconnect wallet" : "Connect wallet"}

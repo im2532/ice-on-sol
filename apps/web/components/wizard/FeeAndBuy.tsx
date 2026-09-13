@@ -118,7 +118,7 @@ export default function FeeAndBuy({
                 role="radio"
                 aria-checked={value.payWith === p}
                 onClick={() => set("payWith", p)}
-                className={`chip tap ${value.payWith === p ? "chip-on" : ""}`}
+                className={`chip tap launch-pay-option ${value.payWith === p ? "chip-on" : ""}`}
                 style={{ height: 44, borderRadius: 12, padding: "0 16px" }}
               >
                 <CurrencyLogo symbol={p} />
