@@ -33,10 +33,10 @@ export default function TosModal() {
       role="dialog"
       aria-modal="true"
       aria-labelledby="tos-title"
-      className="fixed inset-0 z-[200] flex items-end justify-center bg-black/70 p-4 backdrop-blur-sm sm:items-center"
+      className="tos-backdrop fixed inset-0 z-[200] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
     >
-      <div className="glass-strong w-full max-w-lg p-6">
-        <div className="mb-4 flex items-center gap-3">
+      <div className="tos-modal glass-strong w-full max-w-lg p-6">
+        <div className="tos-modal-heading mb-4 flex items-center gap-3">
           <Icon name="gem" size={32} />
           <h2 id="tos-title" className="display text-lg font-semibold">
             Before you trade
@@ -58,7 +58,7 @@ export default function TosModal() {
           </a>
           .
         </p>
-        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+        <div className="tos-modal-actions flex flex-col-reverse gap-2 sm:flex-row sm:justify-center">
           <a href="/restricted" className="btn-ghost tap">
             I&apos;m not eligible
           </a>
