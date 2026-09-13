@@ -179,7 +179,7 @@ export default function TradePanel({
   }
 
   return (
-    <div className="glass-strong trade-panel flex flex-col gap-4">
+    <div className="glass-strong ice-capped trade-panel flex flex-col gap-4">
       {halted && (
         <p
           role="alert"

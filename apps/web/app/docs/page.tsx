@@ -188,7 +188,7 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section id={id} className="glass docs-section scroll-mt-6">
+    <section id={id} className="glass ice-capped docs-section scroll-mt-6">
       <h2 className="display mb-3 text-lg font-semibold">{title}</h2>
       <div className="flex flex-col gap-3 text-sm leading-relaxed text-body">
         {children}

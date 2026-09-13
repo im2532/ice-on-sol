@@ -101,7 +101,10 @@ export default function MarketsDashboard() {
           message="Market overview is unavailable."
         />
       ) : (
-        <section className={styles.stats} aria-label="Exchange overview">
+        <section
+          className={`${styles.stats} ice-capped`}
+          aria-label="Exchange overview"
+        >
           <Stat
             label="Total markets"
             value={s?.marketsCount.toLocaleString("en-US")}
@@ -232,7 +235,7 @@ export default function MarketsDashboard() {
             </Select>
           </div>
         </div>
-        <div className={styles.tableFrame}>
+        <div className={`${styles.tableFrame} ice-capped`}>
           <div className={styles.tableScroll}>
             <table className={styles.table} aria-label="Markets">
               <thead>
@@ -322,7 +325,10 @@ export default function MarketsDashboard() {
         </div>
       </section>
       <div className={styles.bottomGrid}>
-        <section className={styles.panel} aria-labelledby="rewards-title">
+        <section
+          className={`${styles.panel} ice-capped`}
+          aria-labelledby="rewards-title"
+        >
           <div className={styles.panelHeading}>
             <h2 id="rewards-title">Holder rewards</h2>
             <span className={styles.rewardBadge}>
@@ -362,7 +368,10 @@ export default function MarketsDashboard() {
             Explore rewards <Icon name="chevron-right" size={14} />
           </Link>
         </section>
-        <section className={styles.panel} aria-labelledby="fees-title">
+        <section
+          className={`${styles.panel} ice-capped`}
+          aria-labelledby="fees-title"
+        >
           <div className={styles.panelHeading}>
             <h2 id="fees-title">Every trade gives back.</h2>
             <Icon name="transfer" size={20} />

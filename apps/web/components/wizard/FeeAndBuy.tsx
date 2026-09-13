@@ -37,7 +37,7 @@ export default function FeeAndBuy({
 
   return (
     <section
-      className="launch-section glass flex flex-col gap-3.5 p-5 sm:px-[22px]"
+      className="launch-section ice-capped glass flex flex-col gap-3.5 p-5 sm:px-[22px]"
       aria-labelledby="launch-fee-heading"
     >
       <div className="flex items-center gap-2.5">

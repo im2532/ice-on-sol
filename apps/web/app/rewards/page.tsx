@@ -129,7 +129,7 @@ export default function RewardsPage() {
         <div className="flex flex-col gap-5">
           {/* ---- wallet earnings ---- */}
           <section
-            className="glass flex flex-col gap-4 p-5"
+            className="glass ice-capped flex flex-col gap-4 p-5"
             aria-labelledby="earnings-heading"
           >
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -197,7 +197,7 @@ export default function RewardsPage() {
 
           {/* ---- leaderboard ---- */}
           <section
-            className="glass overflow-hidden"
+            className="glass ice-capped overflow-hidden"
             aria-labelledby="leaderboard-heading"
           >
             <div className="flex flex-col gap-3 border-b border-white/[0.08] p-4 sm:px-5">
@@ -244,7 +244,7 @@ export default function RewardsPage() {
         <div className="flex flex-col gap-5">
           <FeeDonut />
           <section
-            className="glass flex flex-col gap-4 p-5"
+            className="glass ice-capped flex flex-col gap-4 p-5"
             aria-labelledby="how-heading"
           >
             <h2 id="how-heading" className="eyebrow">

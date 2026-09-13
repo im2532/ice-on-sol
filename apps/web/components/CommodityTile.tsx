@@ -46,9 +46,9 @@ export default function CommodityTile({
     </>
   );
   return target === null ? (
-    <div className="glass commodity-tile opacity-70">{body}</div>
+    <div className="glass commodity-tile ice-capped opacity-70">{body}</div>
   ) : (
-    <Link href={target} className="glass glass-hover commodity-tile">
+    <Link href={target} className="glass glass-hover commodity-tile ice-capped">
       {body}
     </Link>
   );

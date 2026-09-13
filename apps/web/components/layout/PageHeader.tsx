@@ -28,7 +28,7 @@ export function PageStats({
   items: { label: string; value: string; note: string }[];
 }) {
   return (
-    <section className="page-stats" aria-label="Overview">
+    <section className="page-stats ice-capped" aria-label="Overview">
       {items.map((item) => (
         <div key={item.label}>
           <span className="eyebrow">{item.label}</span>

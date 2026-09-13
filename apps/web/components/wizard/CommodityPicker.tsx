@@ -87,7 +87,7 @@ export default function CommodityPicker({
 
   return (
     <section
-      className="launch-section commodity-picker glass flex flex-col gap-3.5 p-5 sm:px-[22px]"
+      className="launch-section ice-capped commodity-picker glass flex flex-col gap-3.5 p-5 sm:px-[22px]"
       aria-labelledby="pair-heading"
     >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

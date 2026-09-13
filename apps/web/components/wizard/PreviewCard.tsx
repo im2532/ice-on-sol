@@ -56,7 +56,7 @@ export default function PreviewCard({
 
   return (
     <aside
-      className="glass-strong flex flex-col gap-[18px] p-5 sm:p-[22px]"
+      className="glass-strong ice-capped flex flex-col gap-[18px] p-5 sm:p-[22px]"
       aria-label="Market preview"
     >
       <div className="preview-identity">
