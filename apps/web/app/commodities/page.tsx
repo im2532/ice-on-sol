@@ -230,7 +230,7 @@ export default function CommoditiesPage() {
             support is on its way.
           </p>
         </div>
-        <span className="chip">Coming in v2</span>
+        <span className="chip coming-v2">Coming in v2</span>
       </section>
     </div>
   );

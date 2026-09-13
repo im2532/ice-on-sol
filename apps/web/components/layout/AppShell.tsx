@@ -75,7 +75,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               <br />A new kind of market.
             </h3>
             <p>Launch a token paired with your favorite commodity.</p>
-            <Button outline fullWidth href="/launch" size="sm">
+            <Button fullWidth href="/launch" size="sm">
               Create a market <Icon name="plus" size={14} />
             </Button>
           </div>

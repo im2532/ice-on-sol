@@ -120,10 +120,28 @@
   color: #167eac;
   filter: drop-shadow(0 1px 2px #79cce988);
 }
-.icePromo a {
-  border-color: #8bcfe9;
-  background: linear-gradient(180deg, #f7fdff, #dff3fb);
-  box-shadow: inset 0 1px 0 #ffffff, 0 2px 5px #55add02b;
+.sidebarNote.icePromo a[data-variant="solid"] {
+  border: 1px solid #087bac;
+  background: linear-gradient(135deg, #1599cb 0%, #087caf 52%, #075f8e 100%);
+  color: #ffffff;
+  box-shadow:
+    inset 0 1px 0 #a9ebff99,
+    inset 0 -2px 5px #034f7b66,
+    0 4px 10px #167da94a;
+  text-shadow: 0 1px 2px #06476f;
+}
+@media (hover: hover) and (pointer: fine) {
+  .sidebarNote.icePromo a[data-variant="solid"]:hover {
+    border-color: #60d4f7;
+    background: linear-gradient(135deg, #27b7e8 0%, #0b8fc5 50%, #076993 100%);
+    color: #ffffff;
+    box-shadow:
+      inset 0 1px 0 #d9f8ff,
+      inset 0 -2px 6px #034f7b66,
+      0 0 0 2px #a9eaff80,
+      0 6px 14px #167da95c;
+    transform: translateY(-1px);
+  }
 }
 @keyframes sidebarIceGlisten {
   from { opacity: .72; filter: drop-shadow(0 0 3px #8ad6f244); }
