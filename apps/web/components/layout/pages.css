@@ -966,20 +966,8 @@
   transform-origin: top;
   animation: card-ice-drip 8s ease-in-out infinite;
 }
-.agentic-page .commodity-grid .ice-capped:nth-child(3n + 2),
 .agentic-page .docs-section:nth-child(even) {
   --ice-drip-x: 24%;
-}
-.agentic-page .commodity-grid .ice-capped:nth-child(3n) {
-  --ice-drip-x: 58%;
-}
-.agentic-page .commodity-grid > .ice-capped::before,
-.agentic-page .commodity-grid > .ice-capped::after {
-  display: none;
-}
-.agentic-page .commodity-grid > .ice-capped:nth-child(3n + 1)::before,
-.agentic-page .commodity-grid > .ice-capped:nth-child(3n + 1)::after {
-  display: block;
 }
 @keyframes card-ice-drip {
   0%, 16%, 100% { transform: scaleY(.35); opacity: .35; }
