@@ -108,6 +108,8 @@
 .main {
   flex: 1;
   min-width: 0;
+  position: relative;
+  isolation: isolate;
 }
 .topbar {
   height: 72px;
@@ -117,6 +119,10 @@
   justify-content: space-between;
   align-items: center;
   gap: var(--space-16);
+  position: relative;
+  z-index: 2;
+  background: color-mix(in srgb, var(--color-bg-primary) 92%, transparent);
+  backdrop-filter: blur(10px);
 }
 .breadcrumb {
   display: flex;
@@ -148,6 +154,8 @@
   padding: var(--space-32);
   max-width: 1512px;
   margin: 0 auto;
+  position: relative;
+  z-index: 1;
 }
 .pageHeading {
   display: flex;

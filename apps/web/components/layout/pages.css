@@ -859,3 +859,74 @@
   .agentic-theme [data-variant="solid"]::after,
   .agentic-theme .btn-primary::after { animation: none !important; }
 }
+
+/* Ambient ice stays behind the application and never captures interaction. */
+.ice-atmosphere {
+  position: fixed;
+  inset: 72px 0 0 216px;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  user-select: none;
+  contain: strict;
+}
+.ice-flake {
+  position: absolute;
+  top: -16px;
+  left: var(--flake-x);
+  width: var(--flake-size);
+  height: var(--flake-size);
+  border-radius: 50%;
+  background: #72c9ec;
+  box-shadow: 0 0 5px #bceeff;
+  opacity: 0;
+  animation: ice-snowfall var(--flake-duration) linear var(--flake-delay) infinite;
+  will-change: transform, opacity;
+}
+.ice-flake-diamond {
+  border-radius: 1px;
+  background: transparent;
+  border: 1px solid #7bcce9;
+  box-shadow: none;
+  transform: rotate(45deg);
+}
+.ice-shard {
+  position: absolute;
+  bottom: -36px;
+  width: 150px;
+  height: 112px;
+  opacity: .12;
+  background: linear-gradient(145deg, #ddf7ff 4%, #7bcdea 50%, #effcff 94%);
+  clip-path: polygon(4% 100%, 20% 42%, 39% 69%, 56% 10%, 74% 63%, 91% 35%, 100% 100%);
+  filter: drop-shadow(0 0 10px #9fdcf055);
+  animation: ice-melt 12s ease-in-out infinite alternate;
+  transform-origin: bottom;
+}
+.ice-shard-left { left: 2%; }
+.ice-shard-right {
+  right: 3%;
+  width: 112px;
+  height: 84px;
+  animation-delay: -5s;
+}
+@keyframes ice-snowfall {
+  0% { transform: translate3d(0, -3vh, 0) rotate(0deg); opacity: 0; }
+  9% { opacity: .2; }
+  82% { opacity: .16; }
+  100% { transform: translate3d(22px, 105vh, 0) rotate(210deg); opacity: 0; }
+}
+@keyframes ice-melt {
+  0% { transform: scaleY(1) translateY(0); border-radius: 0; }
+  100% { transform: scaleY(.93) translateY(5px); border-radius: 0 0 18px 20px; }
+}
+@media (max-width: 1000px) {
+  .ice-atmosphere { left: 176px; }
+}
+@media (max-width: 700px) {
+  .ice-atmosphere { inset: 64px 0 0; }
+  .ice-shard { opacity: .08; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ice-flake { display: none; }
+  .ice-shard { animation: none; }
+}

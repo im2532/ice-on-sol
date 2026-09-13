@@ -11,6 +11,7 @@ import { CLUSTER } from "@/lib/cluster";
 import { USE_MOCK } from "@/lib/api";
 import { shortenAddress } from "@/lib/format";
 import styles from "@/components/markets/MarketsDashboard.module.css";
+import IceAtmosphere from "./IceAtmosphere";
 const NAV = [
   { href: "/", label: "Markets", icon: "load-balancer-classic" },
   { href: "/commodities", label: "Commodities", icon: "gem" },
@@ -122,6 +123,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             </Button>
           </div>
         </header>
+        <IceAtmosphere />
         <main className={styles.content}>
           {children}{" "}
           <footer className={styles.footer}>
