@@ -68,7 +68,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           </NavSection>
         </nav>
         <div className={styles.sidebarBottom}>
-          <div className={styles.sidebarNote}>
+          <div className={`${styles.sidebarNote} ${styles.icePromo}`}>
             <Icon name="gem" size={20} />
             <h3>
               Real-world pairs.
