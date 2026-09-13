@@ -852,6 +852,29 @@
   font-size: 20px;
   color: var(--color-content-primary);
 }
+
+/* A light glass layer lets the ambient snow read through without weakening content. */
+.stats,
+.commodityCard,
+.tableFrame,
+.panel {
+  background: var(--ice-glass-surface);
+  border-color: color-mix(in srgb, #86cce7 48%, var(--color-border-subtle));
+  box-shadow:
+    inset 0 1px 0 #ffffffc7,
+    inset 0 0 18px #b9e9f51f,
+    0 5px 18px #286f8c0d;
+  backdrop-filter: blur(10px) saturate(1.08);
+  -webkit-backdrop-filter: blur(10px) saturate(1.08);
+}
+.commodityCard:hover {
+  background: var(--ice-glass-surface-hover);
+  border-color: #9bcfe3;
+  box-shadow:
+    inset 0 1px 0 #ffffff,
+    inset 0 0 20px #b9e9f52b,
+    0 7px 20px #286f8c14;
+}
 .skeleton {
   height: 32px;
   background: var(--color-bg-secondary);
