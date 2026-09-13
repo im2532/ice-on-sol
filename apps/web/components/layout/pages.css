@@ -290,15 +290,15 @@
   height: 32px;
   padding: 0 14px;
   overflow: hidden;
-  border: 1px solid #5aa8ca;
+  border: 1px solid #8ccfe8;
   background:
-    linear-gradient(135deg, #1c4b68 0%, #12384f 54%, #0a293d 100%);
-  color: #e8f9ff;
+    linear-gradient(135deg, #f9fdff 0%, #dff5fc 54%, #c9ebf8 100%);
+  color: #285b78;
   box-shadow:
-    inset 0 1px 0 #b9efff66,
-    inset 0 -5px 10px #061d2c99,
-    0 3px 9px #0b486b38;
-  text-shadow: 0 1px 2px #031a2a;
+    inset 0 1px 0 #ffffff,
+    inset 0 -4px 9px #65bbda2e,
+    0 3px 9px #4c9fbe24;
+  text-shadow: 0 1px 0 #ffffff;
 }
 .agentic-page .coming-soon .coming-v2::after {
   content: "";
@@ -307,7 +307,7 @@
   inset: 2px 4px auto;
   height: 7px;
   border-radius: 999px 999px 45% 45%;
-  background: linear-gradient(90deg, transparent, #d8f8ff99 28%, #7ed8f266 68%, transparent);
+  background: linear-gradient(90deg, transparent, #ffffff 28%, #b5ebfa 68%, transparent);
   opacity: .72;
 }
 .agentic-page .page-stats {

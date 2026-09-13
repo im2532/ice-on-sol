@@ -121,25 +121,25 @@
   filter: drop-shadow(0 1px 2px #79cce988);
 }
 .sidebarNote.icePromo a[data-variant="solid"] {
-  border: 1px solid #087bac;
-  background: linear-gradient(135deg, #1599cb 0%, #087caf 52%, #075f8e 100%);
-  color: #ffffff;
+  border: 1px solid #73c9e8;
+  background: linear-gradient(135deg, #f8fdff 0%, #cceefa 52%, #aee1f4 100%) !important;
+  color: #123b56 !important;
   box-shadow:
-    inset 0 1px 0 #a9ebff99,
-    inset 0 -2px 5px #034f7b66,
-    0 4px 10px #167da94a;
-  text-shadow: 0 1px 2px #06476f;
+    inset 0 1px 0 #ffffff,
+    inset 0 -2px 5px #5db7d63d,
+    0 4px 10px #4aa6ca38;
+  text-shadow: 0 1px 0 #ffffff;
 }
 @media (hover: hover) and (pointer: fine) {
   .sidebarNote.icePromo a[data-variant="solid"]:hover {
-    border-color: #60d4f7;
-    background: linear-gradient(135deg, #27b7e8 0%, #0b8fc5 50%, #076993 100%);
-    color: #ffffff;
+    border-color: #35acd5;
+    background: linear-gradient(135deg, #ffffff 0%, #d9f5ff 48%, #b8e8f8 100%) !important;
+    color: #0c354f !important;
     box-shadow:
-      inset 0 1px 0 #d9f8ff,
-      inset 0 -2px 6px #034f7b66,
-      0 0 0 2px #a9eaff80,
-      0 6px 14px #167da95c;
+      inset 0 1px 0 #ffffff,
+      inset 0 -2px 6px #5db7d64a,
+      0 0 0 2px #c9f2ff,
+      0 6px 14px #4aa6ca42;
     transform: translateY(-1px);
   }
 }
