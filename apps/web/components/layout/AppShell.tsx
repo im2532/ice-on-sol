@@ -21,9 +21,34 @@ const NAV = [
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() ?? "/";
   const [mobileNav, setMobileNav] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const { publicKey, connecting, disconnect } = useWallet();
   const { setVisible } = useWalletModal();
   useEffect(() => setMobileNav(false), [pathname]);
+  useEffect(() => {
+    const query = window.matchMedia("(max-width: 860px)");
+    const sync = () => {
+      setIsMobile(query.matches);
+      if (!query.matches) setMobileNav(false);
+    };
+    sync();
+    query.addEventListener("change", sync);
+    return () => query.removeEventListener("change", sync);
+  }, []);
+  useEffect(() => {
+    if (!isMobile || !mobileNav) return;
+    const previousOverflow = document.body.style.overflow;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMobileNav(false);
+    };
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [isMobile, mobileNav]);
   const active = (href: string) =>
     href === "/"
       ? pathname === "/" || pathname.startsWith("/token/")
@@ -38,13 +63,17 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           ? "Availability"
           : (NAV.find((n) => active(n.href))?.label ?? "ICEmarkets");
   return (
-    <div className={styles.shell}>
+    <div className={`${styles.shell} ${sidebarCollapsed ? styles.shellCollapsed : ""}`}>
       <aside
-        className={`${styles.sidebar} ${mobileNav ? styles.sidebarOpen : ""}`}
+        className={`${styles.sidebar} ${sidebarCollapsed ? styles.sidebarCollapsed : ""} ${mobileNav ? styles.sidebarOpen : ""}`}
       >
         <Link href="/" className={styles.brand} aria-label="ICEmarkets home">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img className={styles.brandLogo} src="/brand/ice-on-solana.png" alt="ICE on Solana" width={940} height={343} />
+          <span className={styles.brandGlyph} aria-hidden="true">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/brand/penguin-mark.png" alt="" width={343} height={343} />
+          </span>
         </Link>
         <span className={styles.workspaceLabel}>Commodity exchange</span>
         <nav aria-label="Primary" className={styles.navigation}>
@@ -87,6 +116,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </div>
       </aside>
+      {isMobile && mobileNav ? (
+        <button
+          type="button"
+          className={styles.navBackdrop}
+          aria-label="Close navigation"
+          onClick={() => setMobileNav(false)}
+        />
+      ) : null}
       <div className={styles.main}>
         <header className={styles.topbar}>
           <div className={styles.breadcrumb}>
@@ -94,8 +131,15 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               plain
               className={styles.menuButton}
               aria-label="Toggle navigation"
-              aria-expanded={mobileNav}
-              onClick={() => setMobileNav(!mobileNav)}
+              aria-expanded={isMobile ? mobileNav : !sidebarCollapsed}
+              title={isMobile ? (mobileNav ? "Close navigation" : "Open navigation") : sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+              onClick={() => {
+                if (isMobile) {
+                  setMobileNav((open) => !open);
+                } else {
+                  setSidebarCollapsed((collapsed) => !collapsed);
+                }
+              }}
             >
               <Icon name={mobileNav ? "close" : "menu-open"} />
             </Button>
@@ -124,7 +168,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         </header>
         <IceAtmosphere />
         <main className={styles.content}>
-          {children}{" "}
+          <div key={pathname} className={styles.pageTransition}>
+            {children}
+          </div>
           <footer className={styles.footer}>
             <span>
               ICEmarkets <span>·</span> Built on Solana

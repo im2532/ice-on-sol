@@ -1,4 +1,5 @@
 import { Icon } from '../Icon/Icon';
+import Link from 'next/link';
 import styles from './Navigation.module.css';
 
 interface NavLinkProps {
@@ -41,12 +42,9 @@ export function NavLink({
   const className = `${styles.navLink} ${chevron ? styles.navLinkFull : ''}`;
 
   if (href) {
-    return (
-      <a
-        className={className}
-        href={href}
-        aria-current={active ? 'page' : undefined}
-      >
+    const internal = href.startsWith('/');
+    const content = (
+      <>
         {icon && <Icon name={icon} size={16} />}
         <span>{label}</span>
         {chevron && (
@@ -54,6 +52,28 @@ export function NavLink({
             <Icon name={expanded ? 'chevron-up' : 'chevron-down'} size={16} />
           </span>
         )}
+      </>
+    );
+
+    if (internal) {
+      return (
+        <Link
+          className={className}
+          href={href}
+          aria-current={active ? 'page' : undefined}
+        >
+          {content}
+        </Link>
+      );
+    }
+
+    return (
+      <a
+        className={className}
+        href={href}
+        aria-current={active ? 'page' : undefined}
+      >
+        {content}
       </a>
     );
   }

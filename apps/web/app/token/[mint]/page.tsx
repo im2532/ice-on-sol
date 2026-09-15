@@ -28,6 +28,11 @@ import Chart from "@/components/Chart";
 import TradePanel from "@/components/TradePanel";
 import TradesTable from "@/components/TradesTable";
 import CommodityLogo from "@/components/CommodityLogo";
+import {
+  MorphPopover,
+  MorphPopoverContent,
+  MorphPopoverTrigger,
+} from "@/components/motion/popover-morph";
 import { bySymbol } from "@icemarkets/registry";
 
 type Denom = "usd" | "coin";
@@ -45,6 +50,7 @@ export default function TokenPage() {
   const mint = params.mint;
   const [denom, setDenom] = useState<Denom>("usd");
   const [range, setRange] = useState<Range>("1d");
+  const [addressCopied, setAddressCopied] = useState(false);
 
   const { data: market, isLoading } = useQuery({
     queryKey: ["market", mint],
@@ -122,12 +128,12 @@ export default function TokenPage() {
       </nav>
 
       <header className="mt-4 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-        <div className="flex items-center gap-4 sm:gap-[18px]">
+        <div className="token-identity flex items-center gap-4 sm:gap-[18px]">
           <span className="market-letter-avatar" aria-hidden="true">
             {market.ticker.slice(0, 2)}
           </span>
           <div className="flex min-w-0 flex-col gap-1.5">
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
               <h1 className="display text-2xl font-bold sm:text-[32px]">
                 {market.name}
               </h1>
@@ -148,30 +154,46 @@ export default function TokenPage() {
                   ? "Graduated · DAMM v2"
                   : `${curveLabel(market.curveProgressPct, false)} of curve`}
               </span>
-              <Button
-                plain
-                type="button"
-                onClick={() =>
-                  navigator.clipboard?.writeText(market.mint).catch(() => {})
-                }
-                aria-label={`Copy the ${market.ticker} contract address`}
-                title={market.mint}
-                className="chip mono tap text-muted"
-              >
-                {shortenAddress(market.mint)}
-                <svg
-                  width="11"
-                  height="11"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  aria-hidden="true"
-                >
-                  <rect x="9" y="9" width="11" height="11" rx="2" />
-                  <path d="M5 15V5a2 2 0 0 1 2-2h10" />
-                </svg>
-              </Button>
+              <MorphPopover onOpenChange={(open) => !open && setAddressCopied(false)}>
+                <MorphPopoverTrigger>
+                  <Button
+                    plain
+                    type="button"
+                    aria-label={`Show the ${market.ticker} contract address`}
+                    className="chip mono tap text-muted"
+                  >
+                    {shortenAddress(market.mint)}
+                    <svg
+                      width="11"
+                      height="11"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      aria-hidden="true"
+                    >
+                      <rect x="9" y="9" width="11" height="11" rx="2" />
+                      <path d="M5 15V5a2 2 0 0 1 2-2h10" />
+                    </svg>
+                  </Button>
+                </MorphPopoverTrigger>
+                <MorphPopoverContent className="address-popover">
+                  <span className="eyebrow">Contract address</span>
+                  <code>{market.mint}</code>
+                  <Button
+                    outline
+                    size="sm"
+                    onClick={() => {
+                      navigator.clipboard
+                        ?.writeText(market.mint)
+                        .then(() => setAddressCopied(true))
+                        .catch(() => {});
+                    }}
+                  >
+                    {addressCopied ? "Copied" : "Copy address"}
+                  </Button>
+                </MorphPopoverContent>
+              </MorphPopover>
             </div>
           </div>
         </div>

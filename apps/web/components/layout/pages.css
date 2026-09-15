@@ -391,6 +391,7 @@
 }
 .agentic-page .trade-panel {
   padding: var(--space-20);
+  gap: 12px;
 }
 .agentic-page .trade-panel [role="tablist"] {
   width: 100%;
@@ -405,6 +406,174 @@
 }
 .agentic-page .trade-panel .btn-primary {
   margin-top: 8px;
+}
+.agentic-page .trade-assets {
+  margin-top: 2px;
+}
+.agentic-page .trade-asset-options {
+  padding: 4px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 13px;
+  background: color-mix(in srgb, var(--color-bg-secondary) 82%, white);
+}
+.agentic-page .trade-token-button {
+  min-height: 34px;
+  height: 34px;
+  padding: 0 12px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  color: var(--color-content-secondary);
+  background: transparent;
+  font-size: 13px;
+  transition: background 180ms ease, border-color 180ms ease, color 180ms ease, transform 120ms ease;
+}
+.agentic-page .trade-token-button:hover:not(:disabled) {
+  color: var(--color-content-primary);
+  background: #fff;
+}
+.agentic-page .trade-token-button.chip-on,
+.agentic-page .trade-token-button.chip-on:hover {
+  color: #153f59;
+  border-color: #9ed8eb;
+  background: #fff;
+  box-shadow: 0 3px 9px #286f8c12, inset 0 -2px 0 #d9f2fb;
+}
+.agentic-page .trade-token-button:active:not(:disabled) {
+  transform: scale(.97);
+}
+.agentic-page .trade-amount-card {
+  height: 58px;
+  padding: 8px 10px 8px 14px;
+  border: 1px solid #c5e3ee;
+  background: color-mix(in srgb, #ecf8fc 82%, white);
+  transition: border-color 180ms ease, background 180ms ease, box-shadow 180ms ease;
+}
+.agentic-page .trade-amount-card-in {
+  border-radius: 12px;
+}
+.agentic-page .trade-amount-card-out {
+  border-radius: 12px;
+}
+.agentic-page .trade-amount-card-in:focus-within {
+  border-color: #5bb8d9;
+  background: #f4fbfe;
+  box-shadow: 0 0 0 3px #bceafa66;
+}
+.agentic-page .trade-amount-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 100%;
+}
+.agentic-page .trade-amount-input,
+.agentic-page .trade-output {
+  min-width: 0;
+  flex: 1;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--color-content-primary);
+  font-size: 24px;
+  letter-spacing: -.6px;
+  box-shadow: none;
+}
+.agentic-page .trade-amount-input:focus {
+  box-shadow: none;
+}
+.agentic-page .trade-token-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  max-width: 48%;
+  min-height: 36px;
+  padding: 4px 9px 4px 6px;
+  border: 1px solid #c6dde6;
+  border-radius: 12px;
+  background: #fff;
+  color: #173b52;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-shadow: 0 3px 10px #286f8c0d;
+}
+.agentic-page .trade-token-mark {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  flex: 0 0 22px;
+  border-radius: 7px;
+  background: #173b52;
+  color: #fff;
+  font-size: 9px;
+  letter-spacing: -.2px;
+}
+.agentic-page .trade-direction {
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  align-self: center;
+  width: 32px;
+  height: 32px;
+  margin: -18px 0;
+  border: 4px solid var(--color-bg-primary);
+  border-radius: 50%;
+  background: #173b52;
+  color: #fff;
+  box-shadow: 0 4px 12px #173b5226;
+  cursor: pointer;
+  transition: transform 180ms cubic-bezier(.2, .8, .2, 1), background 180ms ease;
+}
+.agentic-page .trade-direction:hover:not(:disabled) {
+  background: #197da6;
+  transform: rotate(180deg);
+}
+.agentic-page .trade-direction:active:not(:disabled) {
+  transform: rotate(180deg) scale(.92);
+}
+.agentic-page .trade-direction:disabled {
+  cursor: not-allowed;
+  opacity: .45;
+}
+.agentic-page .trade-details {
+  margin-top: 2px;
+  padding: 12px 14px;
+  border-top: 1px solid var(--color-border-subtle);
+  border-bottom: 1px solid var(--color-border-subtle);
+  color: var(--color-content-secondary);
+}
+.address-popover {
+  display: grid;
+  width: min(330px, calc(100vw - 32px));
+  gap: 10px;
+  padding: 14px;
+  border-color: #b7dce9;
+  background: #f8fdff;
+  color: #173b52;
+  box-shadow: inset 0 1px 0 #fff;
+}
+.address-popover > .eyebrow {
+  color: #668195;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+.address-popover code {
+  overflow-wrap: anywhere;
+  color: #173b52;
+  font-family: var(--font-code);
+  font-size: 11px;
+  line-height: 17px;
+}
+.address-popover button {
+  justify-self: end;
+  min-height: 32px;
+  padding: 5px 10px;
+  border: 1px solid #a9d2e1;
+  border-radius: 9px;
+  background: #fff;
+  color: #173b52;
 }
 .agentic-page .empty-wallet {
   background: var(--color-bg-secondary);
@@ -946,6 +1115,8 @@
 .agentic-theme .tos-modal {
   position: relative;
   isolation: isolate;
+  width: min(32rem, 100%);
+  max-width: 100%;
   overflow: visible;
   border: 1px solid #8fd2ea;
   border-radius: 20px;
@@ -1019,6 +1190,26 @@
   .agentic-theme .btn-primary::after { animation: none !important; }
 }
 
+@media (max-width: 600px) {
+  .agentic-theme .tos-backdrop {
+    align-items: flex-start;
+    overflow-y: auto;
+  }
+  .agentic-theme .tos-modal {
+    margin-block: auto;
+  }
+  .agentic-page .token-identity {
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .agentic-page .token-identity .market-letter-avatar {
+    width: 40px;
+    height: 40px;
+    margin-top: 3px;
+    font-size: 13px;
+  }
+}
+
 /* Ambient ice stays behind the application and never captures interaction. */
 .ice-atmosphere {
   position: fixed;
@@ -1081,7 +1272,7 @@
 @media (max-width: 1000px) {
   .ice-atmosphere { left: 176px; }
 }
-@media (max-width: 700px) {
+@media (max-width: 860px) {
   .ice-atmosphere { inset: 64px 0 0; }
   .ice-shard { opacity: .15; }
 }
@@ -1096,8 +1287,8 @@
   position: absolute;
   z-index: 3;
   top: -2px;
-  left: 14px;
-  right: 14px;
+  left: 0;
+  right: 0;
   height: 9px;
   pointer-events: none;
   border-radius: 7px 9px 5px 6px;

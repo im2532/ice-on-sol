@@ -34,7 +34,7 @@ const TABS = [
   { key: "new", label: "New pairs", icon: "sparkle" },
   { key: "migrated", label: "Graduated", icon: "checkmark" },
 ] as const;
-const FEATURED = ["GLD", "CL", "HG", "DAYTONA"];
+const FEATURED = ["GLD", "CL", "HG", "DAYTONA"] as const;
 
 export default function MarketsDashboard() {
   const [activeTab, setActiveTab] = useState(0);

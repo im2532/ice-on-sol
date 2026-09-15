@@ -236,13 +236,13 @@ export default function TradePanel({
         onChange={setSide}
       />
 
-      {/* Pay with */}
-      <div className="flex flex-col gap-2">
+      {/* Settlement asset */}
+      <div className="trade-assets flex flex-col gap-2">
         <span className="eyebrow">
           {side === "buy" ? "Pay with" : "Receive in"}
         </span>
         <div
-          className="flex flex-wrap gap-1.5"
+          className="trade-asset-options flex flex-wrap gap-1.5"
           role="group"
           aria-label={side === "buy" ? "Pay with" : "Receive in"}
         >
@@ -258,8 +258,7 @@ export default function TradePanel({
                 disabled={off}
                 title={payDisabled(p) ? closedTooltip : undefined}
                 onClick={() => setPayWith(p)}
-                className={`chip tap gap-1.5 ${p === "COIN" ? "pl-2" : ""} ${on ? "chip-on" : ""} disabled:cursor-not-allowed disabled:opacity-40`}
-                style={{ height: 30 }}
+                className={`trade-token-button tap gap-1.5 ${on ? "chip-on" : ""} disabled:cursor-not-allowed disabled:opacity-40`}
               >
                 {p === "COIN" && (
                   <CommodityLogo symbol={coinSymbol} size={14} />
@@ -273,7 +272,11 @@ export default function TradePanel({
       </div>
 
       {/* Amount in */}
-      <div className="well flex items-center justify-between gap-3 px-4 py-3.5">
+      <div
+        className="trade-amount-card trade-amount-card-in"
+        aria-label={side === "buy" ? "You pay" : "You sell"}
+      >
+        <div className="trade-amount-row">
         <label htmlFor="trade-amount" className="sr-only">
           Amount to {side}
         </label>
@@ -284,39 +287,51 @@ export default function TradePanel({
           value={amount}
           disabled={halted}
           onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ""))}
-          className="mono w-full bg-transparent text-[26px] font-semibold outline-none placeholder:text-muted/50 disabled:cursor-not-allowed"
+          className="trade-amount-input mono w-full bg-transparent font-semibold outline-none placeholder:text-muted/50 disabled:cursor-not-allowed"
         />
-        <span className="mono shrink-0 text-[13px] text-muted">
+        <span className="trade-token-chip mono shrink-0">
+          {payWith === "COIN" && <CommodityLogo symbol={coinSymbol} size={22} />}
+          {(payWith === "USDC" || payWith === "SOL") && <CurrencyLogo symbol={payWith} size={22} />}
           {side === "buy" ? payLabel : outLabel}
         </span>
+        </div>
       </div>
 
-      <div className="flex justify-center text-muted" aria-hidden="true">
+      <button
+        type="button"
+        className="trade-direction"
+        aria-label={`Switch to ${side === "buy" ? "sell" : "buy"}`}
+        disabled={halted || (side === "sell" && buyTabDisabled)}
+        onClick={() => setSide((current) => (current === "buy" ? "sell" : "buy"))}
+      >
         <svg
-          width="18"
-          height="18"
+          width="20"
+          height="20"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
           strokeWidth="2"
           strokeLinecap="round"
         >
-          <path d="M12 4v16M6 14l6 6 6-6" />
+          <path d="M8 7h11m0 0-3-3m3 3-3 3M16 17H5m0 0 3 3m-3-3 3-3" />
         </svg>
-      </div>
+      </button>
 
       {/* Estimated out */}
-      <div className="well flex items-center justify-between gap-3 px-4 py-3.5">
-        <span className="mono text-[26px] font-semibold">
+      <div className="trade-amount-card trade-amount-card-out" aria-label="You receive">
+        <div className="trade-amount-row">
+        <span className="trade-output mono font-semibold">
           {estimate != null ? fmtAmount(estimate) : "—"}
         </span>
-        <span className="mono shrink-0 text-[13px] text-muted">
+        <span className="trade-token-chip mono shrink-0">
+          <span className="trade-token-mark" aria-hidden="true">{(side === "buy" ? outLabel : payLabel).slice(0, 2)}</span>
           {side === "buy" ? outLabel : payLabel}
         </span>
+        </div>
       </div>
 
       {/* Route + terms */}
-      <dl className="mono flex flex-col gap-1.5 text-xs">
+      <dl className="trade-details mono flex flex-col gap-1.5 text-xs">
         <Line k="Route" v={route} />
         {commodityPriceUsd != null && (
           <Line

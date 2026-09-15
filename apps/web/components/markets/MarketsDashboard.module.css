@@ -13,6 +13,7 @@
   position: sticky;
   top: 0;
   height: 100vh;
+  transition: width 260ms cubic-bezier(.2, .8, .2, 1), padding 260ms cubic-bezier(.2, .8, .2, 1);
 }
 .brand {
   display: flex;
@@ -227,7 +228,89 @@
   color: var(--color-content-secondary);
 }
 .menuButton {
+  display: inline-flex;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: var(--radius-sm);
+  transition: background 180ms ease, transform 180ms ease;
+}
+.menuButton:hover {
+  background: var(--color-bg-secondary);
+}
+.sidebar.sidebarCollapsed {
+  width: 72px;
+  padding-inline: 12px;
+}
+.sidebarCollapsed .brand {
+  justify-content: center;
+  padding-inline: 0;
+}
+.brandGlyph {
   display: none;
+  width: 42px;
+  height: 42px;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 1px solid #91d3ec;
+  border-radius: 12px;
+  background: #c9edfb;
+  box-shadow: inset 0 1px 0 #fff, 0 4px 12px #3e9fc522;
+}
+.brandGlyph img {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  height: 42px;
+  flex: 0 0 auto;
+  object-fit: cover;
+}
+.sidebarCollapsed .brandLogo,
+.sidebarCollapsed .workspaceLabel,
+.sidebarCollapsed .navigation [class*="navLinkLabel"],
+.sidebarCollapsed .icePromo {
+  display: none;
+}
+.sidebarCollapsed .brandGlyph {
+  display: inline-flex;
+}
+.sidebarCollapsed .navigation {
+  margin-top: var(--space-24);
+}
+.sidebarCollapsed .navigation a {
+  justify-content: center;
+}
+.sidebarCollapsed .navigation a > span:last-child {
+  display: none;
+}
+.sidebarCollapsed .navigation [class*="sectionDivider"] {
+  padding-top: var(--space-12);
+  border-top: 1px solid var(--color-border-subtle);
+}
+.sidebarCollapsed .sidebarBottom {
+  padding-top: var(--space-16);
+}
+.sidebarCollapsed .network {
+  justify-content: center;
+  padding: var(--space-12) 0 0;
+  font-size: 0;
+}
+.sidebarCollapsed .networkTag {
+  display: none;
+}
+.shellCollapsed :global(.ice-atmosphere) {
+  left: 72px;
+}
+.pageTransition {
+  animation: page-enter 360ms cubic-bezier(.16, 1, .3, 1) both;
+}
+@keyframes page-enter {
+  from { opacity: 0; transform: translate3d(0, 9px, 0); filter: blur(2px); }
+  to { opacity: 1; transform: translate3d(0, 0, 0); filter: blur(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pageTransition { animation: none; }
 }
 .content {
   padding: var(--space-32);
@@ -353,13 +436,18 @@
   padding: var(--space-16);
   border: 1px solid var(--color-border-subtle);
   border-radius: var(--radius-md);
+  overflow: hidden;
   transition:
     border-color var(--duration-hover) ease,
-    background var(--duration-hover) ease;
+    background var(--duration-hover) ease,
+    transform var(--duration-hover) ease,
+    box-shadow var(--duration-hover) ease;
 }
 .commodityCard:hover {
   border-color: var(--color-border-medium);
   background: var(--color-bg-secondary);
+  transform: translateY(-3px);
+  box-shadow: 0 12px 26px #286f8c12;
 }
 .commodityTop {
   display: flex;
@@ -975,7 +1063,7 @@
     white-space: nowrap;
   }
 }
-@media (max-width: 700px) {
+@media (max-width: 860px) {
   .sidebar {
     display: none;
   }
@@ -987,8 +1075,29 @@
     z-index: 50;
     width: 216px;
     height: calc(100dvh - 64px);
+    overflow-y: auto;
     box-shadow: var(--shadow-elevation-4);
   }
+  .navBackdrop {
+    position: fixed;
+    inset: 64px 0 0;
+    z-index: 49;
+    border: 0;
+    background: #10253666;
+    backdrop-filter: blur(3px);
+    cursor: pointer;
+  }
+  .sidebarCollapsed {
+    width: 216px;
+    padding: var(--space-24) var(--space-16) var(--space-16);
+  }
+  .sidebarCollapsed .brandLogo { display: block; }
+  .sidebarCollapsed .brandGlyph { display: none; }
+  .sidebarCollapsed .workspaceLabel { display: block; }
+  .sidebarCollapsed .navigation [class*="navLinkLabel"] { display: flex; }
+  .sidebarCollapsed .navigation a { justify-content: flex-start; }
+  .sidebarCollapsed .navigation a > span:last-child { display: inline-block; }
+  .sidebarCollapsed .icePromo { display: block; }
   .topbar {
     height: 64px;
     padding-inline: var(--space-16);
@@ -996,8 +1105,8 @@
   .menuButton {
     display: inline-flex;
     padding: 0;
-    width: 32px;
-    height: 40px;
+    width: 44px;
+    height: 44px;
   }
   .breadcrumb {
     gap: var(--space-8);
@@ -1012,7 +1121,7 @@
     display: none;
   }
   .topActions > button {
-    height: 36px;
+    min-height: 44px;
     font-size: 12px;
     padding-inline: 12px;
   }
@@ -1114,6 +1223,18 @@
   }
   .footer a {
     margin-left: auto;
+  }
+}
+
+@media (max-width: 360px) {
+  .breadcrumb strong {
+    display: none;
+  }
+  .topActions {
+    margin-left: auto;
+  }
+  .topActions > button {
+    flex-shrink: 0;
   }
 }
 

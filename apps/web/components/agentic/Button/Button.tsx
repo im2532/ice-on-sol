@@ -1,6 +1,7 @@
 'use client';
 
 import { forwardRef } from 'react';
+import Link from 'next/link';
 import styles from './Button.module.css';
 
 /* ---------------------------------------------------------------------------
@@ -86,6 +87,22 @@ export const Button = forwardRef<
     const href = domProps.href as string;
     delete domProps.href;
     const anchorRest = domProps as React.AnchorHTMLAttributes<HTMLAnchorElement>;
+
+    if (href.startsWith('/')) {
+      return (
+        <Link
+          ref={ref as React.Ref<HTMLAnchorElement>}
+          href={href}
+          className={classNames}
+          data-variant={variant}
+          aria-disabled={loading || undefined}
+          {...anchorRest}
+        >
+          {spinnerEl}
+          {children}
+        </Link>
+      );
+    }
 
     return (
       <a
